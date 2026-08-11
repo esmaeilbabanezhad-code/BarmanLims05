@@ -1,0 +1,775 @@
+﻿@page "/sample-categories"
+
+@using MudBlazor
+@using Barman.Application.DTOs.SampleCategory
+@using Barman.Domain.Entities
+
+@inject Barman.Application.Interfaces.ISampleCategoryService SampleCategoryService
+
+<PageTitle>مدیریت دسته‌بندی نمونه‌ها</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+    <MudPaper Class="pa-6">
+
+        @* ========================================================= *@
+        @* Header                                                    *@
+        @* ========================================================= *@
+
+        <div class="d-flex justify-space-between align-center">
+
+            <MudText Typo="Typo.h5">
+                مدیریت دسته‌بندی نمونه‌ها
+            </MudText>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreate">
+
+                افزودن دسته
+
+            </MudButton>
+
+        </div>
+
+        <MudDivider Class="my-4" />
+
+        @* ========================================================= *@
+        @* Result                                                     *@
+        @* ========================================================= *@
+
+        @if (!string.IsNullOrWhiteSpace(Result))
+        {
+            <MudAlert Severity="@ResultSeverity"
+                      Class="mb-4"
+                      Variant="Variant.Outlined">
+
+                @Result
+
+            </MudAlert>
+        }
+
+        @* ========================================================= *@
+        @* Loading                                                     *@
+        @* ========================================================= *@
+
+        @if (IsLoading)
+        {
+            <MudProgressLinear Indeterminate="true"
+                               Color="Color.Primary"
+                               Class="mb-4" />
+        }
+
+        @* ========================================================= *@
+        @* Categories Table                                            *@
+        @* ========================================================= *@
+
+        @if (!IsLoading)
+        {
+            @if (Categories.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">
+
+                    هنوز هیچ دسته‌بندی فعالی ثبت نشده است.
+
+                </MudAlert>
+            }
+            else
+            {
+                <MudTable Items="@Categories"
+                          Hover="true"
+                          Striped="true"
+                          Dense="true">
+
+                    <HeaderContent>
+
+                        <MudTh>کد</MudTh>
+                        <MudTh>نام</MudTh>
+                        <MudTh>وضعیت</MudTh>
+                        <MudTh>عملیات</MudTh>
+
+                    </HeaderContent>
+
+                    <RowTemplate>
+
+                        <MudTd DataLabel="کد">
+                            @context.Code
+                        </MudTd>
+
+                        <MudTd DataLabel="نام">
+                            @context.Name
+                        </MudTd>
+
+                        <MudTd DataLabel="وضعیت">
+
+                            <MudChip T="string"
+                                     Color="Color.Success"
+                                     Size="Size.Small">
+
+                                فعال
+
+                            </MudChip>
+
+                        </MudTd>
+
+                        <MudTd DataLabel="عملیات">
+
+                            <MudButton Variant="Variant.Outlined"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Edit"
+                                       OnClick="@(() => OpenEdit(context))">
+
+                                ویرایش
+
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       Class="ms-2"
+                                       Disabled="@IsSaving"
+                                       OnClick="@(() => Deactivate(context))">
+
+                                غیرفعال کردن
+
+                            </MudButton>
+
+                        </MudTd>
+
+                    </RowTemplate>
+
+                </MudTable>
+            }
+        }
+
+    </MudPaper>
+
+</MudContainer>
+
+
+@* ========================================================= *@
+@* Dialog افزودن / ویرایش                                     *@
+@* ========================================================= *@
+
+@if (ShowDialog)
+{
+    <MudOverlay Visible="true"
+                DarkBackground="true"
+                AutoClose="false"
+                Class="d-flex align-center justify-center">
+
+        <MudPaper Class="pa-6"
+                  Style="width:500px; max-width:90vw;">
+
+            <MudText Typo="Typo.h6">
+                @(IsEditMode
+                            ? "ویرایش دسته‌بندی"
+                            : "افزودن دسته‌بندی")
+        </MudText>
+
+            <MudDivider Class="my-3" />
+
+            <MudTextField T="string"
+                          Label="کد"
+                          Variant="Variant.Outlined"
+                          @bind-Value="EditModel.Code"
+                          Required="true" />
+
+            <MudTextField T="string"
+                          Label="نام"
+                          Variant="Variant.Outlined"
+                          Class="mt-3"
+                          @bind-Value="EditModel.Name"
+                          Required="true" />
+
+            <MudTextField T="string"
+                          Label="توضیحات"
+                          Variant="Variant.Outlined"
+                          Class="mt-3"
+                          Lines="3"
+                          @bind-Value="EditModel.Description" />
+
+        @if (IsEditMode)
+            {
+                <MudCheckBox T="bool"
+                             Class="mt-3"
+                             @bind-Value="EditModel.IsActive"
+                             Label="فعال" />
+            }
+
+        <div class="d-flex justify-end mt-6">
+
+            <MudButton Variant="Variant.Text"
+                       Disabled="@IsSaving"
+                       OnClick="CloseDialog">
+
+                انصراف
+
+            </MudButton>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Class="ms-2"
+                       Disabled="@IsSaving"
+                       OnClick="SaveCategory">
+
+                @(IsSaving
+                                ? "در حال ذخیره..."
+                                : "ذخیره")
+
+            </MudButton>
+
+            </div>
+
+        </MudPaper>
+
+    </MudOverlay>
+}
+
+
+@* ========================================================= *@
+@* Dialog فعال‌سازی مجدد                                       *@
+@* ========================================================= *@
+
+@if (ShowReactivateDialog)
+{
+    <MudOverlay Visible="true"
+                DarkBackground="true"
+                AutoClose="false"
+                Class="d-flex align-center justify-center">
+
+        <MudPaper Class="pa-6"
+                  Style="width:500px; max-width:90vw;">
+
+            <MudText Typo="Typo.h6">
+                فعال‌سازی مجدد دسته‌بندی
+            </MudText>
+
+            <MudDivider Class="my-3" />
+
+            <MudAlert Severity="Severity.Warning">
+
+                این دسته‌بندی قبلاً ایجاد شده ولی غیرفعال است.
+                <br />
+                آیا می‌خواهید آن را مجدداً فعال کنید؟
+
+            </MudAlert>
+
+            <MudText Class="mt-4">
+                <b>کد:</b> @ReactivateCode
+            </MudText>
+
+            <MudText>
+                <b>نام:</b> @ReactivateName
+            </MudText>
+
+            <div class="d-flex justify-end mt-6">
+
+                <MudButton Variant="Variant.Text"
+                           Disabled="@IsSaving"
+                           OnClick="CancelReactivate">
+
+                    انصراف
+
+                </MudButton>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           Class="ms-2"
+                           Disabled="@IsSaving"
+                           OnClick="ReactivateCategory">
+
+                    @(IsSaving
+                                    ? "در حال فعال‌سازی..."
+                                    : "فعال‌سازی مجدد")
+
+            </MudButton>
+
+            </div>
+
+        </MudPaper>
+
+    </MudOverlay>
+}
+
+
+@code
+{
+    // =========================================================
+    // Data
+    // =========================================================
+
+    private List<SampleCategoryLookupDto> Categories = new();
+
+    // =========================================================
+    // State
+    // =========================================================
+
+    private bool IsLoading;
+    private bool IsSaving;
+
+    private bool ShowDialog;
+    private bool IsEditMode;
+
+    private bool ShowReactivateDialog;
+
+    // =========================================================
+    // Result
+    // =========================================================
+
+    private string Result = "";
+
+    private Severity ResultSeverity = Severity.Info;
+
+    // =========================================================
+    // Editing
+    // =========================================================
+
+    private Guid EditingId;
+
+    private EditSampleCategoryModel EditModel = new();
+
+    // =========================================================
+    // Reactivation
+    // =========================================================
+
+    private Guid ReactivateId;
+
+    private string ReactivateName = "";
+
+    private string ReactivateCode = "";
+
+
+    // =========================================================
+    // Initialization
+    // =========================================================
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+    }
+
+
+    // =========================================================
+    // Load active categories
+    // =========================================================
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            IsLoading = true;
+
+            Result = "";
+
+            Categories =
+                await SampleCategoryService.GetLookupAsync();
+        }
+        catch (Exception ex)
+        {
+            Result =
+                $"خطا در بارگذاری دسته‌ها: {ex.Message}";
+
+            ResultSeverity = Severity.Error;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+
+    // =========================================================
+    // Create dialog
+    // =========================================================
+
+    private void OpenCreate()
+    {
+        IsEditMode = false;
+
+        EditingId = Guid.Empty;
+
+        EditModel = new EditSampleCategoryModel
+        {
+            Code = "",
+            Name = "",
+            Description = null,
+            IsActive = true
+        };
+
+        Result = "";
+
+        ShowDialog = true;
+    }
+
+
+    // =========================================================
+    // Edit dialog
+    // =========================================================
+
+    private async Task OpenEdit(
+        SampleCategoryLookupDto category)
+    {
+        try
+        {
+            Result = "";
+
+            var item =
+                await SampleCategoryService.GetByIdAsync(
+                    category.Id);
+
+            if (item == null)
+            {
+                Result =
+                    "دسته‌بندی موردنظر پیدا نشد.";
+
+                ResultSeverity = Severity.Warning;
+
+                return;
+            }
+
+            IsEditMode = true;
+
+            EditingId = item.Id;
+
+            EditModel = new EditSampleCategoryModel
+            {
+                Code = item.Code,
+
+                Name = item.Name,
+
+                Description = item.Description,
+
+                IsActive = true
+            };
+
+            ShowDialog = true;
+        }
+        catch (Exception ex)
+        {
+            Result =
+                $"خطا در دریافت دسته‌بندی: {ex.Message}";
+
+            ResultSeverity = Severity.Error;
+        }
+    }
+
+
+    // =========================================================
+    // Close create/edit dialog
+    // =========================================================
+
+    private void CloseDialog()
+    {
+        ShowDialog = false;
+    }
+
+
+    // =========================================================
+    // Cancel reactivation
+    // =========================================================
+
+    private void CancelReactivate()
+    {
+        ShowReactivateDialog = false;
+
+        ReactivateId = Guid.Empty;
+        ReactivateCode = "";
+        ReactivateName = "";
+    }
+
+
+    // =========================================================
+    // Save category
+    // =========================================================
+
+    private async Task SaveCategory()
+    {
+        if (IsSaving)
+            return;
+
+        try
+        {
+            Result = "";
+
+            // -------------------------------------------------
+            // Validation
+            // -------------------------------------------------
+
+            if (string.IsNullOrWhiteSpace(EditModel.Code))
+            {
+                Result =
+                    "کد دسته‌بندی را وارد کنید.";
+
+                ResultSeverity = Severity.Warning;
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(EditModel.Name))
+            {
+                Result =
+                    "نام دسته‌بندی را وارد کنید.";
+
+                ResultSeverity = Severity.Warning;
+
+                return;
+            }
+
+            IsSaving = true;
+
+            // =================================================
+            // CREATE
+            // =================================================
+
+            if (!IsEditMode)
+            {
+                var code =
+                    EditModel.Code
+                        .Trim()
+                        .ToUpperInvariant();
+
+                var name =
+                    EditModel.Name.Trim();
+
+                // -------------------------------------------------
+                // بررسی وجود دسته با کد یا نام مشابه
+                // -------------------------------------------------
+
+                var existingCategory =
+                    await SampleCategoryService
+                        .FindByCodeOrNameAsync(
+                            code,
+                            name);
+
+                // -------------------------------------------------
+                // دسته قبلاً وجود دارد
+                // -------------------------------------------------
+
+                if (existingCategory != null)
+                {
+                    // ---------------------------------------------
+                    // غیرفعال است → پیشنهاد فعال‌سازی مجدد
+                    // ---------------------------------------------
+
+                    if (!existingCategory.IsActive)
+                    {
+                        ReactivateId =
+                            existingCategory.Id;
+
+                        ReactivateCode =
+                            existingCategory.Code;
+
+                        ReactivateName =
+                            existingCategory.Name;
+
+                        ShowDialog = false;
+
+                        ShowReactivateDialog = true;
+
+                        return;
+                    }
+
+                    // ---------------------------------------------
+                    // فعال است → جلوگیری از ایجاد تکراری
+                    // ---------------------------------------------
+
+                    Result =
+                        "دسته‌بندی با این کد یا نام قبلاً ایجاد شده و فعال است.";
+
+                    ResultSeverity = Severity.Warning;
+
+                    return;
+                }
+
+                // -------------------------------------------------
+                // دسته جدید
+                // -------------------------------------------------
+
+                var dto =
+                    new CreateSampleCategoryDto
+                    {
+                        Code = code,
+
+                        Name = name,
+
+                        Description =
+                            string.IsNullOrWhiteSpace(
+                                EditModel.Description)
+                                ? null
+                                : EditModel.Description.Trim()
+                    };
+
+                await SampleCategoryService
+                    .CreateAsync(dto);
+
+                Result =
+                    "دسته‌بندی با موفقیت ایجاد شد.";
+
+                ResultSeverity =
+                    Severity.Success;
+
+                ShowDialog = false;
+
+                await LoadCategories();
+
+                return;
+            }
+
+
+            // =================================================
+            // UPDATE
+            // =================================================
+
+            var updateDto =
+                new UpdateSampleCategoryDto
+                {
+                    Code =
+                        EditModel.Code
+                            .Trim(),
+
+                    Name =
+                        EditModel.Name
+                            .Trim(),
+
+                    Description =
+                        string.IsNullOrWhiteSpace(
+                            EditModel.Description)
+                            ? null
+                            : EditModel.Description.Trim(),
+
+                    IsActive =
+                        EditModel.IsActive
+                };
+
+            await SampleCategoryService
+                .UpdateAsync(
+                    EditingId,
+                    updateDto);
+
+            Result =
+                "دسته‌بندی با موفقیت ویرایش شد.";
+
+            ResultSeverity =
+                Severity.Success;
+
+            ShowDialog = false;
+
+            await LoadCategories();
+        }
+        catch (Exception ex)
+        {
+            Result =
+                $"خطا در ذخیره دسته‌بندی: {ex.Message}";
+
+            ResultSeverity =
+                Severity.Error;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+
+    // =========================================================
+    // Deactivate
+    // =========================================================
+
+    private async Task Deactivate(
+        SampleCategoryLookupDto category)
+    {
+        if (IsSaving)
+            return;
+
+        try
+        {
+            IsSaving = true;
+
+            Result = "";
+
+            await SampleCategoryService
+                .DeactivateAsync(category.Id);
+
+            Result =
+                "دسته‌بندی غیرفعال شد.";
+
+            ResultSeverity =
+                Severity.Success;
+
+            await LoadCategories();
+        }
+        catch (Exception ex)
+        {
+            Result =
+                $"خطا در غیرفعال کردن دسته‌بندی: {ex.Message}";
+
+            ResultSeverity =
+                Severity.Error;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+
+    // =========================================================
+    // Reactivate
+    // =========================================================
+
+    private async Task ReactivateCategory()
+    {
+        if (ReactivateId == Guid.Empty)
+            return;
+
+        try
+        {
+            IsSaving = true;
+
+            await SampleCategoryService.ActivateAsync(
+                ReactivateId);
+
+            ShowReactivateDialog = false;
+
+            ReactivateId = Guid.Empty;
+            ReactivateCode = "";
+            ReactivateName = "";
+
+            Result =
+                "دسته‌بندی با موفقیت مجدداً فعال شد.";
+
+            ResultSeverity = Severity.Success;
+
+            await LoadCategories();
+        }
+        catch (Exception ex)
+        {
+            Result =
+                $"خطا در فعال‌سازی مجدد دسته‌بندی: {ex.Message}";
+
+            ResultSeverity = Severity.Error;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+
+    // =========================================================
+    // Edit model
+    // =========================================================
+
+    private class EditSampleCategoryModel
+    {
+        public string Code { get; set; } = "";
+
+        public string Name { get; set; } = "";
+
+        public string? Description { get; set; }
+
+        public bool IsActive { get; set; }
+    }
+}

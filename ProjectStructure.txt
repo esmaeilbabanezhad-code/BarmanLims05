@@ -1,0 +1,658 @@
+Folder PATH listing
+Volume serial number is 000000D1 BA27:112B
+C:.
+|   BarmanLims05.sln
+|   ProjectStructure.txt
+|   ProjectStructure1.txt
+|   
++---Barman.Application
+|   |   Barman.Application.csproj
+|   |   Class1.cs
+|   |   
+|   +---bin
+|   |   \---Debug
+|   |       \---net9.0
+|   |               Barman.Application.deps.json
+|   |               Barman.Application.dll
+|   |               Barman.Application.pdb
+|   |               Barman.Domain.dll
+|   |               Barman.Domain.pdb
+|   |               
+|   +---DTOs
+|   |   +---Customer
+|   |   |       CustomerLookupDto.cs
+|   |   |       
+|   |   +---Matrix
+|   |   |       CreateMatrixDto.cs
+|   |   |       MatrixLookupDto.cs
+|   |   |       UpdateMatrixDto.cs
+|   |   |       
+|   |   +---Reception
+|   |   |       CreateReceptionDto.cs
+|   |   |       CreateReceptionSampleDto.cs
+|   |   |       
+|   |   \---SampleCategory
+|   |           CreateSampleCategoryDto.cs
+|   |           SampleCategoryLookupDto.cs
+|   |           UpdateSampleCategoryDto.cs
+|   |           
+|   +---Interfaces
+|   |   |   ICustomerService.cs
+|   |   |   IMatrixService.cs
+|   |   |   INumberGenerator.cs
+|   |   |   IReceptionService.cs
+|   |   |   ISampleCategoryService.cs
+|   |   |   IUnitOfWork.cs
+|   |   |   
+|   |   \---Repositories
+|   |           ICustomerRepository.cs
+|   |           IEmployeeRepository.cs
+|   |           IMatrixRepository.cs
+|   |           IReceptionRepository.cs
+|   |           ISampleCategoryRepository.cs
+|   |           ISampleRepository.cs
+|   |           ITestRepository.cs
+|   |           
+|   +---obj
+|   |   |   Barman.Application.csproj.nuget.dgspec.json
+|   |   |   Barman.Application.csproj.nuget.g.props
+|   |   |   Barman.Application.csproj.nuget.g.targets
+|   |   |   project.assets.json
+|   |   |   project.nuget.cache
+|   |   |   
+|   |   \---Debug
+|   |       \---net9.0
+|   |           |   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+|   |           |   Barman.A.53AA5770.Up2Date
+|   |           |   Barman.Application.AssemblyInfo.cs
+|   |           |   Barman.Application.AssemblyInfoInputs.cache
+|   |           |   Barman.Application.assets.cache
+|   |           |   Barman.Application.csproj.AssemblyReference.cache
+|   |           |   Barman.Application.csproj.CoreCompileInputs.cache
+|   |           |   Barman.Application.csproj.FileListAbsolute.txt
+|   |           |   Barman.Application.dll
+|   |           |   Barman.Application.GeneratedMSBuildEditorConfig.editorconfig
+|   |           |   Barman.Application.GlobalUsings.g.cs
+|   |           |   Barman.Application.pdb
+|   |           |   
+|   |           +---ref
+|   |           |       Barman.Application.dll
+|   |           |       
+|   |           \---refint
+|   |                   Barman.Application.dll
+|   |                   
+|   \---Services
+|           CustomerService.cs
+|           MatrixService.cs
+|           ReceptionService.cs
+|           SampleCategoryService.cs
+|           
++---Barman.Domain
+|   |   Barman.Domain.csproj
+|   |   Class1.cs
+|   |   
+|   +---bin
+|   |   \---Debug
+|   |       \---net9.0
+|   |               Barman.Domain.deps.json
+|   |               Barman.Domain.dll
+|   |               Barman.Domain.pdb
+|   |               
+|   +---Common
+|   |       BaseEntity.cs
+|   |       
+|   +---Entities
+|   |       Customer.cs
+|   |       Department.cs
+|   |       Employee.cs
+|   |       Instrument.cs
+|   |       Matrix.cs
+|   |       NumberSequence.cs
+|   |       Permission.cs
+|   |       Reception.cs
+|   |       ReferenceLimit.cs
+|   |       Role.cs
+|   |       RolePermission.cs
+|   |       Sample.cs
+|   |       SampleCategory.cs
+|   |       Test.cs
+|   |       TestAssignment.cs
+|   |       TestMethod.cs
+|   |       TestPanel.cs
+|   |       TestPanelItem.cs
+|   |       
+|   +---Enums
+|   |       ReceptionStatus.cs
+|   |       
+|   +---Events
+|   +---Interfaces
+|   |   \---Repositories
+|   |           IGenericRepository.cs
+|   |           INumberSequenceRepository.cs
+|   |           
+|   +---obj
+|   |   |   Barman.Domain.csproj.nuget.dgspec.json
+|   |   |   Barman.Domain.csproj.nuget.g.props
+|   |   |   Barman.Domain.csproj.nuget.g.targets
+|   |   |   project.assets.json
+|   |   |   project.nuget.cache
+|   |   |   
+|   |   \---Debug
+|   |       \---net9.0
+|   |           |   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+|   |           |   Barman.Domain.AssemblyInfo.cs
+|   |           |   Barman.Domain.AssemblyInfoInputs.cache
+|   |           |   Barman.Domain.assets.cache
+|   |           |   Barman.Domain.csproj.CoreCompileInputs.cache
+|   |           |   Barman.Domain.csproj.FileListAbsolute.txt
+|   |           |   Barman.Domain.dll
+|   |           |   Barman.Domain.GeneratedMSBuildEditorConfig.editorconfig
+|   |           |   Barman.Domain.GlobalUsings.g.cs
+|   |           |   Barman.Domain.pdb
+|   |           |   
+|   |           +---ref
+|   |           |       Barman.Domain.dll
+|   |           |       
+|   |           \---refint
+|   |                   Barman.Domain.dll
+|   |                   
+|   \---ValueObjects
++---Barman.Infrastructure
+|   |   Barman.Infrastructure.csproj
+|   |   Class1.cs
+|   |   
+|   +---bin
+|   |   \---Debug
+|   |       \---net9.0
+|   |               Barman.Application.dll
+|   |               Barman.Application.pdb
+|   |               Barman.Domain.dll
+|   |               Barman.Domain.pdb
+|   |               Barman.Infrastructure.deps.json
+|   |               Barman.Infrastructure.dll
+|   |               Barman.Infrastructure.pdb
+|   |               
+|   +---DependencyInjection
+|   |       InfrastructureServiceCollectionExtensions.cs
+|   |       
+|   +---obj
+|   |   |   Barman.Infrastructure.csproj.nuget.dgspec.json
+|   |   |   Barman.Infrastructure.csproj.nuget.g.props
+|   |   |   Barman.Infrastructure.csproj.nuget.g.targets
+|   |   |   project.assets.json
+|   |   |   project.nuget.cache
+|   |   |   
+|   |   \---Debug
+|   |       \---net9.0
+|   |           |   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+|   |           |   Barman.I.9D976CB1.Up2Date
+|   |           |   Barman.Infrastructure.AssemblyInfo.cs
+|   |           |   Barman.Infrastructure.AssemblyInfoInputs.cache
+|   |           |   Barman.Infrastructure.assets.cache
+|   |           |   Barman.Infrastructure.csproj.AssemblyReference.cache
+|   |           |   Barman.Infrastructure.csproj.CoreCompileInputs.cache
+|   |           |   Barman.Infrastructure.csproj.FileListAbsolute.txt
+|   |           |   Barman.Infrastructure.dll
+|   |           |   Barman.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+|   |           |   Barman.Infrastructure.GlobalUsings.g.cs
+|   |           |   Barman.Infrastructure.pdb
+|   |           |   
+|   |           +---ref
+|   |           |       Barman.Infrastructure.dll
+|   |           |       
+|   |           \---refint
+|   |                   Barman.Infrastructure.dll
+|   |                   
+|   \---Services
+|           NumberGenerator.cs
+|           
++---Barman.Persistence
+|   |   Barman.Persistence.csproj
+|   |   Class1.cs
+|   |   
+|   +---bin
+|   |   \---Debug
+|   |       \---net9.0
+|   |               Barman.Application.dll
+|   |               Barman.Application.pdb
+|   |               Barman.Domain.dll
+|   |               Barman.Domain.pdb
+|   |               Barman.Persistence.deps.json
+|   |               Barman.Persistence.dll
+|   |               Barman.Persistence.pdb
+|   |               Barman.Persistence.runtimeconfig.json
+|   |               
+|   +---Configurations
+|   |       CustomerConfiguration.cs
+|   |       DepartmentConfiguration.cs
+|   |       EmployeeConfiguration.cs
+|   |       NumberSequenceConfiguration.cs
+|   |       PermissionConfiguration.cs
+|   |       ReceptionConfiguration.cs
+|   |       ReferenceLimitConfiguration.cs
+|   |       RoleConfiguration.cs
+|   |       RolePermissionConfiguration.cs
+|   |       SampleCategoryConfiguration.cs
+|   |       SampleConfiguration.cs
+|   |       TestConfiguration.cs
+|   |       
+|   +---Contexts
+|   |       ApplicationDbContext.cs
+|   |       
+|   +---DependencyInjection
+|   |       PersistenceServiceCollectionExtensions.cs
+|   |       
+|   +---Migrations
+|   |       20260729151955_InitialCreate.cs
+|   |       20260729151955_InitialCreate.Designer.cs
+|   |       20260729163822_AddNumberSequence.cs
+|   |       20260729163822_AddNumberSequence.Designer.cs
+|   |       20260730222422_AddSampleCategory.cs
+|   |       20260730222422_AddSampleCategory.Designer.cs
+|   |       ApplicationDbContextModelSnapshot.cs
+|   |       
+|   +---obj
+|   |   |   Barman.Persistence.csproj.nuget.dgspec.json
+|   |   |   Barman.Persistence.csproj.nuget.g.props
+|   |   |   Barman.Persistence.csproj.nuget.g.targets
+|   |   |   project.assets.json
+|   |   |   project.nuget.cache
+|   |   |   
+|   |   \---Debug
+|   |       \---net9.0
+|   |           |   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+|   |           |   Barman.P.F1BE34A8.Up2Date
+|   |           |   Barman.Persistence.AssemblyInfo.cs
+|   |           |   Barman.Persistence.AssemblyInfoInputs.cache
+|   |           |   Barman.Persistence.assets.cache
+|   |           |   Barman.Persistence.csproj.AssemblyReference.cache
+|   |           |   Barman.Persistence.csproj.BuildWithSkipAnalyzers
+|   |           |   Barman.Persistence.csproj.CoreCompileInputs.cache
+|   |           |   Barman.Persistence.csproj.FileListAbsolute.txt
+|   |           |   Barman.Persistence.dll
+|   |           |   Barman.Persistence.GeneratedMSBuildEditorConfig.editorconfig
+|   |           |   Barman.Persistence.genruntimeconfig.cache
+|   |           |   Barman.Persistence.GlobalUsings.g.cs
+|   |           |   Barman.Persistence.pdb
+|   |           |   
+|   |           +---ref
+|   |           |       Barman.Persistence.dll
+|   |           |       
+|   |           \---refint
+|   |                   Barman.Persistence.dll
+|   |                   
+|   +---Repositories
+|   |       CustomerRepository.cs
+|   |       EmployeeRepository.cs
+|   |       GenericRepository.cs
+|   |       MatrixRepository.cs
+|   |       NumberSequenceRepository.cs
+|   |       ReceptionRepository.cs
+|   |       SampleCategoryRepository.cs
+|   |       SampleRepository.cs
+|   |       TestRepository.cs
+|   |       
+|   +---Seed
+|   |       ApplicationDbInitializer.cs
+|   |       CustomerSeeder.cs
+|   |       NumberSequenceSeeder.cs
+|   |       PermissionSeeder.cs
+|   |       SampleCategorySeeder.cs
+|   |       
+|   \---UnitOfWork
+|           ApplicationUnitOfWork.cs
+|           
+\---BarmanLims
+    |   appsettings.Development.json
+    |   appsettings.json
+    |   BarmanLims.csproj
+    |   BarmanLims.csproj.user
+    |   Program.cs
+    |   
+    +---bin
+    |   \---Debug
+    |       \---net9.0
+    |           |   appsettings.Development.json
+    |           |   appsettings.json
+    |           |   AutoMapper.dll
+    |           |   AutoMapper.Extensions.Microsoft.DependencyInjection.dll
+    |           |   Barman.Application.dll
+    |           |   Barman.Application.pdb
+    |           |   Barman.Domain.dll
+    |           |   Barman.Domain.pdb
+    |           |   Barman.Infrastructure.dll
+    |           |   Barman.Infrastructure.pdb
+    |           |   Barman.Persistence.dll
+    |           |   Barman.Persistence.pdb
+    |           |   BarmanLims.deps.json
+    |           |   BarmanLims.dll
+    |           |   BarmanLims.exe
+    |           |   BarmanLims.pdb
+    |           |   BarmanLims.runtimeconfig.json
+    |           |   BarmanLims.staticwebassets.endpoints.json
+    |           |   BarmanLims.staticwebassets.runtime.json
+    |           |   FluentValidation.DependencyInjectionExtensions.dll
+    |           |   FluentValidation.dll
+    |           |   Humanizer.dll
+    |           |   Microsoft.AspNetCore.Authorization.dll
+    |           |   Microsoft.AspNetCore.Components.dll
+    |           |   Microsoft.AspNetCore.Components.Forms.dll
+    |           |   Microsoft.AspNetCore.Components.Web.dll
+    |           |   Microsoft.AspNetCore.Metadata.dll
+    |           |   Microsoft.Bcl.AsyncInterfaces.dll
+    |           |   Microsoft.Build.Locator.dll
+    |           |   Microsoft.CodeAnalysis.CSharp.dll
+    |           |   Microsoft.CodeAnalysis.CSharp.Workspaces.dll
+    |           |   Microsoft.CodeAnalysis.dll
+    |           |   Microsoft.CodeAnalysis.Workspaces.dll
+    |           |   Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll
+    |           |   Microsoft.CodeAnalysis.Workspaces.MSBuild.dll
+    |           |   Microsoft.EntityFrameworkCore.Abstractions.dll
+    |           |   Microsoft.EntityFrameworkCore.Design.dll
+    |           |   Microsoft.EntityFrameworkCore.dll
+    |           |   Microsoft.EntityFrameworkCore.Relational.dll
+    |           |   Microsoft.Extensions.Caching.Abstractions.dll
+    |           |   Microsoft.Extensions.Caching.Memory.dll
+    |           |   Microsoft.Extensions.Configuration.Abstractions.dll
+    |           |   Microsoft.Extensions.DependencyInjection.Abstractions.dll
+    |           |   Microsoft.Extensions.DependencyInjection.dll
+    |           |   Microsoft.Extensions.DependencyModel.dll
+    |           |   Microsoft.Extensions.Localization.Abstractions.dll
+    |           |   Microsoft.Extensions.Localization.dll
+    |           |   Microsoft.Extensions.Logging.Abstractions.dll
+    |           |   Microsoft.Extensions.Logging.dll
+    |           |   Microsoft.Extensions.Options.dll
+    |           |   Microsoft.Extensions.Primitives.dll
+    |           |   Microsoft.JSInterop.dll
+    |           |   Mono.TextTemplating.dll
+    |           |   MudBlazor.dll
+    |           |   Npgsql.dll
+    |           |   Npgsql.EntityFrameworkCore.PostgreSQL.dll
+    |           |   System.CodeDom.dll
+    |           |   System.Composition.AttributedModel.dll
+    |           |   System.Composition.Convention.dll
+    |           |   System.Composition.Hosting.dll
+    |           |   System.Composition.Runtime.dll
+    |           |   System.Composition.TypedParts.dll
+    |           |   
+    |           +---cs
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---de
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---es
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---fr
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---it
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---ja
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---ko
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---pl
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---pt-BR
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---ru
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---tr
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           +---zh-Hans
+    |           |       Microsoft.CodeAnalysis.CSharp.resources.dll
+    |           |       Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |           |       Microsoft.CodeAnalysis.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |           |       Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |           |       
+    |           \---zh-Hant
+    |                   Microsoft.CodeAnalysis.CSharp.resources.dll
+    |                   Microsoft.CodeAnalysis.CSharp.Workspaces.resources.dll
+    |                   Microsoft.CodeAnalysis.resources.dll
+    |                   Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
+    |                   Microsoft.CodeAnalysis.Workspaces.resources.dll
+    |                   
+    +---Components
+    |   |   App.razor
+    |   |   Routes.razor
+    |   |   _Imports.razor
+    |   |   
+    |   +---Layout
+    |   |       MainLayout.razor
+    |   |       MainLayout.razor.css
+    |   |       NavMenu.razor
+    |   |       NavMenu.razor.css
+    |   |       
+    |   \---Pages
+    |       |   Component.razor
+    |       |   Counter.razor
+    |       |   Error.razor
+    |       |   Home.razor
+    |       |   Matrix.razor
+    |       |   TestNumber.razor
+    |       |   Weather.razor
+    |       |   
+    |       \---Reception
+    |               CreateReception.razor
+    |               
+    +---obj
+    |   |   BarmanLims.csproj.nuget.dgspec.json
+    |   |   BarmanLims.csproj.nuget.g.props
+    |   |   BarmanLims.csproj.nuget.g.targets
+    |   |   project.assets.json
+    |   |   project.nuget.cache
+    |   |   
+    |   \---Debug
+    |       \---net9.0
+    |           |   .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+    |           |   ApiEndpoints.json
+    |           |   apphost.exe
+    |           |   BarmanLims.AssemblyInfo.cs
+    |           |   BarmanLims.AssemblyInfoInputs.cache
+    |           |   BarmanLims.assets.cache
+    |           |   BarmanLims.csproj.AssemblyReference.cache
+    |           |   BarmanLims.csproj.BuildWithSkipAnalyzers
+    |           |   BarmanLims.csproj.CoreCompileInputs.cache
+    |           |   BarmanLims.csproj.FileListAbsolute.txt
+    |           |   BarmanLims.csproj.Up2Date
+    |           |   BarmanLims.dll
+    |           |   BarmanLims.GeneratedMSBuildEditorConfig.editorconfig
+    |           |   BarmanLims.genruntimeconfig.cache
+    |           |   BarmanLims.GlobalUsings.g.cs
+    |           |   BarmanLims.MvcApplicationPartsAssemblyInfo.cache
+    |           |   BarmanLims.pdb
+    |           |   rbcswa.dswa.cache.json
+    |           |   rjimswa.dswa.cache.json
+    |           |   rjsmcshtml.dswa.cache.json
+    |           |   rjsmrazor.dswa.cache.json
+    |           |   rpswa.dswa.cache.json
+    |           |   staticwebassets.build.endpoints.json
+    |           |   staticwebassets.build.json
+    |           |   staticwebassets.build.json.cache
+    |           |   staticwebassets.development.json
+    |           |   staticwebassets.references.upToDateCheck.txt
+    |           |   staticwebassets.removed.txt
+    |           |   staticwebassets.upToDateCheck.txt
+    |           |   
+    |           +---compressed
+    |           |       0wz98yz2xy-lftp6ydp6b.gz
+    |           |       4vrf8o0pek-kbrnm935zg.gz
+    |           |       56jaqqia5g-pk9g2wxc8p.gz
+    |           |       5qirqr4z6f-tdbxkamptv.gz
+    |           |       6b5dcvkdo8-6pdc2jztkx.gz
+    |           |       6i3mzhoyg7-s35ty4nyc5.gz
+    |           |       7kzsmktg63-b7pk76d08c.gz
+    |           |       7nmzy2ifh8-ft3s53vfgj.gz
+    |           |       7ntdfws1l4-erw9l3u2r3.gz
+    |           |       8a3z1vh9v7-493y06b0oq.gz
+    |           |       b8t3by2t89-c2jlpeoesf.gz
+    |           |       bpn75e5l1v-ub07r2b239.gz
+    |           |       bww0f1cw8a-khy4lop6wu.gz
+    |           |       c0z2qmeroj-cosvhxvwiu.gz
+    |           |       c4dvipovub-ee0r1s7dh0.gz
+    |           |       cyla12vrux-pj5nd1wqec.gz
+    |           |       dtjehwzcji-k8d9w2qqmf.gz
+    |           |       dyr5k0n8ta-iovd86k7lj.gz
+    |           |       e7ioh5n1xq-d7shbmvgxk.gz
+    |           |       ew8kb6ttqc-63fj8s7r0e.gz
+    |           |       f5lnsc053b-fvhpjtyr6v.gz
+    |           |       fz121gkif4-r4e9w2rdcm.gz
+    |           |       gq4wwr3ukl-vr1egmr9el.gz
+    |           |       hsyk64cpc4-46ein0sx1k.gz
+    |           |       hv59tqjmsf-jd9uben2k1.gz
+    |           |       idag5xczkt-06098lyss8.gz
+    |           |       iudl04vcph-3f8f3wwsgg.gz
+    |           |       jkczbr6dpz-aexeepp0ev.gz
+    |           |       jkgpof1fyf-khv3u5hwcm.gz
+    |           |       jtikqwjzo0-rzd6atqjts.gz
+    |           |       l4g3bg270o-nvvlpmu67g.gz
+    |           |       lbx3i7bmpt-3f8f3wwsgg.gz
+    |           |       ljulj96qkl-dxx9fxp4il.gz
+    |           |       nd12sedvs1-notf2xhcfb.gz
+    |           |       o2iob70wve-y7v9cxd14o.gz
+    |           |       o8952d47ai-6cfz1n2cew.gz
+    |           |       opxbqgen4i-37tfw0ft22.gz
+    |           |       pgqkushxkm-hrwsygsryq.gz
+    |           |       seehhqdm15-bqjiyaj88i.gz
+    |           |       tzxjg6is5z-0n6lrtb02s.gz
+    |           |       v97fneodei-0j3bgjxly4.gz
+    |           |       vyj1gnadis-c2oey78nd0.gz
+    |           |       wtcb9j0sfr-v0zj4ognzu.gz
+    |           |       wyzjiqywl7-h1s4sie4z3.gz
+    |           |       xgf3913m68-ausgxo2sd3.gz
+    |           |       y0nkhtyy96-j5mq2jizvt.gz
+    |           |       ye84u2wpfg-fsbi9cje9m.gz
+    |           |       ysaz4y1kgq-jj8uyg4cgr.gz
+    |           |       zrjg9dwm5r-lcd1t2u6c8.gz
+    |           |       
+    |           +---ref
+    |           |       BarmanLims.dll
+    |           |       
+    |           +---refint
+    |           |       BarmanLims.dll
+    |           |       
+    |           +---scopedcss
+    |           |   +---bundle
+    |           |   |       BarmanLims.styles.css
+    |           |   |       
+    |           |   +---Components
+    |           |   |   \---Layout
+    |           |   |           MainLayout.razor.rz.scp.css
+    |           |   |           NavMenu.razor.rz.scp.css
+    |           |   |           
+    |           |   \---projectbundle
+    |           |           BarmanLims.bundle.scp.css
+    |           |           
+    |           \---staticwebassets
+    +---Properties
+    |       launchSettings.json
+    |       
+    \---wwwroot
+        |   app.css
+        |   favicon.png
+        |   
+        \---lib
+            \---bootstrap
+                \---dist
+                    +---css
+                    |       bootstrap-grid.css
+                    |       bootstrap-grid.css.map
+                    |       bootstrap-grid.min.css
+                    |       bootstrap-grid.min.css.map
+                    |       bootstrap-grid.rtl.css
+                    |       bootstrap-grid.rtl.css.map
+                    |       bootstrap-grid.rtl.min.css
+                    |       bootstrap-grid.rtl.min.css.map
+                    |       bootstrap-reboot.css
+                    |       bootstrap-reboot.css.map
+                    |       bootstrap-reboot.min.css
+                    |       bootstrap-reboot.min.css.map
+                    |       bootstrap-reboot.rtl.css
+                    |       bootstrap-reboot.rtl.css.map
+                    |       bootstrap-reboot.rtl.min.css
+                    |       bootstrap-reboot.rtl.min.css.map
+                    |       bootstrap-utilities.css
+                    |       bootstrap-utilities.css.map
+                    |       bootstrap-utilities.min.css
+                    |       bootstrap-utilities.min.css.map
+                    |       bootstrap-utilities.rtl.css
+                    |       bootstrap-utilities.rtl.css.map
+                    |       bootstrap-utilities.rtl.min.css
+                    |       bootstrap-utilities.rtl.min.css.map
+                    |       bootstrap.css
+                    |       bootstrap.css.map
+                    |       bootstrap.min.css
+                    |       bootstrap.min.css.map
+                    |       bootstrap.rtl.css
+                    |       bootstrap.rtl.css.map
+                    |       bootstrap.rtl.min.css
+                    |       bootstrap.rtl.min.css.map
+                    |       
+                    \---js
+                            bootstrap.bundle.js
+                            bootstrap.bundle.js.map
+                            bootstrap.bundle.min.js
+                            bootstrap.bundle.min.js.map
+                            bootstrap.esm.js
+                            bootstrap.esm.js.map
+                            bootstrap.esm.min.js
+                            bootstrap.esm.min.js.map
+                            bootstrap.js
+                            bootstrap.js.map
+                            bootstrap.min.js
+                            bootstrap.min.js.map
+                            

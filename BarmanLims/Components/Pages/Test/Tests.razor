@@ -1,0 +1,1022 @@
+@page "/tests"
+
+@using MudBlazor
+@using Barman.Application.DTOs.Test
+@using Barman.Domain.Entities
+
+@inject Barman.Application.Interfaces.ITestService TestService
+
+<MudPaper Class="pa-4">
+
+    <div class="d-flex justify-space-between align-center">
+
+        <MudText Typo="Typo.h5">
+            Test List
+        </MudText>
+
+        <div>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreate">
+                New
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       Class="ms-2"
+                       StartIcon="@Icons.Material.Filled.DeleteSweep"
+                       OnClick="ShowDeleted">
+                Deleted Tests
+            </MudButton>
+
+        </div>
+
+    </div>
+
+    <MudDivider Class="my-3" />
+
+    <MudTextField T="string"
+                  @bind-Value="SearchText"
+                  Label="Search"
+                  Placeholder="Code, name or English name..."
+                  Variant="Variant.Outlined"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Immediate="true"
+                  Clearable="true"
+                  Class="mb-4" />
+
+    @if (IsLoading)
+    {
+        <div class="d-flex justify-center pa-6">
+
+            <MudProgressCircular Indeterminate="true"
+                                 Color="Color.Primary" />
+
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error"
+                  Class="mb-4">
+
+            @ErrorMessage
+
+        </MudAlert>
+    }
+    else if (FilteredTests.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info">
+
+            No tests found.
+
+        </MudAlert>
+    }
+    else
+    {
+        <MudTable Items="FilteredTests"
+                  Hover="true"
+                  Dense="true"
+                  Striped="true"
+                  Bordered="true">
+
+            <HeaderContent>
+
+                <MudTh>Code</MudTh>
+                <MudTh>Name</MudTh>
+                <MudTh>English Name</MudTh>
+                <MudTh>Unit</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Reception Status</MudTh>
+                <MudTh>LOD</MudTh>
+                <MudTh>LOQ</MudTh>
+                <MudTh>Action</MudTh>
+
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd>
+                    @context.Code
+                </MudTd>
+
+                <MudTd>
+                    @context.Name
+                </MudTd>
+
+                <MudTd>
+                    @context.EnglishName
+                </MudTd>
+
+                <MudTd>
+                    @context.Unit
+                </MudTd>
+
+                <MudTd>
+
+                    @if (context.IsQuantitative)
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Primary"
+                                 Size="Size.Small">
+                            Quantitative
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Secondary"
+                                 Size="Size.Small">
+                            Qualitative
+                        </MudChip>
+                    }
+
+                </MudTd>
+
+                <MudTd>
+
+                    @if (context.IsActiveForReception)
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Success"
+                                 Size="Size.Small">
+                            Active
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Default"
+                                 Size="Size.Small">
+                            Inactive
+                        </MudChip>
+                    }
+
+                </MudTd>
+
+                <MudTd>
+                    @(context.LOD?.ToString() ?? "-")
+                </MudTd>
+
+                <MudTd>
+                    @(context.LOQ?.ToString() ?? "-")
+                </MudTd>
+
+                <MudTd>
+
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               OnClick="@(() => OpenEdit(context))">
+
+                        Edit
+
+                    </MudButton>
+
+                    @if (context.IsActiveForReception)
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Warning"
+                                   Class="ms-1"
+                                   OnClick="@(() => Deactivate(context.Id))">
+
+                            Disable
+
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Success"
+                                   Class="ms-1"
+                                   OnClick="@(() => Activate(context.Id))">
+
+                            Activate
+
+                        </MudButton>
+                    }
+
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Text"
+                               Color="Color.Error"
+                               Class="ms-1"
+                               OnClick="@(() => Delete(context.Id))">
+
+                        Delete
+
+                    </MudButton>
+
+                </MudTd>
+
+            </RowTemplate>
+
+        </MudTable>
+    }
+
+</MudPaper>
+
+
+@* ========================================================= *@
+@* Create / Edit Dialog                                      *@
+@* ========================================================= *@
+
+<MudDialog @bind-Visible="DialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6"
+                 Class="mb-4">
+
+            @(IsEditMode ? "Edit Test" : "New Test")
+
+        </MudText>
+
+        <MudTextField T="string"
+                      @bind-Value="Form.Code"
+                      Label="Code"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Disabled="@IsSaving"
+                      Class="mb-3" />
+
+        <MudTextField T="string"
+                      @bind-Value="Form.Name"
+                      Label="Name"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Disabled="@IsSaving"
+                      Class="mb-3" />
+
+        <MudTextField T="string"
+                      @bind-Value="Form.EnglishName"
+                      Label="English Name"
+                      Variant="Variant.Outlined"
+                      Disabled="@IsSaving"
+                      Class="mb-3" />
+
+        <MudSelect T="Guid?"
+                   Label="Department"
+                   Variant="Variant.Outlined"
+                   @bind-Value="Form.DepartmentId"
+                   Disabled="@IsSaving"
+                   Class="mb-3">
+
+            @foreach (var department in Departments)
+            {
+                <MudSelectItem T="Guid?"
+                               Value="@department.Id">
+
+                    @department.Name
+
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudSelect T="Guid?"
+                   Label="Sample Category"
+                   Variant="Variant.Outlined"
+                   Value="Form.SampleCategoryId"
+                   ValueChanged="OnSampleCategoryChanged"
+                   Disabled="@IsSaving"
+                   Class="mb-3">
+
+            @foreach (var category in SampleCategories)
+            {
+                <MudSelectItem T="Guid?"
+                               Value="@category.Id">
+
+                    @category.Name
+
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudSelect T="Guid?"
+                   Label="Matrix"
+                   Variant="Variant.Outlined"
+                   @bind-Value="Form.MatrixId"
+                   Disabled="@IsSaving"
+                   Class="mb-3">
+
+            @foreach (var matrix in Matrices)
+            {
+                <MudSelectItem T="Guid?"
+                               Value="@matrix.Id">
+
+                    @matrix.Name
+
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudTextField T="string"
+                      @bind-Value="Form.Unit"
+                      Label="Unit"
+                      Variant="Variant.Outlined"
+                      Disabled="@IsSaving"
+                      Class="mb-3" />
+
+        <MudTextField T="string"
+                      @bind-Value="Form.Method"
+                      Label="Method"
+                      Variant="Variant.Outlined"
+                      Disabled="@IsSaving"
+                      Class="mb-3" />
+
+        <MudTextField T="string"
+                      @bind-Value="Form.InstrumentName"
+                      Label="Instrument"
+                      Variant="Variant.Outlined"
+                      Disabled="@IsSaving"
+                      Class="mb-3" />
+
+        <MudGrid>
+
+            <MudItem xs="12" sm="6">
+
+                <MudNumericField T="decimal?"
+                                 @bind-Value="Form.LOD"
+                                 Label="LOD"
+                                 Variant="Variant.Outlined"
+                                 Disabled="@IsSaving" />
+
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+
+                <MudNumericField T="decimal?"
+                                 @bind-Value="Form.LOQ"
+                                 Label="LOQ"
+                                 Variant="Variant.Outlined"
+                                 Disabled="@IsSaving" />
+
+            </MudItem>
+
+        </MudGrid>
+
+        <MudTextField T="string"
+                      @bind-Value="Form.DefaultResult"
+                      Label="Default Result"
+                      Variant="Variant.Outlined"
+                      Disabled="@IsSaving"
+                      Class="mt-3 mb-3" />
+
+        <MudCheckBox T="bool"
+                     @bind-Value="Form.IsQuantitative"
+                     Label="Quantitative Test"
+                     Disabled="@IsSaving" />
+
+        <MudCheckBox T="bool"
+                     @bind-Value="Form.IsActiveForReception"
+                     Label="Available for Reception"
+                     Disabled="@IsSaving" />
+
+        <MudTextField T="string"
+                      @bind-Value="Form.Description"
+                      Label="Description"
+                      Variant="Variant.Outlined"
+                      Lines="3"
+                      Disabled="@IsSaving"
+                      Class="mt-3" />
+
+        @if (!string.IsNullOrWhiteSpace(DialogError))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mt-4">
+
+                @DialogError
+
+            </MudAlert>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   Disabled="@IsSaving"
+                   OnClick="CloseDialog">
+
+            Cancel
+
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@IsSaving"
+                   OnClick="SaveTest">
+
+            @if (IsSaving)
+            {
+                <MudProgressCircular Size="Size.Small"
+                                     Indeterminate="true"
+                                     Class="me-2" />
+
+                <span>Saving...</span>
+            }
+            else
+            {
+                <span>Save</span>
+            }
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+
+
+@* ========================================================= *@
+@* Deleted Tests Dialog                                      *@
+@* ========================================================= *@
+
+<MudDialog @bind-Visible="DeletedDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6"
+                 Class="mb-4">
+
+            Deleted Tests
+
+        </MudText>
+
+        @if (IsLoadingDeleted)
+        {
+            <div class="d-flex justify-center pa-4">
+
+                <MudProgressCircular Indeterminate="true"
+                                     Color="Color.Primary" />
+
+            </div>
+        }
+        else if (DeletedTests.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+
+                No deleted tests found.
+
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="DeletedTests"
+                      Dense="true"
+                      Hover="true"
+                      Bordered="true">
+
+                <HeaderContent>
+
+                    <MudTh>Code</MudTh>
+                    <MudTh>Name</MudTh>
+                    <MudTh>English Name</MudTh>
+                    <MudTh>Action</MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd>
+                        @context.Code
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Name
+                    </MudTd>
+
+                    <MudTd>
+                        @context.EnglishName
+                    </MudTd>
+
+                    <MudTd>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Success"
+                                   OnClick="@(() => Restore(context.Id))">
+
+                            Restore
+
+                        </MudButton>
+
+                    </MudTd>
+
+                </RowTemplate>
+
+            </MudTable>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="CloseDeletedDialog">
+
+            Close
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+
+
+@code
+{
+    // =========================================================
+    // Data
+    // =========================================================
+
+    private List<TestLookupDto> TestItems = new();
+
+    private List<TestLookupDto> DeletedTests = new();
+
+    private List<Department> Departments = new();
+
+    private List<SampleCategory> SampleCategories = new();
+
+    private List<Matrix> Matrices = new();
+
+
+    // =========================================================
+    // State
+    // =========================================================
+
+    private bool IsLoading;
+
+    private bool IsLoadingDeleted;
+
+    private bool IsSaving;
+
+    private bool DialogVisible;
+
+    private bool DeletedDialogVisible;
+
+    private bool IsEditMode;
+
+
+    // =========================================================
+    // Search / Errors
+    // =========================================================
+
+    private string SearchText = "";
+
+    private string ErrorMessage = "";
+
+    private string DialogError = "";
+
+
+    // =========================================================
+    // Editing
+    // =========================================================
+
+    private Guid EditingId;
+
+
+    // =========================================================
+    // Form
+    // =========================================================
+
+    private TestFormModel Form = new();
+
+
+    // =========================================================
+    // Filter
+    // =========================================================
+
+    private List<TestLookupDto> FilteredTests
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(SearchText))
+                return TestItems;
+
+            var search = SearchText.Trim();
+
+            return TestItems
+                .Where(x =>
+                    Contains(x.Code, search) ||
+                    Contains(x.Name, search) ||
+                    Contains(x.EnglishName, search))
+                .ToList();
+        }
+    }
+
+
+    // =========================================================
+    // Initialization
+    // =========================================================
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTests();
+
+        Departments =
+            await TestService.GetDepartmentsAsync();
+
+        SampleCategories =
+            await TestService.GetSampleCategoriesAsync();
+
+        Matrices =
+            await TestService.GetMatricesAsync();
+    }
+
+
+    // =========================================================
+    // Load Tests
+    // =========================================================
+
+    private async Task LoadTests()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = "";
+
+            TestItems =
+                await TestService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"Error loading tests: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+
+    // =========================================================
+    // Create
+    // =========================================================
+
+    private void OpenCreate()
+    {
+        IsEditMode = false;
+
+        EditingId = Guid.Empty;
+
+        Form = new TestFormModel
+        {
+            IsActiveForReception = true,
+            IsQuantitative = false
+        };
+
+        DialogError = "";
+
+        DialogVisible = true;
+    }
+
+
+    // =========================================================
+    // Edit
+    // =========================================================
+
+    private void OpenEdit(TestLookupDto test)
+    {
+        IsEditMode = true;
+
+        EditingId = test.Id;
+
+        Form = new TestFormModel
+        {
+            Code = test.Code,
+            Name = test.Name,
+            EnglishName = test.EnglishName,
+            Unit = test.Unit,
+            Method = test.Method,
+            InstrumentName = test.InstrumentName,
+            LOD = test.LOD,
+            LOQ = test.LOQ,
+            DepartmentId = test.DepartmentId,
+            SampleCategoryId = test.SampleCategoryId,
+            MatrixId = test.MatrixId,
+            DefaultResult = test.DefaultResult,
+            IsQuantitative = test.IsQuantitative,
+            IsActiveForReception = test.IsActiveForReception,
+            Description = test.Description
+        };
+
+        DialogError = "";
+
+        DialogVisible = true;
+    }
+
+
+    // =========================================================
+    // Save
+    // =========================================================
+
+    private async Task SaveTest()
+    {
+        if (IsSaving)
+            return;
+
+        try
+        {
+            DialogError = "";
+
+            if (string.IsNullOrWhiteSpace(Form.Code))
+            {
+                DialogError = "Code is required.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Form.Name))
+            {
+                DialogError = "Name is required.";
+                return;
+            }
+
+            IsSaving = true;
+
+            if (!IsEditMode)
+            {
+                await TestService.CreateAsync(
+                    new CreateTestDto
+                    {
+                        Code = Form.Code,
+                        Name = Form.Name,
+                        EnglishName = Form.EnglishName,
+                        Unit = Form.Unit,
+                        Method = Form.Method,
+                        InstrumentName = Form.InstrumentName,
+                        LOD = Form.LOD,
+                        LOQ = Form.LOQ,
+                        DepartmentId = Form.DepartmentId,
+                        SampleCategoryId = Form.SampleCategoryId,
+                        MatrixId = Form.MatrixId,
+                        DefaultResult = Form.DefaultResult,
+                        IsQuantitative = Form.IsQuantitative,
+                        IsActiveForReception =
+                            Form.IsActiveForReception,
+                        Description = Form.Description
+                    });
+            }
+            else
+            {
+                await TestService.UpdateAsync(
+                    EditingId,
+                    new UpdateTestDto
+                    {
+                        Code = Form.Code,
+                        Name = Form.Name,
+                        EnglishName = Form.EnglishName,
+                        Unit = Form.Unit,
+                        Method = Form.Method,
+                        InstrumentName = Form.InstrumentName,
+                        LOD = Form.LOD,
+                        LOQ = Form.LOQ,
+                        DepartmentId = Form.DepartmentId,
+                        SampleCategoryId = Form.SampleCategoryId,
+                        MatrixId = Form.MatrixId,
+                        DefaultResult = Form.DefaultResult,
+                        IsQuantitative = Form.IsQuantitative,
+                        IsActiveForReception =
+                            Form.IsActiveForReception,
+                        Description = Form.Description
+                    });
+            }
+
+            DialogVisible = false;
+
+            await LoadTests();
+        }
+        catch (Exception ex)
+        {
+            DialogError =
+                $"Error saving test: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+
+    // =========================================================
+    // Activate
+    // =========================================================
+
+    private async Task Activate(Guid id)
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            await TestService.ActivateAsync(id);
+
+            await LoadTests();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"Error activating test: {ex.Message}";
+        }
+    }
+
+
+    // =========================================================
+    // Deactivate
+    // =========================================================
+
+    private async Task Deactivate(Guid id)
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            await TestService.DeactivateAsync(id);
+
+            await LoadTests();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"Error disabling test: {ex.Message}";
+        }
+    }
+
+
+    // =========================================================
+    // Soft Delete
+    // =========================================================
+
+    private async Task Delete(Guid id)
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            var result =
+                await TestService.DeleteAsync(id);
+
+            if (!result)
+            {
+                ErrorMessage =
+                    "Test not found.";
+
+                return;
+            }
+
+            await LoadTests();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"Error deleting test: {ex.Message}";
+        }
+    }
+
+
+    // =========================================================
+    // Deleted Tests
+    // =========================================================
+
+    private async Task ShowDeleted()
+    {
+        try
+        {
+            IsLoadingDeleted = true;
+
+            DeletedDialogVisible = true;
+
+            DeletedTests =
+                await TestService.GetDeletedAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"Error loading deleted tests: {ex.Message}";
+        }
+        finally
+        {
+            IsLoadingDeleted = false;
+        }
+    }
+
+
+    // =========================================================
+    // Restore
+    // =========================================================
+
+    private async Task Restore(Guid id)
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            await TestService.RestoreAsync(id);
+
+            DeletedTests =
+                await TestService.GetDeletedAsync();
+
+            await LoadTests();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"Error restoring test: {ex.Message}";
+        }
+    }
+
+
+    // =========================================================
+    // Sample Category → Matrix
+    // =========================================================
+
+    private async Task OnSampleCategoryChanged(Guid? id)
+    {
+        Form.SampleCategoryId = id;
+
+        Form.MatrixId = null;
+
+        Matrices =
+            await TestService.GetMatricesAsync(id);
+
+        StateHasChanged();
+    }
+
+
+    // =========================================================
+    // Close dialogs
+    // =========================================================
+
+    private void CloseDialog()
+    {
+        if (IsSaving)
+            return;
+
+        DialogVisible = false;
+
+        DialogError = "";
+    }
+
+    private void CloseDeletedDialog()
+    {
+        DeletedDialogVisible = false;
+    }
+
+
+    // =========================================================
+    // Helpers
+    // =========================================================
+
+    private static bool Contains(
+        string? source,
+        string search)
+    {
+        return !string.IsNullOrWhiteSpace(source) &&
+               source.Contains(
+                   search,
+                   StringComparison.OrdinalIgnoreCase);
+    }
+
+
+    // =========================================================
+    // Form Model
+    // =========================================================
+
+    private class TestFormModel
+    {
+        public string Code { get; set; } = "";
+
+        public string Name { get; set; } = "";
+
+        public string? EnglishName { get; set; }
+
+        public string? Unit { get; set; }
+
+        public string? Method { get; set; }
+
+        public string? InstrumentName { get; set; }
+
+        public decimal? LOD { get; set; }
+
+        public decimal? LOQ { get; set; }
+
+        public Guid? DepartmentId { get; set; }
+
+        public Guid? SampleCategoryId { get; set; }
+
+        public Guid? MatrixId { get; set; }
+
+        public string? DefaultResult { get; set; }
+
+        public bool IsQuantitative { get; set; }
+
+        public bool IsActiveForReception { get; set; } = true;
+
+        public string? Description { get; set; }
+    }
+}

@@ -1,0 +1,26 @@
+﻿@page "/test-number"
+
+@inject Barman.Application.Interfaces.INumberGenerator NumberGenerator
+
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           OnClick="Generate">
+    Generate Reception Number
+</MudButton>
+
+<br />
+<br />
+
+<MudText Typo="Typo.h5">
+    @Result
+</MudText>
+
+@code
+{
+    private string Result = "";
+
+    private async Task Generate()
+    {
+        Result = await NumberGenerator.GenerateAsync("Reception");
+    }
+}

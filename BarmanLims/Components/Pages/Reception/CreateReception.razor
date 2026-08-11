@@ -1,0 +1,661 @@
+﻿@page "/reception/create"
+
+@using MudBlazor
+@using Barman.Application.DTOs.Reception
+@using Barman.Application.DTOs.Customer
+@using Barman.Domain.Entities
+@using Barman.Application.DTOs.Test
+
+@inject Barman.Application.Interfaces.IReceptionService ReceptionService
+@inject Barman.Application.Interfaces.ICustomerService CustomerService
+@inject Barman.Application.Interfaces.IMatrixService MatrixService
+@inject Barman.Application.Interfaces.ITestService TestService
+@inject NavigationManager NavigationManager
+
+<PageTitle>ثبت پذیرش</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="pa-4">
+
+    <MudPaper Class="pa-6">
+
+        <MudText Typo="Typo.h5">
+            ثبت پذیرش
+        </MudText>
+
+        <MudDivider Class="my-4" />
+
+        @* ============================= *@
+        @* Customer                       *@
+        @* ============================= *@
+
+        <MudSelect T="Guid"
+                   Label="مشتری"
+                   Variant="Variant.Outlined"
+                   @bind-Value="SelectedCustomerId"
+                   Disabled="@IsSaving">
+
+            @foreach (var customer in Customers)
+            {
+                <MudSelectItem T="Guid" Value="@customer.Id">
+                    @customer.DisplayName
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudCheckBox @bind-Value="IsUrgent"
+                     Label="فوری"
+                     Class="mt-3"
+                     Disabled="@IsSaving" />
+
+        <MudTextField T="string"
+                      Label="توضیحات پذیرش"
+                      Variant="Variant.Outlined"
+                      Lines="3"
+                      @bind-Value="Description"
+                      Class="mt-3"
+                      Disabled="@IsSaving" />
+
+        <MudDivider Class="my-5" />
+
+        @* ============================= *@
+        @* Samples                        *@
+        @* ============================= *@
+
+        <div class="d-flex justify-space-between align-center">
+
+            <MudText Typo="Typo.h6">
+                نمونه‌ها
+            </MudText>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="AddSample"
+                       Disabled="@IsSaving">
+
+                افزودن نمونه
+
+            </MudButton>
+
+        </div>
+
+        @if (Samples.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info"
+                      Class="mt-4">
+
+                حداقل یک نمونه برای پذیرش اضافه کنید.
+
+            </MudAlert>
+        }
+        else
+        {
+            @foreach (var sample in Samples)
+            {
+                var index = Samples.IndexOf(sample) + 1;
+
+                <MudPaper Class="pa-4 mt-4"
+                          Outlined="true">
+
+                    <div class="d-flex justify-space-between align-center">
+
+                        <MudText Typo="Typo.subtitle1">
+                            نمونه @index
+                        </MudText>
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Disabled="@IsSaving"
+                                       OnClick="@(() => RemoveSample(sample))" />
+
+                    </div>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudGrid>
+
+                        @* ============================= *@
+                        @* Sample Name                    *@
+                        @* ============================= *@
+
+                        <MudItem xs="12">
+
+                            <MudTextField T="string"
+                                          Label="نام نمونه"
+                                          Variant="Variant.Outlined"
+                                          Required="true"
+                                          @bind-Value="sample.SampleName"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Tests                         *@
+                        @* ============================= *@
+
+                        <MudItem xs="12">
+
+                            <MudSelect T="Guid"
+                                       Label="آزمون‌ها"
+                                       Variant="Variant.Outlined"
+                                       MultiSelection="true"
+                                       SelectedValues="@(SelectedTests[sample])"
+                                       SelectedValuesChanged="@(values => OnTestsChanged(sample, values))"
+                                       Disabled="@IsSaving">
+
+                                @foreach (var test in Tests)
+                                {
+                                    <MudSelectItem T="Guid"
+                                                   Value="@test.Id">
+
+                                        @test.DisplayName
+
+                                    </MudSelectItem>
+                                }
+
+                            </MudSelect>
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Matrix                         *@
+                        @* ============================= *@
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudSelect T="string"
+                                       Label="ماتریس"
+                                       Variant="Variant.Outlined"
+                                       @bind-Value="sample.Matrix"
+                                       Disabled="@IsSaving">
+
+                                @foreach (var matrix in Matrices)
+                                {
+                                    <MudSelectItem T="string"
+                                                   Value="@matrix.Name">
+
+                                        @matrix.Name
+
+                                    </MudSelectItem>
+                                }
+
+                            </MudSelect>
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Quantity                       *@
+                        @* ============================= *@
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudTextField T="decimal?"
+                                          Label="مقدار"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Number"
+                                          @bind-Value="sample.Quantity"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Unit                           *@
+                        @* ============================= *@
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudTextField T="string"
+                                          Label="واحد"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="sample.Unit"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Container                      *@
+                        @* ============================= *@
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudTextField T="string"
+                                          Label="نوع ظرف"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="sample.ContainerType"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Description                    *@
+                        @* ============================= *@
+
+                        <MudItem xs="12">
+
+                            <MudTextField T="string"
+                                          Label="توضیحات نمونه"
+                                          Variant="Variant.Outlined"
+                                          Lines="2"
+                                          @bind-Value="sample.Description"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                    </MudGrid>
+
+                </MudPaper>
+            }
+        }
+
+        @* ============================= *@
+        @* Save                            *@
+        @* ============================= *@
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Size="Size.Large"
+                   FullWidth="true"
+                   Class="mt-5"
+                   Disabled="@IsSaving"
+                   OnClick="Save">
+
+            @if (IsSaving)
+            {
+                <MudProgressCircular Size="Size.Small"
+                                     Indeterminate="true"
+                                     Class="me-2" />
+
+                <span>در حال ثبت...</span>
+            }
+            else
+            {
+                <span>ثبت پذیرش</span>
+            }
+
+        </MudButton>
+
+        @* ============================= *@
+        @* Result                          *@
+        @* ============================= *@
+
+        @if (!string.IsNullOrWhiteSpace(Result))
+        {
+            <MudAlert Severity="@ResultSeverity"
+                      Class="mt-4">
+
+                @Result
+
+            </MudAlert>
+        }
+
+    </MudPaper>
+
+</MudContainer>
+
+
+@code
+{
+    // =========================================================
+    // Reception
+    // =========================================================
+
+    private Guid SelectedCustomerId;
+
+    private bool IsUrgent;
+
+    private string? Description;
+
+
+    // =========================================================
+    // State
+    // =========================================================
+
+    private bool IsSaving;
+
+
+    // =========================================================
+    // Result
+    // =========================================================
+
+    private string Result = "";
+
+    private Severity ResultSeverity = Severity.Info;
+
+
+    // =========================================================
+    // Master Data
+    // =========================================================
+
+    private List<CustomerLookupDto> Customers = new();
+
+    private List<Matrix> Matrices = new();
+
+    private List<TestLookupDto> Tests = new();
+
+
+    // =========================================================
+    // Samples
+    // =========================================================
+
+    private List<CreateReceptionSampleDto> Samples = new();
+
+    private Dictionary<CreateReceptionSampleDto, HashSet<Guid>> SelectedTests
+        = new();
+
+
+    // =========================================================
+    // Initialization
+    // =========================================================
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Result = "";
+
+            // -----------------------------
+            // Customers
+            // -----------------------------
+
+            Customers =
+                await CustomerService.GetLookupAsync();
+
+
+            // -----------------------------
+            // Active Matrices
+            // -----------------------------
+
+            var allMatrices =
+                await MatrixService.GetAllAsync();
+
+            Matrices =
+                allMatrices
+                    .Where(x =>
+                        x.IsActive &&
+                        !x.IsDeleted)
+                    .OrderBy(x => x.Name)
+                    .ToList();
+
+
+            // -----------------------------
+            // Active Reception Tests
+            // -----------------------------
+
+            Tests =
+                await TestService.GetReceptionLookupAsync();
+
+
+            // -----------------------------
+            // Initialization Result
+            // -----------------------------
+
+            Result =
+                $"مشتری: {Customers.Count} | " +
+                $"ماتریس فعال: {Matrices.Count} | " +
+                $"آزمون فعال: {Tests.Count}";
+
+            ResultSeverity = Severity.Info;
+        }
+        catch (Exception ex)
+        {
+            Result =
+                $"خطا در بارگذاری اطلاعات پذیرش: {ex.Message}";
+
+            ResultSeverity = Severity.Error;
+        }
+    }
+
+
+    // =========================================================
+    // Add Sample
+    // =========================================================
+
+    private void AddSample()
+    {
+        var sample = new CreateReceptionSampleDto
+        {
+            SampleName = "",
+            Matrix = ""
+        };
+
+        Samples.Add(sample);
+
+        SelectedTests[sample] =
+            new HashSet<Guid>();
+
+        Result = "";
+    }
+
+
+    // =========================================================
+    // Remove Sample
+    // =========================================================
+
+    private void RemoveSample(
+        CreateReceptionSampleDto sample)
+    {
+        Samples.Remove(sample);
+
+        SelectedTests.Remove(sample);
+
+        Result = "";
+    }
+
+
+    // =========================================================
+    // Tests Changed
+    // =========================================================
+
+    private void OnTestsChanged(
+        CreateReceptionSampleDto sample,
+        IEnumerable<Guid> values)
+    {
+        SelectedTests[sample] =
+            values.ToHashSet();
+    }
+
+
+    // =========================================================
+    // Save Reception
+    // =========================================================
+
+    private async Task Save()
+    {
+        if (IsSaving)
+            return;
+
+        try
+        {
+            Result = "";
+
+
+            // =================================================
+            // Customer validation
+            // =================================================
+
+            if (SelectedCustomerId == Guid.Empty)
+            {
+                Result =
+                    "لطفاً مشتری را انتخاب کنید.";
+
+                ResultSeverity =
+                    Severity.Warning;
+
+                return;
+            }
+
+
+            // =================================================
+            // Sample validation
+            // =================================================
+
+            if (Samples.Count == 0)
+            {
+                Result =
+                    "لطفاً حداقل یک نمونه اضافه کنید.";
+
+                ResultSeverity =
+                    Severity.Warning;
+
+                return;
+            }
+
+
+            // =================================================
+            // Remove empty samples
+            // =================================================
+
+            var validSamples =
+                Samples
+                    .Where(x =>
+                        !string.IsNullOrWhiteSpace(
+                            x.SampleName))
+                    .ToList();
+
+
+            if (validSamples.Count == 0)
+            {
+                Result =
+                    "لطفاً حداقل نام یک نمونه را وارد کنید.";
+
+                ResultSeverity =
+                    Severity.Warning;
+
+                return;
+            }
+
+
+            // =================================================
+            // Validate Matrix
+            // =================================================
+
+            var sampleWithoutMatrix =
+                validSamples.FirstOrDefault(x =>
+                    string.IsNullOrWhiteSpace(
+                        x.Matrix));
+
+
+            if (sampleWithoutMatrix != null)
+            {
+                Result =
+                    $"برای نمونه «{sampleWithoutMatrix.SampleName}» " +
+                    "لطفاً ماتریس را انتخاب کنید.";
+
+                ResultSeverity =
+                    Severity.Warning;
+
+                return;
+            }
+
+
+            // =================================================
+            // Start Saving
+            // =================================================
+
+            IsSaving = true;
+
+
+            // =================================================
+            // Copy selected tests to DTO
+            // =================================================
+
+            foreach (var sample in validSamples)
+            {
+                if (SelectedTests.TryGetValue(
+                        sample,
+                        out var selectedTests))
+                {
+                    sample.TestIds =
+                        selectedTests
+                            .Where(x =>
+                                x != Guid.Empty)
+                            .Distinct()
+                            .ToList();
+                }
+                else
+                {
+                    sample.TestIds =
+                        new List<Guid>();
+                }
+            }
+
+
+            // =================================================
+            // Create Reception DTO
+            // =================================================
+
+            var dto =
+                new CreateReceptionDto
+                {
+                    CustomerId =
+                        SelectedCustomerId,
+
+                    IsUrgent =
+                        IsUrgent,
+
+                    Description =
+                        Description,
+
+                    Samples =
+                        validSamples
+                };
+
+
+            // =================================================
+            // Create Reception
+            // =================================================
+
+            var reception =
+                await ReceptionService
+                    .CreateReceptionAsync(dto);
+
+
+            // =================================================
+            // Success
+            // =================================================
+
+            Result =
+                $"پذیرش {reception.ReceptionNumber} با موفقیت ثبت شد. " +
+                $"تعداد نمونه: {validSamples.Count}";
+
+            ResultSeverity =
+                Severity.Success;
+
+            await Task.Delay(300);
+
+            NavigationManager.NavigateTo(
+                $"/reception/details/{reception.Id}");
+
+
+            // =================================================
+            // Reset Form
+            // =================================================
+
+            SelectedCustomerId =
+                Guid.Empty;
+
+            IsUrgent =
+                false;
+
+            Description =
+                null;
+
+            Samples.Clear();
+
+            SelectedTests.Clear();
+        }
+        catch (Exception ex)
+        {
+            Result =
+                $"خطا در ثبت پذیرش: {ex.Message}";
+
+            ResultSeverity =
+                Severity.Error;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+}
