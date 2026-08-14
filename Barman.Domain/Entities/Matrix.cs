@@ -12,5 +12,8 @@ public class Matrix : BaseEntity
 
     public SampleCategory SampleCategory { get; set; } = null!;
 
+    public ICollection<CustomerTestPanel> TestPanelRules { get; set; }
+    = new List<CustomerTestPanel>();
+
     public string? Description { get; set; }
 }

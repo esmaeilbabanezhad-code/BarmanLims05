@@ -32,5 +32,9 @@ public class Customer : BaseEntity
 
     public string? Website { get; set; }
 
+    public ICollection<CustomerTestPanel> TestPanelRules { get; set; }
+    = new List<CustomerTestPanel>();
     public string? Description { get; set; }
+
+   
 }

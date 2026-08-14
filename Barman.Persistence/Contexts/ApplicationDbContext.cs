@@ -39,6 +39,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<TestPanelItem> TestPanelItems => Set<TestPanelItem>();
 
+    public DbSet<CustomerTestPanel> CustomerTestPanels => Set<CustomerTestPanel>();
+
     public DbSet<TestMethod> TestMethods => Set<TestMethod>();
 
     public DbSet<Instrument> Instruments => Set<Instrument>();

@@ -23,6 +23,12 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
     public ITestRepository Tests { get; }
 
+    public ITestPanelRepository TestPanels { get; }
+
+    public ITestPanelItemRepository TestPanelItems { get; }
+
+    public ICustomerTestPanelRepository CustomerTestPanels { get; }
+
     public IDepartmentRepository Departments { get; }
 
     public IEmployeeRepository Employees { get; }
@@ -46,6 +52,12 @@ public class ApplicationUnitOfWork : IUnitOfWork
         Matrices = new MatrixRepository(context);
 
         Tests = new TestRepository(context);
+
+        TestPanels = new TestPanelRepository(context);
+
+        TestPanelItems = new TestPanelItemRepository(context);
+
+        CustomerTestPanels = new CustomerTestPanelRepository(context);
 
         Departments = new DepartmentRepository(context);
 

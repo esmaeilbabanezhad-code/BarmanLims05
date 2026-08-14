@@ -1,4 +1,4 @@
-﻿using Barman.Application.Interfaces;
+using Barman.Application.Interfaces;
 using Barman.Application.Services;
 using Barman.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -18,6 +18,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ITestService, TestService>();
         services.AddScoped<TestAssignmentService>();
         services.AddScoped<IDepartmentService, DepartmentService>();
+        services.AddScoped<ITestPanelService, TestPanelService>();
+        services.AddScoped<ICustomerTestPanelService, CustomerTestPanelService>();
+        services.AddScoped<ITestPanelItemService, TestPanelItemService>();
 
         return services;
     }

@@ -6,6 +6,7 @@
 @using Barman.Domain.Entities
 @using Barman.Application.DTOs.Test
 
+@inject Barman.Application.Interfaces.ITestPanelService TestPanelService
 @inject Barman.Application.Interfaces.IReceptionService ReceptionService
 @inject Barman.Application.Interfaces.ICustomerService CustomerService
 @inject Barman.Application.Interfaces.IMatrixService MatrixService
@@ -32,6 +33,7 @@
                    Label="مشتری"
                    Variant="Variant.Outlined"
                    @bind-Value="SelectedCustomerId"
+                   @bind-Value:after="OnCustomerChanged"
                    Disabled="@IsSaving">
 
             @foreach (var customer in Customers)
@@ -359,7 +361,7 @@
             // -----------------------------
 
             Customers =
-                await CustomerService.GetLookupAsync();
+              await CustomerService.GetLookupWithDefaultPanelAsync();
 
 
             // -----------------------------
@@ -411,7 +413,7 @@
     // Add Sample
     // =========================================================
 
-    private void AddSample()
+    private async Task AddSample()
     {
         var sample = new CreateReceptionSampleDto
         {
@@ -424,9 +426,44 @@
         SelectedTests[sample] =
             new HashSet<Guid>();
 
+        await ApplyDefaultTestPanel(sample);
+
         Result = "";
     }
 
+    private async Task OnCustomerChanged()
+    {
+        foreach (var sample in Samples)
+        {
+            await ApplyDefaultTestPanel(sample);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ApplyDefaultTestPanel(
+    CreateReceptionSampleDto sample)
+    {
+        var customer = Customers
+            .FirstOrDefault(x => x.Id == SelectedCustomerId);
+
+        if (customer?.DefaultTestPanelId == null)
+            return;
+
+        var panel = await TestPanelService.GetByIdAsync(
+            customer.DefaultTestPanelId.Value);
+
+        if (panel == null)
+            return;
+
+        var testIds = panel.Items
+            .Where(x => x.IsActive && !x.IsDeleted)
+            .Select(x => x.TestId)
+            .Distinct()
+            .ToHashSet();
+
+        SelectedTests[sample] = testIds;
+    }
 
     // =========================================================
     // Remove Sample

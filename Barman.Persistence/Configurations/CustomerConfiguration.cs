@@ -60,6 +60,7 @@ public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(x => x.Description)
             .HasMaxLength(2000);
 
+
         builder.HasIndex(x => x.Code)
             .IsUnique();
     }

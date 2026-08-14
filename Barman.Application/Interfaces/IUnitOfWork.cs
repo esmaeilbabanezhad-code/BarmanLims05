@@ -17,6 +17,12 @@ public interface IUnitOfWork
     IMatrixRepository Matrices { get; }
     ITestRepository Tests { get; }
 
+    ITestPanelRepository TestPanels { get; }
+
+    ITestPanelItemRepository TestPanelItems { get; }
+
+    ICustomerTestPanelRepository CustomerTestPanels { get; }
+
     IDepartmentRepository Departments { get; }
 
     ITestAssignmentRepository TestAssignments { get; }

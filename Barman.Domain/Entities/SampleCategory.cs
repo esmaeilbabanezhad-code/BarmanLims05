@@ -12,4 +12,7 @@ public class SampleCategory : BaseEntity
 
     public ICollection<Sample> Samples { get; set; }
         = new List<Sample>();
+
+    public ICollection<CustomerTestPanel> TestPanelRules { get; set; }
+    = new List<CustomerTestPanel>();
 }

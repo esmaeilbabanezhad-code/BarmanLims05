@@ -3,6 +3,7 @@ using System;
 using Barman.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Barman.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811172828_AddDefaultTestPanelToCustomer")]
+    partial class AddDefaultTestPanelToCustomer
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -46,6 +49,9 @@ namespace Barman.Persistence.Migrations
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("DefaultTestPanelId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
@@ -113,63 +119,9 @@ namespace Barman.Persistence.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("DefaultTestPanelId");
+
                     b.ToTable("Customers", (string)null);
-                });
-
-            modelBuilder.Entity("Barman.Domain.Entities.CustomerTestPanel", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("CustomerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid?>("MatrixId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("text");
-
-                    b.Property<int>("Priority")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("SampleCategoryId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TestPanelId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MatrixId");
-
-                    b.HasIndex("SampleCategoryId");
-
-                    b.HasIndex("TestPanelId");
-
-                    b.HasIndex("CustomerId", "SampleCategoryId", "MatrixId", "Priority");
-
-                    b.ToTable("CustomerTestPanels", (string)null);
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Department", b =>
@@ -1184,37 +1136,14 @@ namespace Barman.Persistence.Migrations
                     b.ToTable("TestPanelItems", (string)null);
                 });
 
-            modelBuilder.Entity("Barman.Domain.Entities.CustomerTestPanel", b =>
+            modelBuilder.Entity("Barman.Domain.Entities.Customer", b =>
                 {
-                    b.HasOne("Barman.Domain.Entities.Customer", "Customer")
-                        .WithMany("TestPanelRules")
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Barman.Domain.Entities.Matrix", "Matrix")
-                        .WithMany("TestPanelRules")
-                        .HasForeignKey("MatrixId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
-                        .WithMany("TestPanelRules")
-                        .HasForeignKey("SampleCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Barman.Domain.Entities.TestPanel", "TestPanel")
+                    b.HasOne("Barman.Domain.Entities.TestPanel", "DefaultTestPanel")
                         .WithMany()
-                        .HasForeignKey("TestPanelId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("DefaultTestPanelId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.Navigation("Customer");
-
-                    b.Navigation("Matrix");
-
-                    b.Navigation("SampleCategory");
-
-                    b.Navigation("TestPanel");
+                    b.Navigation("DefaultTestPanel");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Employee", b =>
@@ -1410,21 +1339,11 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("TestPanel");
                 });
 
-            modelBuilder.Entity("Barman.Domain.Entities.Customer", b =>
-                {
-                    b.Navigation("TestPanelRules");
-                });
-
             modelBuilder.Entity("Barman.Domain.Entities.Department", b =>
                 {
                     b.Navigation("Employees");
 
                     b.Navigation("TestAssignments");
-                });
-
-            modelBuilder.Entity("Barman.Domain.Entities.Matrix", b =>
-                {
-                    b.Navigation("TestPanelRules");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Permission", b =>
@@ -1452,8 +1371,6 @@ namespace Barman.Persistence.Migrations
             modelBuilder.Entity("Barman.Domain.Entities.SampleCategory", b =>
                 {
                     b.Navigation("Samples");
-
-                    b.Navigation("TestPanelRules");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Test", b =>
