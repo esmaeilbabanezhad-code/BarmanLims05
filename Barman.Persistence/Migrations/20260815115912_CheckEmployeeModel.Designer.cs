@@ -3,6 +3,7 @@ using System;
 using Barman.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Barman.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260815115912_CheckEmployeeModel")]
+    partial class CheckEmployeeModel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -216,52 +219,6 @@ namespace Barman.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("Departments", (string)null);
-                });
-
-            modelBuilder.Entity("Barman.Domain.Entities.DepartmentResponsibility", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("DepartmentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("EmployeeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsPrimary")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("text");
-
-                    b.Property<int>("ResponsibilityType")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DepartmentId");
-
-                    b.HasIndex("EmployeeId", "DepartmentId", "ResponsibilityType")
-                        .IsUnique();
-
-                    b.ToTable("DepartmentResponsibilities", (string)null);
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Employee", b =>
@@ -990,46 +947,6 @@ namespace Barman.Persistence.Migrations
                     b.ToTable("SampleCategories", (string)null);
                 });
 
-            modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerSectionHead", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("SectionHeadId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TechnicalManagerId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SectionHeadId");
-
-                    b.HasIndex("TechnicalManagerId", "SectionHeadId")
-                        .IsUnique();
-
-                    b.ToTable("TechnicalManagerSectionHeads", (string)null);
-                });
-
             modelBuilder.Entity("Barman.Domain.Entities.Test", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1379,25 +1296,6 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("TestPanel");
                 });
 
-            modelBuilder.Entity("Barman.Domain.Entities.DepartmentResponsibility", b =>
-                {
-                    b.HasOne("Barman.Domain.Entities.Department", "Department")
-                        .WithMany("Responsibilities")
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Barman.Domain.Entities.Employee", "Employee")
-                        .WithMany("DepartmentResponsibilities")
-                        .HasForeignKey("EmployeeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Department");
-
-                    b.Navigation("Employee");
-                });
-
             modelBuilder.Entity("Barman.Domain.Entities.EmployeeDepartment", b =>
                 {
                     b.HasOne("Barman.Domain.Entities.Department", "Department")
@@ -1527,25 +1425,6 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("SampleCategory");
                 });
 
-            modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerSectionHead", b =>
-                {
-                    b.HasOne("Barman.Domain.Entities.Employee", "SectionHead")
-                        .WithMany("SectionHeadTechnicalManagers")
-                        .HasForeignKey("SectionHeadId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Barman.Domain.Entities.Employee", "TechnicalManager")
-                        .WithMany("TechnicalManagerSectionHeads")
-                        .HasForeignKey("TechnicalManagerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("SectionHead");
-
-                    b.Navigation("TechnicalManager");
-                });
-
             modelBuilder.Entity("Barman.Domain.Entities.Test", b =>
                 {
                     b.HasOne("Barman.Domain.Entities.Department", "Department")
@@ -1638,22 +1517,14 @@ namespace Barman.Persistence.Migrations
                 {
                     b.Navigation("EmployeeDepartments");
 
-                    b.Navigation("Responsibilities");
-
                     b.Navigation("TestAssignments");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Employee", b =>
                 {
-                    b.Navigation("DepartmentResponsibilities");
-
                     b.Navigation("EmployeeDepartments");
 
                     b.Navigation("EmployeeRoles");
-
-                    b.Navigation("SectionHeadTechnicalManagers");
-
-                    b.Navigation("TechnicalManagerSectionHeads");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Matrix", b =>

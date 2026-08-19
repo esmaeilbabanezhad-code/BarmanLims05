@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 
 using Barman.Domain.Entities;
 
@@ -25,36 +25,57 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Employee> Employees => Set<Employee>();
 
+    public DbSet<EmployeeDepartment> EmployeeDepartments
+        => Set<EmployeeDepartment>();
+
+    public DbSet<EmployeeRole> EmployeeRoles
+        => Set<EmployeeRole>();
+
+    public DbSet<DepartmentResponsibility> DepartmentResponsibilities
+        => Set<DepartmentResponsibility>();
+
+    public DbSet<TechnicalManagerSectionHead> TechnicalManagerSectionHeads
+        => Set<TechnicalManagerSectionHead>();
+
     public DbSet<Role> Roles => Set<Role>();
 
     public DbSet<Permission> Permissions => Set<Permission>();
 
-    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+    public DbSet<RolePermission> RolePermissions
+        => Set<RolePermission>();
 
-    public DbSet<SampleCategory> SampleCategories => Set<SampleCategory>();
+    public DbSet<SampleCategory> SampleCategories
+        => Set<SampleCategory>();
 
-    public DbSet<Matrix> Matrices => Set<Matrix>();
+    public DbSet<Matrix> Matrices
+        => Set<Matrix>();
 
-    public DbSet<TestPanel> TestPanels => Set<TestPanel>();
+    public DbSet<TestPanel> TestPanels
+        => Set<TestPanel>();
 
-    public DbSet<TestPanelItem> TestPanelItems => Set<TestPanelItem>();
+    public DbSet<TestPanelItem> TestPanelItems
+        => Set<TestPanelItem>();
 
-    public DbSet<CustomerTestPanel> CustomerTestPanels => Set<CustomerTestPanel>();
+    public DbSet<CustomerTestPanel> CustomerTestPanels
+        => Set<CustomerTestPanel>();
 
-    public DbSet<TestMethod> TestMethods => Set<TestMethod>();
+    public DbSet<TestMethod> TestMethods
+        => Set<TestMethod>();
 
-    public DbSet<Instrument> Instruments => Set<Instrument>();
+    public DbSet<Instrument> Instruments
+        => Set<Instrument>();
 
-    public DbSet<ReferenceLimit> ReferenceLimits => Set<ReferenceLimit>();
+    public DbSet<ReferenceLimit> ReferenceLimits
+        => Set<ReferenceLimit>();
 
-   
     public DbSet<NumberSequence> NumberSequences
-    => Set<NumberSequence>();
+        => Set<NumberSequence>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(ApplicationDbContext).Assembly);
     }
 }

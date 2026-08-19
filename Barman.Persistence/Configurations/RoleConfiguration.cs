@@ -27,10 +27,20 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
         builder.HasIndex(x => x.Code)
             .IsUnique();
 
-        builder.HasMany(x => x.Employees)
+        // ==========================================
+        // EmployeeRole
+        // رابطه چندبه‌چند Employee و Role
+        // از طریق EmployeeRole
+        // ==========================================
+
+        builder.HasMany(x => x.EmployeeRoles)
             .WithOne(x => x.Role)
             .HasForeignKey(x => x.RoleId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ==========================================
+        // RolePermission
+        // ==========================================
 
         builder.HasMany(x => x.RolePermissions)
             .WithOne(x => x.Role)

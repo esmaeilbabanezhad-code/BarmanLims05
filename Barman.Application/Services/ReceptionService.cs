@@ -97,10 +97,17 @@ public class ReceptionService : IReceptionService
 
             foreach (var testId in testIds)
             {
+                var test = await _unitOfWork.Tests
+                    .GetByIdAsync(testId);
+
+                if (test == null)
+                    continue;
+
                 var assignment = new TestAssignment
                 {
                     SampleId = sample.Id,
-                    TestId = testId,
+                    TestId = test.Id,
+                    DepartmentId = test.DepartmentId,
 
                     IsApprovedBySection = false,
                     IsApprovedByTechManager = false,

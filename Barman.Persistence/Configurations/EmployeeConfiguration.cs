@@ -32,15 +32,5 @@ public class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
 
         builder.HasIndex(x => x.PersonnelCode)
             .IsUnique();
-
-        builder.HasOne(x => x.Department)
-            .WithMany(x => x.Employees)
-            .HasForeignKey(x => x.DepartmentId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.Role)
-            .WithMany(x => x.Employees)
-            .HasForeignKey(x => x.RoleId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }

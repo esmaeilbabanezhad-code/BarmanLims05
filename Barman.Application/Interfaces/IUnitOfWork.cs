@@ -15,6 +15,7 @@ public interface IUnitOfWork
     ISampleCategoryRepository SampleCategories { get; }
 
     IMatrixRepository Matrices { get; }
+
     ITestRepository Tests { get; }
 
     ITestPanelRepository TestPanels { get; }
@@ -28,6 +29,14 @@ public interface IUnitOfWork
     ITestAssignmentRepository TestAssignments { get; }
 
     IEmployeeRepository Employees { get; }
+
+    IEmployeeDepartmentRepository EmployeeDepartments { get; }
+
+    IEmployeeRoleRepository EmployeeRoles { get; }
+
+    IDepartmentResponsibilityRepository DepartmentResponsibilities { get; }
+
+    ITechnicalManagerSectionHeadRepository TechnicalManagerSectionHeads { get; }
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

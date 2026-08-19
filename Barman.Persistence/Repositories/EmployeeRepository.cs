@@ -22,13 +22,20 @@ public class EmployeeRepository : IEmployeeRepository
     public async Task<Employee?> GetByIdAsync(Guid id)
     {
         return await _context.Employees
-            .Include(x => x.Department)
+            .Include(x => x.EmployeeDepartments)
+                .ThenInclude(x => x.Department)
+            .Include(x => x.EmployeeRoles)
+                .ThenInclude(x => x.Role)
             .FirstOrDefaultAsync(x => x.Id == id);
     }
 
     public async Task<List<Employee>> GetAllAsync()
     {
         return await _context.Employees
+            .Include(x => x.EmployeeDepartments)
+                .ThenInclude(x => x.Department)
+            .Include(x => x.EmployeeRoles)
+                .ThenInclude(x => x.Role)
             .OrderBy(x => x.FullName)
             .ToListAsync();
     }
@@ -36,7 +43,8 @@ public class EmployeeRepository : IEmployeeRepository
     public async Task<List<Employee>> GetByDepartmentAsync(Guid departmentId)
     {
         return await _context.Employees
-            .Where(x => x.DepartmentId == departmentId)
+            .Where(x => x.EmployeeDepartments
+                .Any(ed => ed.DepartmentId == departmentId))
             .OrderBy(x => x.FullName)
             .ToListAsync();
     }

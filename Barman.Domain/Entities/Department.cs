@@ -13,6 +13,9 @@ public class Department : BaseEntity
     public ICollection<TestAssignment> TestAssignments { get; set; }
         = new List<TestAssignment>();
 
-    public ICollection<Employee> Employees { get; set; }
-    = new List<Employee>();
+    public ICollection<EmployeeDepartment> EmployeeDepartments { get; set; }
+        = new List<EmployeeDepartment>();
+
+    public ICollection<DepartmentResponsibility> Responsibilities { get; set; }
+        = new List<DepartmentResponsibility>();
 }

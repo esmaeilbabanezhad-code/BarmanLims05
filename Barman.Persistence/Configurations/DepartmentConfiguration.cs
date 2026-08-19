@@ -27,10 +27,20 @@ public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
         builder.HasIndex(x => x.Code)
             .IsUnique();
 
-        builder.HasMany(x => x.Employees)
+        // ==========================================
+        // EmployeeDepartment
+        // رابطه چندبه‌چند Department و Employee
+        // از طریق EmployeeDepartment
+        // ==========================================
+
+        builder.HasMany(x => x.EmployeeDepartments)
             .WithOne(x => x.Department)
             .HasForeignKey(x => x.DepartmentId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // ==========================================
+        // TestAssignment
+        // ==========================================
 
         builder.HasMany(x => x.TestAssignments)
             .WithOne(x => x.Department)

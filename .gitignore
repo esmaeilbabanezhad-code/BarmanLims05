@@ -16,3 +16,8 @@ x86/
 *.log
 
 node_modules/
+
+# Barman LIMS temporary employee page backups
+BarmanLims/Components/Pages/Employees/*.before-*
+BarmanLims/Components/Pages/Employees/*.empty-backup
+Employees.recovered-with-responsibility.razor

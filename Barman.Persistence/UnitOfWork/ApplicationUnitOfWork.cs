@@ -31,9 +31,17 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
     public IDepartmentRepository Departments { get; }
 
+    public ITestAssignmentRepository TestAssignments { get; }
+
     public IEmployeeRepository Employees { get; }
 
-    public ITestAssignmentRepository TestAssignments { get; }
+    public IEmployeeDepartmentRepository EmployeeDepartments { get; }
+
+    public IEmployeeRoleRepository EmployeeRoles { get; }
+
+    public IDepartmentResponsibilityRepository DepartmentResponsibilities { get; }
+
+    public ITechnicalManagerSectionHeadRepository TechnicalManagerSectionHeads { get; }
 
     public ApplicationUnitOfWork(ApplicationDbContext context)
     {
@@ -61,9 +69,19 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
         Departments = new DepartmentRepository(context);
 
+        Employees = new EmployeeRepository(context);
+
+        EmployeeDepartments = new EmployeeDepartmentRepository(context);
+
+        EmployeeRoles = new EmployeeRoleRepository(context);
+
         TestAssignments = new TestAssignmentRepository(context);
 
-        Employees = new EmployeeRepository(context);
+        DepartmentResponsibilities =
+            new DepartmentResponsibilityRepository(context);
+
+        TechnicalManagerSectionHeads =
+            new TechnicalManagerSectionHeadRepository(context);
     }
 
     public async Task<int> SaveChangesAsync(
