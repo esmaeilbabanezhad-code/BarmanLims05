@@ -57,6 +57,24 @@ public class TestAssignmentRepository : ITestAssignmentRepository
             .ThenBy(x => x.Test.Code)
             .ToListAsync();
     }
+    public async Task<List<TestAssignment>> GetPendingForSectionHeadAsync(
+    Guid departmentId)
+    {
+        if (departmentId == Guid.Empty)
+            return new List<TestAssignment>();
+
+        return await _context.TestAssignments
+            .Where(x =>
+                x.DepartmentId == departmentId &&
+                !x.IsApprovedBySection &&
+                x.AnalystId == null)
+            .Include(x => x.Sample)
+            .Include(x => x.Test)
+            .Include(x => x.Department)
+            .OrderBy(x => x.Sample.SampleCode)
+            .ThenBy(x => x.Test.Code)
+            .ToListAsync();
+    }
     public void Update(TestAssignment assignment)
     {
         _context.TestAssignments.Update(assignment);

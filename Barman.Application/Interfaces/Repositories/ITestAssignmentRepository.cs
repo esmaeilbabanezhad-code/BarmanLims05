@@ -14,6 +14,8 @@ public interface ITestAssignmentRepository
 
     Task<List<TestAssignment>> GetPendingForTechnicalManagerAsync();
 
+    Task<List<TestAssignment>> GetPendingForSectionHeadAsync(Guid departmentId);
+
     void Update(TestAssignment assignment);
 
     void Delete(TestAssignment assignment);

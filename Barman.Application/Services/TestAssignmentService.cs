@@ -87,4 +87,10 @@ public class TestAssignmentService
 
         await _unitOfWork.SaveChangesAsync();
     }
+    public async Task<List<TestAssignment>> GetPendingForSectionHeadAsync(
+    Guid departmentId)
+    {
+        return await _unitOfWork.TestAssignments
+            .GetPendingForSectionHeadAsync(departmentId);
+    }
 }
