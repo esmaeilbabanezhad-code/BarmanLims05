@@ -56,4 +56,35 @@ public class TestAssignmentService
 
         await _unitOfWork.SaveChangesAsync();
     }
+    public async Task<List<TestAssignment>> GetPendingForTechnicalManagerAsync()
+    {
+        return await _unitOfWork.TestAssignments
+            .GetPendingForTechnicalManagerAsync();
+    }
+    public async Task AssignToDepartmentAsync(
+    Guid assignmentId,
+    Guid? departmentId)
+    {
+        if (assignmentId == Guid.Empty)
+            return;
+
+        if (!departmentId.HasValue || departmentId.Value == Guid.Empty)
+            throw new InvalidOperationException(
+                "ابتدا باید بخش را انتخاب کنید.");
+
+        var assignment =
+            await _unitOfWork.TestAssignments
+                .GetByIdAsync(assignmentId);
+
+        if (assignment is null)
+            throw new InvalidOperationException(
+                "آزمون موردنظر پیدا نشد.");
+
+        assignment.DepartmentId = departmentId;
+        assignment.IsApprovedByTechManager = true;
+
+        _unitOfWork.TestAssignments.Update(assignment);
+
+        await _unitOfWork.SaveChangesAsync();
+    }
 }

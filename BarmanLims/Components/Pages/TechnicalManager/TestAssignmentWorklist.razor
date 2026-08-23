@@ -1,0 +1,191 @@
+﻿@page "/technical-manager/worklist"
+
+@using Barman.Domain.Entities
+@using Barman.Application.Services
+
+@inject TestAssignmentService TestAssignmentService
+
+<PageTitle>کارتابل مسئول فنی</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+
+    <MudPaper Class="pa-4">
+
+        <MudText Typo="Typo.h5" Class="mb-4">
+            کارتابل مسئول فنی
+        </MudText>
+
+        @if (IsLoading)
+        {
+            <MudProgressLinear Indeterminate="true"
+                               Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error">
+                @ErrorMessage
+            </MudAlert>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                تعداد آزمون‌های در انتظار بررسی:
+                <b>@Assignments.Count</b>
+            </MudText>
+
+            <MudTable Items="Assignments"
+                      Dense="true"
+                      Hover="true"
+                      Striped="true"
+                      Bordered="true">
+
+                <HeaderContent>
+
+                    <MudTh>نمونه</MudTh>
+                    <MudTh>کد آزمون</MudTh>
+                    <MudTh>نام آزمون</MudTh>
+                    <MudTh>بخش</MudTh>
+                    <MudTh>عملیات</MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd DataLabel="نمونه">
+                        @context.Sample?.SampleCode
+                    </MudTd>
+
+                    <MudTd DataLabel="کد آزمون">
+                        @context.Test?.Code
+                    </MudTd>
+
+                    <MudTd DataLabel="نام آزمون">
+                        @context.Test?.Name
+                    </MudTd>
+
+                    <MudTd DataLabel="بخش">
+
+                        <MudSelect T="Guid?"
+                                   @bind-Value="context.DepartmentId"
+                                   Dense="true"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Clearable="true"
+                                   Style="min-width:220px">
+
+                            @foreach (var department in Departments)
+                            {
+                                <MudSelectItem T="Guid?"
+                                               Value="@((Guid?)department.Id)">
+                                    @department.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+
+                    </MudTd>
+
+                    <MudTd DataLabel="عملیات">
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   Disabled="!context.DepartmentId.HasValue"
+                                   OnClick="@(() => AssignToDepartment(context))">
+
+                            ارجاع به بخش
+
+                        </MudButton>
+
+                    </MudTd>
+
+                </RowTemplate>
+
+                <NoRecordsContent>
+
+                    <MudAlert Severity="Severity.Info">
+                        آزمونی در انتظار بررسی مسئول فنی وجود ندارد.
+                    </MudAlert>
+
+                </NoRecordsContent>
+
+            </MudTable>
+        }
+
+    </MudPaper>
+
+</MudContainer>
+
+@code {
+
+    private List<TestAssignment> Assignments = new();
+
+    private List<Department> Departments = new();
+
+    private bool IsLoading = true;
+
+    private string ErrorMessage = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = "";
+
+            Departments =
+                await TestAssignmentService
+                    .GetDepartmentsAsync();
+
+            Assignments =
+                await TestAssignmentService
+                    .GetPendingForTechnicalManagerAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+
+            Assignments = new();
+            Departments = new();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task AssignToDepartment(
+        TestAssignment assignment)
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            if (!assignment.DepartmentId.HasValue)
+            {
+                ErrorMessage =
+                    "ابتدا باید بخش را انتخاب کنید.";
+
+                return;
+            }
+
+            await TestAssignmentService
+                .AssignToDepartmentAsync(
+                    assignment.Id,
+                    assignment.DepartmentId);
+
+            Assignments.Remove(assignment);
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+}

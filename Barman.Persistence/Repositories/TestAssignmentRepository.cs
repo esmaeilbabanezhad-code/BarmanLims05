@@ -46,7 +46,17 @@ public class TestAssignmentRepository : ITestAssignmentRepository
             .ThenBy(x => x.Test.Code)
             .ToListAsync();
     }
-
+    public async Task<List<TestAssignment>> GetPendingForTechnicalManagerAsync()
+    {
+        return await _context.TestAssignments
+            .Where(x => !x.IsApprovedByTechManager)
+            .Include(x => x.Sample)
+            .Include(x => x.Test)
+            .Include(x => x.Department)
+            .OrderBy(x => x.Sample.SampleCode)
+            .ThenBy(x => x.Test.Code)
+            .ToListAsync();
+    }
     public void Update(TestAssignment assignment)
     {
         _context.TestAssignments.Update(assignment);

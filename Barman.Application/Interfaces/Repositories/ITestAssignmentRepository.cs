@@ -12,6 +12,8 @@ public interface ITestAssignmentRepository
 
     Task<List<TestAssignment>> GetByReceptionIdAsync(Guid receptionId);
 
+    Task<List<TestAssignment>> GetPendingForTechnicalManagerAsync();
+
     void Update(TestAssignment assignment);
 
     void Delete(TestAssignment assignment);
