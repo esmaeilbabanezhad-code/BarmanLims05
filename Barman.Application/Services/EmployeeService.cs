@@ -6,15 +6,25 @@ namespace Barman.Application.Services;
 public class EmployeeService : IEmployeeService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPermissionService _permissionService;
 
-    public EmployeeService(IUnitOfWork unitOfWork)
+    public EmployeeService(
+        IUnitOfWork unitOfWork,
+        IPermissionService permissionService)
     {
         _unitOfWork = unitOfWork;
+        _permissionService = permissionService;
     }
+
+    // ============================================================
+    // Employee
+    // ============================================================
 
     public async Task<List<Employee>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.View");
+
         return await _unitOfWork.Employees.GetAllAsync();
     }
 
@@ -22,6 +32,8 @@ public class EmployeeService : IEmployeeService
         Guid id,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.View");
+
         return await _unitOfWork.Employees.GetByIdAsync(id);
     }
 
@@ -29,6 +41,8 @@ public class EmployeeService : IEmployeeService
         Guid departmentId,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.View");
+
         return await _unitOfWork.Employees
             .GetByDepartmentAsync(departmentId);
     }
@@ -37,6 +51,8 @@ public class EmployeeService : IEmployeeService
         Employee employee,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.Create");
+
         await _unitOfWork.Employees.AddAsync(employee);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -47,6 +63,8 @@ public class EmployeeService : IEmployeeService
         Employee employee,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.Edit");
+
         var existing = await _unitOfWork.Employees
             .GetByIdAsync(employee.Id);
 
@@ -76,7 +94,10 @@ public class EmployeeService : IEmployeeService
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var employee = await _unitOfWork.Employees.GetByIdAsync(id);
+        await EnsurePermissionAsync("Employee.Deactivate");
+
+        var employee =
+            await _unitOfWork.Employees.GetByIdAsync(id);
 
         if (employee is null)
             return false;
@@ -96,10 +117,14 @@ public class EmployeeService : IEmployeeService
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var employee = await _unitOfWork.Employees.GetByIdAsync(id);
+        await EnsurePermissionAsync("Employee.Edit");
+
+        var employee =
+            await _unitOfWork.Employees.GetByIdAsync(id);
 
         if (employee is null)
-            throw new InvalidOperationException("Employee not found.");
+            throw new InvalidOperationException(
+                "Employee not found.");
 
         employee.IsActive = true;
         employee.IsDeleted = false;
@@ -116,10 +141,14 @@ public class EmployeeService : IEmployeeService
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var employee = await _unitOfWork.Employees.GetByIdAsync(id);
+        await EnsurePermissionAsync("Employee.Deactivate");
+
+        var employee =
+            await _unitOfWork.Employees.GetByIdAsync(id);
 
         if (employee is null)
-            throw new InvalidOperationException("Employee not found.");
+            throw new InvalidOperationException(
+                "Employee not found.");
 
         employee.IsActive = false;
         employee.ModifiedAt = DateTimeOffset.UtcNow;
@@ -139,6 +168,8 @@ public class EmployeeService : IEmployeeService
         Guid employeeId,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.View");
+
         return await _unitOfWork.EmployeeDepartments
             .GetByEmployeeIdAsync(employeeId);
     }
@@ -147,6 +178,8 @@ public class EmployeeService : IEmployeeService
         EmployeeDepartment employeeDepartment,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.Edit");
+
         var existingDepartments =
             await _unitOfWork.EmployeeDepartments
                 .GetByEmployeeIdAsync(employeeDepartment.EmployeeId);
@@ -184,6 +217,8 @@ public class EmployeeService : IEmployeeService
         Guid employeeDepartmentId,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.Edit");
+
         var employeeDepartment =
             await _unitOfWork.EmployeeDepartments
                 .GetByIdAsync(employeeDepartmentId);
@@ -222,6 +257,8 @@ public class EmployeeService : IEmployeeService
         Guid employeeDepartmentId,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.Edit");
+
         var departments =
             await _unitOfWork.EmployeeDepartments
                 .GetByEmployeeIdAsync(employeeId);
@@ -253,6 +290,8 @@ public class EmployeeService : IEmployeeService
         Guid employeeId,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.View");
+
         return await _unitOfWork.EmployeeRoles
             .GetByEmployeeIdAsync(employeeId);
     }
@@ -261,6 +300,8 @@ public class EmployeeService : IEmployeeService
         EmployeeRole employeeRole,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.Edit");
+
         var existingRoles =
             await _unitOfWork.EmployeeRoles
                 .GetByEmployeeIdAsync(employeeRole.EmployeeId);
@@ -297,6 +338,8 @@ public class EmployeeService : IEmployeeService
         Guid employeeRoleId,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.Edit");
+
         var employeeRole =
             await _unitOfWork.EmployeeRoles
                 .GetByIdAsync(employeeRoleId);
@@ -335,6 +378,8 @@ public class EmployeeService : IEmployeeService
         Guid employeeRoleId,
         CancellationToken cancellationToken = default)
     {
+        await EnsurePermissionAsync("Employee.Edit");
+
         var roles =
             await _unitOfWork.EmployeeRoles
                 .GetByEmployeeIdAsync(employeeId);
@@ -356,5 +401,23 @@ public class EmployeeService : IEmployeeService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return true;
+    }
+
+    // ============================================================
+    // Permission
+    // ============================================================
+
+    private async Task EnsurePermissionAsync(
+        string permissionCode)
+    {
+        var allowed =
+            await _permissionService.HasPermissionAsync(
+                permissionCode);
+
+        if (!allowed)
+        {
+            throw new UnauthorizedAccessException(
+                $"Permission denied: {permissionCode}");
+        }
     }
 }

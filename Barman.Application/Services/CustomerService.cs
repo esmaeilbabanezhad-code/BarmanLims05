@@ -7,24 +7,34 @@ namespace Barman.Application.Services;
 public class CustomerService : ICustomerService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPermissionService _permissionService;
 
-    public CustomerService(IUnitOfWork unitOfWork)
+    public CustomerService(
+        IUnitOfWork unitOfWork,
+        IPermissionService permissionService)
     {
         _unitOfWork = unitOfWork;
+        _permissionService = permissionService;
     }
 
     public async Task<List<Customer>> GetAllAsync()
     {
+        await EnsurePermissionAsync("Customer.View");
+
         return await _unitOfWork.Customers.GetAllAsync();
     }
 
     public async Task<Customer?> GetByIdAsync(Guid id)
     {
+        await EnsurePermissionAsync("Customer.View");
+
         return await _unitOfWork.Customers.GetByIdAsync(id);
     }
 
     public async Task<Customer> CreateAsync(Customer customer)
     {
+        await EnsurePermissionAsync("Customer.Create");
+
         var list = await _unitOfWork.Customers.GetAllAsync();
 
         if (list.Any(x => x.Code == customer.Code))
@@ -41,6 +51,8 @@ public class CustomerService : ICustomerService
 
     public async Task<Customer?> UpdateAsync(Customer customer)
     {
+        await EnsurePermissionAsync("Customer.Edit");
+
         var current =
             await _unitOfWork.Customers.GetByIdAsync(customer.Id);
 
@@ -73,6 +85,8 @@ public class CustomerService : ICustomerService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
+        await EnsurePermissionAsync("Customer.Delete");
+
         var current =
             await _unitOfWork.Customers.GetByIdAsync(id);
 
@@ -88,6 +102,8 @@ public class CustomerService : ICustomerService
 
     public async Task<Customer> ActivateAsync(Guid id)
     {
+        await EnsurePermissionAsync("Customer.Edit");
+
         var customer =
             await _unitOfWork.Customers.GetByIdAsync(id);
 
@@ -106,6 +122,8 @@ public class CustomerService : ICustomerService
 
     public async Task<Customer> DeactivateAsync(Guid id)
     {
+        await EnsurePermissionAsync("Customer.Edit");
+
         var customer =
             await _unitOfWork.Customers.GetByIdAsync(id);
 
@@ -124,6 +142,8 @@ public class CustomerService : ICustomerService
 
     public async Task<List<CustomerLookupDto>> GetLookupAsync()
     {
+        await EnsurePermissionAsync("Customer.View");
+
         var customers = await _unitOfWork.Customers.GetAllAsync();
 
         return customers
@@ -138,6 +158,8 @@ public class CustomerService : ICustomerService
 
     public async Task<List<CustomerLookupDto>> GetLookupWithDefaultPanelAsync()
     {
+     
+
         var customers = await _unitOfWork.Customers.GetAllAsync();
 
         return customers
@@ -148,5 +170,18 @@ public class CustomerService : ICustomerService
                 DisplayName = x.DisplayName
             })
             .ToList();
+    }
+
+    private async Task EnsurePermissionAsync(string permissionCode)
+    {
+        var allowed =
+            await _permissionService.HasPermissionAsync(
+                permissionCode);
+
+        if (!allowed)
+        {
+            throw new UnauthorizedAccessException(
+                $"Permission denied: {permissionCode}");
+        }
     }
 }

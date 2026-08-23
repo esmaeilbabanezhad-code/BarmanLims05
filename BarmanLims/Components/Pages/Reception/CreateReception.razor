@@ -5,6 +5,7 @@
 @using Barman.Application.DTOs.Customer
 @using Barman.Domain.Entities
 @using Barman.Application.DTOs.Test
+@using Barman.Application.Interfaces
 
 @inject Barman.Application.Interfaces.ITestPanelService TestPanelService
 @inject Barman.Application.Interfaces.IReceptionService ReceptionService
@@ -12,6 +13,8 @@
 @inject Barman.Application.Interfaces.IMatrixService MatrixService
 @inject Barman.Application.Interfaces.ITestService TestService
 @inject NavigationManager NavigationManager
+@inject ITestPanelService TestPanelService
+
 
 <PageTitle>ثبت پذیرش</PageTitle>
 
@@ -138,25 +141,111 @@
 
                         <MudItem xs="12">
 
-                            <MudSelect T="Guid"
-                                       Label="آزمون‌ها"
-                                       Variant="Variant.Outlined"
-                                       MultiSelection="true"
-                                       SelectedValues="@(SelectedTests[sample])"
-                                       SelectedValuesChanged="@(values => OnTestsChanged(sample, values))"
-                                       Disabled="@IsSaving">
+                            <MudText Typo="Typo.subtitle1" Class="mb-2">
+                                انتخاب آزمون
+                            </MudText>
 
-                                @foreach (var test in Tests)
-                                {
-                                    <MudSelectItem T="Guid"
-                                                   Value="@test.Id">
+                            <MudStack Spacing="2">
 
-                                        @test.DisplayName
 
-                                    </MudSelectItem>
-                                }
+                                <!-- Test Panels -->
 
-                            </MudSelect>
+                                <MudText Typo="Typo.subtitle1" Class="mb-2">
+                                    افزودن آزمون از Test Panel
+                                </MudText>
+
+                                <MudTextField T="string"
+                                              @bind-Value="TestPanelSearchText"
+                                              Immediate="true"
+                                              Label="جستجوی Test Panel"
+                                              Placeholder="بخشی از نام یا کد Panel..."
+                                              Variant="Variant.Outlined"
+                                              Clearable="true"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Search"
+                                              Disabled="@IsSaving" />
+
+                                <MudPaper Outlined="true"
+                                          Class="pa-2 mt-2"
+                                          Style="max-height:220px; overflow-y:auto;">
+
+                                    @foreach (var panel in GetFilteredTestPanels())
+                                    {
+                                        <MudCheckBox T="bool"
+                                                     Value="@SelectedTestPanelIds.Contains(panel.Id)"
+                                                     ValueChanged="@((bool value) =>
+                                                                              ToggleTestPanel(panel.Id, value))"
+                                         Dense="true"
+                                         Disabled="@IsSaving">
+
+                                            @panel.Code - @panel.Name
+
+                                        </MudCheckBox>
+                                                        }
+
+                                </MudPaper>
+
+                                <MudText Typo="Typo.caption" Class="mt-1">
+                                    تعداد Panelهای انتخاب‌شده:
+                                    <b>@SelectedTestPanelIds.Count</b>
+                                </MudText>
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Class="mt-2"
+                                           Disabled="@(SelectedTestPanelIds.Count == 0 || IsSaving)"
+                                           OnClick="@(() => AddSelectedPanelTests(sample))">
+
+                                    افزودن آزمون‌های Panelهای انتخاب‌شده
+
+                                </MudButton>
+
+                                <!-- آزمون‌های موجود -->
+                                <MudText Typo="Typo.subtitle1" Class="mb-2">
+                                    آزمون‌ها
+                                </MudText>
+
+                                <MudTextField T="string"
+                                              @bind-Value="TestSearchText"
+                                              Immediate="true"
+                                              Label="جستجوی آزمون"
+                                              Placeholder="بخشی از نام یا کد آزمون..."
+                                              Variant="Variant.Outlined"
+                                              Clearable="true"
+                                              Adornment="Adornment.Start"
+                                              AdornmentIcon="@Icons.Material.Filled.Search"
+                                              Disabled="@IsSaving" />
+
+                                <MudPaper Outlined="true"
+                                          Class="pa-2 mt-2"
+                                          Style="max-height:300px; overflow-y:auto;">
+
+                                    @foreach (var test in GetFilteredTests())
+                                    {
+                                        <MudCheckBox T="bool"
+                                                     Value="@SelectedTests[sample].Contains(test.Id)"
+                                                     ValueChanged="@(value => ToggleTest(sample, test.Id, value))"
+                                                     Disabled="@IsSaving"
+                                                     Dense="true">
+
+                                            @test.DisplayName
+
+                                        </MudCheckBox>
+                                    }
+
+                                </MudPaper>
+
+                                <MudText Typo="Typo.caption" Class="mt-1">
+                                    تعداد آزمون‌های انتخاب‌شده:
+                                    <b>@SelectedTests[sample].Count</b>
+                                </MudText>
+
+                                <MudText Typo="Typo.caption">
+                                    تعداد آزمون‌های انتخاب‌شده:
+                                    <b>@SelectedTests[sample].Count</b>
+                                </MudText>
+
+                            </MudStack>
 
                         </MudItem>
 
@@ -335,6 +424,17 @@
 
     private List<TestLookupDto> Tests = new();
 
+    private List<TestPanel> TestPanels = new();
+
+    private string TestSearchText = "";
+
+    private string TestPanelSearchText = "";
+
+    private HashSet<Guid> SelectedTestPanelIds = new();
+
+    private Guid? SelectedTestPanelId;
+
+    private bool ShowAllTests = false;
 
     // =========================================================
     // Samples
@@ -406,6 +506,7 @@
 
             ResultSeverity = Severity.Error;
         }
+        TestPanels = await TestPanelService.GetAllAsync();
     }
 
 
@@ -464,7 +565,38 @@
 
         SelectedTests[sample] = testIds;
     }
+    private async Task SelectTestPanelAsync(
+    Guid? panelId,
+    CreateReceptionSampleDto sample)
+    {
+        if (!panelId.HasValue || panelId.Value == Guid.Empty)
+            return;
 
+        var panel =
+            await TestPanelService.GetByIdAsync(panelId.Value);
+
+        if (panel == null)
+            return;
+
+        var testIds = panel.Items
+            .Where(x => x.IsActive && !x.IsDeleted)
+            .Select(x => x.TestId)
+            .Distinct();
+
+        if (!SelectedTests.ContainsKey(sample))
+        {
+            SelectedTests[sample] = new HashSet<Guid>();
+        }
+
+        foreach (var testId in testIds)
+        {
+            SelectedTests[sample].Add(testId);
+        }
+
+        SelectedTestPanelId = null;
+
+        await InvokeAsync(StateHasChanged);
+    }
     // =========================================================
     // Remove Sample
     // =========================================================
@@ -694,5 +826,110 @@
         {
             IsSaving = false;
         }
+    }
+    
+    private IEnumerable<TestLookupDto> GetFilteredTests()
+    {
+        if (string.IsNullOrWhiteSpace(TestSearchText))
+            return Tests;
+
+        var search = TestSearchText.Trim();
+
+        return Tests.Where(x =>
+            (!string.IsNullOrWhiteSpace(x.DisplayName) &&
+             x.DisplayName.Contains(
+                 search,
+                 StringComparison.OrdinalIgnoreCase))
+            ||
+            (!string.IsNullOrWhiteSpace(x.Code) &&
+             x.Code.Contains(
+                 search,
+                 StringComparison.OrdinalIgnoreCase)));
+    }
+    private void ToggleTest(
+    CreateReceptionSampleDto sample,
+    Guid testId,
+    bool selected)
+    {
+        if (!SelectedTests.ContainsKey(sample))
+        {
+            SelectedTests[sample] = new HashSet<Guid>();
+        }
+
+        if (selected)
+        {
+            SelectedTests[sample].Add(testId);
+        }
+        else
+        {
+            SelectedTests[sample].Remove(testId);
+        }
+    }
+    private IEnumerable<TestPanel> GetFilteredTestPanels()
+    {
+        var panels = TestPanels
+            .Where(x => x.IsActive && !x.IsDeleted);
+
+        if (string.IsNullOrWhiteSpace(TestPanelSearchText))
+            return panels.OrderBy(x => x.Name);
+
+        var search = TestPanelSearchText.Trim();
+
+        return panels
+            .Where(x =>
+                (!string.IsNullOrWhiteSpace(x.Name) &&
+                 x.Name.Contains(
+                     search,
+                     StringComparison.OrdinalIgnoreCase))
+                ||
+                (!string.IsNullOrWhiteSpace(x.Code) &&
+                 x.Code.Contains(
+                     search,
+                     StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(x => x.Name);
+    }
+
+    private void ToggleTestPanel(Guid panelId, bool selected)
+    {
+        if (selected)
+            SelectedTestPanelIds.Add(panelId);
+        else
+            SelectedTestPanelIds.Remove(panelId);
+    }
+
+    private async Task AddSelectedPanelTests(
+        CreateReceptionSampleDto sample)
+    {
+        if (SelectedTestPanelIds.Count == 0)
+            return;
+
+        if (!SelectedTests.ContainsKey(sample))
+        {
+            SelectedTests[sample] = new HashSet<Guid>();
+        }
+
+        foreach (var panelId in SelectedTestPanelIds)
+        {
+            var panel =
+                await TestPanelService.GetByIdAsync(panelId);
+
+            if (panel == null)
+                continue;
+
+            var testIds = panel.Items
+                .Where(x => x.IsActive && !x.IsDeleted)
+                .Select(x => x.TestId)
+                .Distinct();
+
+            foreach (var testId in testIds)
+            {
+                SelectedTests[sample].Add(testId);
+            }
+        }
+
+        SelectedTestPanelIds.Clear();
+        TestPanelSearchText = "";
+
+        await InvokeAsync(StateHasChanged);
     }
 }

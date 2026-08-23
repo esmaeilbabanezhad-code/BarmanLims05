@@ -29,7 +29,15 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
     public ICustomerTestPanelRepository CustomerTestPanels { get; }
 
+    public IDefaultTestSetRepository DefaultTestSets { get; }
+
     public IDepartmentRepository Departments { get; }
+
+    public IRoleRepository Roles { get; }
+
+    public IRolePermissionRepository RolePermissions { get; }
+
+    public IPermissionRepository Permissions { get; }
 
     public ITestAssignmentRepository TestAssignments { get; }
 
@@ -67,7 +75,15 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
         CustomerTestPanels = new CustomerTestPanelRepository(context);
 
+        DefaultTestSets = new DefaultTestSetRepository(context);
+
         Departments = new DepartmentRepository(context);
+
+        Roles = new RoleRepository(context);
+
+        RolePermissions = new RolePermissionRepository(context);
+
+        Permissions = new PermissionRepository(context);
 
         Employees = new EmployeeRepository(context);
 

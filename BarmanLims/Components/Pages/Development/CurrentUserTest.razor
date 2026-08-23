@@ -1,0 +1,377 @@
+﻿@page "/development/current-user-test"
+
+@using Barman.Application.Interfaces
+@using Barman.Domain.Entities
+@using Barman.Application.Interfaces.Repositories
+
+@inject IEmployeeRepository EmployeeRepository
+@inject IPermissionRepository PermissionRepository
+@inject ICurrentUserService CurrentUserService
+@inject IPermissionService PermissionService
+@inject ICustomerService CustomerService
+@inject IEmployeeService EmployeeService
+<p>CurrentUser InstanceId: @CurrentUserService.InstanceId</p>
+
+
+<PageTitle>تست کاربر جاری و دسترسی‌ها</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+
+    <MudPaper Class="pa-6">
+
+        <MudText Typo="Typo.h5" Class="mb-4">
+            تست Current User و Permission
+        </MudText>
+
+        <MudSelect T="Guid"
+                   Label="انتخاب کاربر"
+                   @bind-Value="SelectedEmployeeId"
+                   Variant="Variant.Outlined"
+                   Class="mb-4">
+
+            @foreach (var employee in Employees)
+            {
+                <MudSelectItem Value="@employee.Id">
+                    @employee.PersonnelCode - @employee.FullName
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SetCurrentUserAsync"
+                   Disabled="@(SelectedEmployeeId == Guid.Empty)">
+
+            انتخاب کاربر جاری
+
+        </MudButton>
+
+        @if (CurrentUserService.IsAuthenticated)
+        {
+            <MudAlert Severity="Severity.Success" Class="mt-4">
+
+                کاربر جاری:
+                <b>@CurrentUserName</b>
+
+                <br />
+
+                EmployeeId:
+                @CurrentUserService.EmployeeId
+
+                <br />
+
+                InstanceId:
+                @CurrentUserService.InstanceId
+
+                <br />
+
+                Permissionهای کاربر جاری:
+
+                @if (CurrentUserPermissions.Count == 0)
+                {
+                    <div>هیچ Permissionای پیدا نشد.</div>
+                }
+                else
+                {
+                    <ul>
+                        @foreach (var permission in CurrentUserPermissions)
+                        {
+                            <li>@permission</li>
+                        }
+                    </ul>
+                }
+            </MudAlert>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-4">
+                هنوز کاربری انتخاب نشده است.
+            </MudAlert>
+        }
+
+        <MudDivider Class="my-5" />
+
+        <MudText Typo="Typo.h6" Class="mb-3">
+            تست Permission
+        </MudText>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Info"
+                   OnClick="CheckPermissionsAsync"
+                   Disabled="@(!CurrentUserService.IsAuthenticated)">
+
+            بررسی دسترسی‌ها
+
+        </MudButton>
+
+        @if (PermissionResults.Count > 0)
+        {
+            <MudTable Items="PermissionResults"
+                      Dense="true"
+                      Hover="true"
+                      Bordered="true"
+                      Class="mt-4">
+
+                <HeaderContent>
+                    <MudTh>Permission</MudTh>
+                    <MudTh>نتیجه</MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd>
+                        @context.Code
+                    </MudTd>
+
+                    <MudTd>
+                        @if (context.Allowed)
+                        {
+                            <MudChip T="string"
+                                     Color="Color.Success">
+                                مجاز
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string"
+                                     Color="Color.Error">
+                                غیرمجاز
+                            </MudChip>
+                        }
+                    </MudTd>
+                </RowTemplate>
+
+            </MudTable>
+        }
+        
+
+        <MudDivider Class="my-5" />
+
+        <MudText Typo="Typo.h6" Class="mb-3">
+            تست Authorization در Service
+        </MudText>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Warning"
+                   OnClick="TestCustomerEditAsync"
+                   Disabled="@(!CurrentUserService.IsAuthenticated)">
+
+            تست Customer.Edit
+
+        </MudButton>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Error"
+                   Class="ml-2"
+                   OnClick="TestCustomerDeleteAsync"
+                   Disabled="@(!CurrentUserService.IsAuthenticated)">
+
+            تست Customer.Delete
+
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Secondary"
+                   Class="ml-2"
+                   OnClick="TestEmployeeEditAsync"
+                   Disabled="@(!CurrentUserService.IsAuthenticated)">
+
+            تست Employee.Edit در Service
+
+        </MudButton>
+        @if (!string.IsNullOrWhiteSpace(ServiceTestResult))
+        {
+            <MudAlert Severity="@ServiceTestSeverity" Class="mt-4">
+                @ServiceTestResult
+            </MudAlert>
+        }
+
+    </MudPaper>
+
+</MudContainer>
+
+@code
+{
+    private List<Employee> Employees = new();
+
+    private Guid SelectedEmployeeId = Guid.Empty;
+
+    private string CurrentUserName = "";
+
+    private List<PermissionResult> PermissionResults = new();
+
+    private string ServiceTestResult = "";
+
+    private Severity ServiceTestSeverity = Severity.Info;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Employees = await EmployeeRepository.GetAllAsync();
+    }
+
+    private async Task SetCurrentUserAsync()
+    {
+        if (SelectedEmployeeId == Guid.Empty)
+            return;
+
+        CurrentUserService.SetUser(SelectedEmployeeId);
+
+
+        CurrentUserPermissions =
+    await PermissionService.GetCurrentUserPermissionCodesAsync();
+
+        var employee =
+            Employees.FirstOrDefault(x =>
+                x.Id == SelectedEmployeeId);
+
+        CurrentUserName =
+            employee?.FullName ?? "";
+
+        PermissionResults.Clear();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task TestCustomerEditAsync()
+    {
+        ServiceTestResult = "";
+
+        try
+        {
+            await CustomerService.UpdateAsync(
+                new Customer
+                {
+                    Id = Guid.NewGuid()
+                });
+
+            ServiceTestResult =
+                "Customer.Edit: عملیات توسط Service پذیرفته شد.";
+
+            ServiceTestSeverity = Severity.Success;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            ServiceTestResult =
+                $"Customer.Edit: دسترسی رد شد. {ex.Message}";
+
+            ServiceTestSeverity = Severity.Error;
+        }
+        catch (Exception ex)
+        {
+            ServiceTestResult =
+                $"Authorization عبور کرد، اما عملیات به دلیل دیگری متوقف شد: {ex.Message}";
+
+            ServiceTestSeverity = Severity.Warning;
+        }
+    }
+
+    private async Task TestCustomerDeleteAsync()
+    {
+        ServiceTestResult = "";
+
+        try
+        {
+            await CustomerService.DeleteAsync(Guid.NewGuid());
+
+            ServiceTestResult =
+                "Customer.Delete: عملیات توسط Service پذیرفته شد.";
+
+            ServiceTestSeverity = Severity.Success;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            ServiceTestResult =
+                $"Customer.Delete: دسترسی رد شد. {ex.Message}";
+
+            ServiceTestSeverity = Severity.Error;
+        }
+        catch (Exception ex)
+        {
+            ServiceTestResult =
+                $"Authorization عبور کرد، اما عملیات به دلیل دیگری متوقف شد: {ex.Message}";
+
+            ServiceTestSeverity = Severity.Warning;
+        }
+    }
+    private async Task TestEmployeeEditAsync()
+    {
+        ServiceTestResult = "";
+
+        if (!CurrentUserService.EmployeeId.HasValue)
+        {
+            ServiceTestResult = "کاربر جاری EmployeeId ندارد.";
+            ServiceTestSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            var employee =
+                await EmployeeService.GetByIdAsync(
+                    CurrentUserService.EmployeeId.Value);
+
+            if (employee is null)
+            {
+                ServiceTestResult = "Employee جاری پیدا نشد.";
+                ServiceTestSeverity = Severity.Warning;
+                return;
+            }
+
+            await EmployeeService.UpdateAsync(employee);
+
+            ServiceTestResult =
+                "Employee.Edit: عملیات توسط Service پذیرفته شد.";
+
+            ServiceTestSeverity = Severity.Success;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            ServiceTestResult =
+                $"Employee.Edit: دسترسی رد شد. {ex.Message}";
+
+            ServiceTestSeverity = Severity.Error;
+        }
+        catch (Exception ex)
+        {
+            ServiceTestResult =
+                $"Authorization عبور کرد، اما عملیات به دلیل دیگری متوقف شد: {ex.Message}";
+
+            ServiceTestSeverity = Severity.Warning;
+        }
+    }
+    private async Task CheckPermissionsAsync()
+    {
+        PermissionResults.Clear();
+
+        var allPermissions =
+            await PermissionRepository.GetAllAsync();
+
+        foreach (var permission in allPermissions
+            .Where(x => !string.IsNullOrWhiteSpace(x.Code))
+            .OrderBy(x => x.Code))
+        {
+            var allowed =
+                await PermissionService.HasPermissionAsync(
+                    permission.Code);
+
+            PermissionResults.Add(
+                new PermissionResult
+                {
+                    Code = permission.Code,
+                    Allowed = allowed
+                });
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private class PermissionResult
+    {
+        public string Code { get; set; } = "";
+
+        public bool Allowed { get; set; }
+    }
+
+    private List<string> CurrentUserPermissions = new();
+
+    
+}

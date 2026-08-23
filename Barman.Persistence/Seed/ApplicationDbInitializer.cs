@@ -11,6 +11,8 @@ public static class ApplicationDbInitializer
 
         await PermissionSeeder.SeedAsync(context);
 
+        await RolePermissionSeeder.SeedAsync(context);
+
         await NumberSequenceSeeder.SeedAsync(context);
 
         await CustomerSeeder.SeedAsync(context);

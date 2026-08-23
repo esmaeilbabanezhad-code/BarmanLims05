@@ -2,19 +2,65 @@
 @using Barman.Application.Interfaces
 @using Barman.Domain.Entities
 @using Barman.Application.Interfaces.Repositories
+@inject IDepartmentRepository DepartmentRepository
 @inject IEmployeeService EmployeeService
 @inject IDepartmentService DepartmentService
 @inject IDepartmentResponsibilityService DepartmentResponsibilityService
 @inject ITechnicalManagerSectionHeadService TechnicalManagerSectionHeadService
 @inject IGenericRepository<Role> RoleRepository
+@inject IPermissionService PermissionService
+@inject Barman.Application.Interfaces.ICurrentUserService CurrentUserService
 <PageTitle>مدیریت کارکنان</PageTitle>
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+    <MudAlert Severity="Severity.Info" Class="mt-4">
+        Current EmployeeId:
+        @CurrentUserService.EmployeeId
+
+        <br />
+
+        InstanceId:
+        @CurrentUserService.InstanceId
+
+        <br />
+
+        CanView:
+        @CanView
+
+        <br />
+
+        DebugEmployeeView:
+        @DebugEmployeeView
+
+        <br />
+
+        Debug Permissions:
+        @string.Join(", ", DebugPermissions)
+
+        <br />
+
+        Debug Employee Roles:
+        @DebugEmployeeRoles
+    </MudAlert>
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               OnClick="RefreshPermissions"
+               Class="mt-2">
+        Refresh Permission
+    </MudButton>
+    @if (!CanView)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">
+            شما مجوز مشاهده پرسنل را ندارید.
+        </MudAlert>
+    }
+    else
+    {  
 <MudPaper Class="pa-5">
 <MudText Typo="Typo.h5" Class="mb-4">
     مدیریت کارکنان
 </MudText>
 
-@if (!showForm)
+@if (!showForm && CanCreate)
 {
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
@@ -437,11 +483,19 @@
                                     </MudTd>
 
                                     <MudTd>
-                                        <MudButton Size="Size.Small"
-                                                   Variant="Variant.Outlined"
-                                                   Color="Color.Default">
-                                            عملیات
-                                        </MudButton>
+                                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                                     Size="Size.Small"
+                                                     Dense="true">
+
+                                            <MudMenuItem OnClick="@(() => EditResponsibility(context))">
+                                                    ویرایش
+                                            </MudMenuItem>
+                                            
+                                            <MudMenuItem OnClick="@(() => RemoveResponsibilityFromEmployee(context.Id))">
+                                                    حذف
+                                            </MudMenuItem>
+                                            
+                                        </MudMenu>
                                     </MudTd>
                                 </RowTemplate>
                             </MudTable>
@@ -688,15 +742,18 @@
 
         <MudTd DataLabel="عملیات">
 
-            <MudButton Size="Size.Small"
-                       Variant="Variant.Outlined"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Edit"
-                       OnClick="@(() => EditEmployee(context))">
+                        @if (CanEdit)
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Edit"
+                                       OnClick="@(() => EditEmployee(context))">
 
-                ویرایش
+                                ویرایش
 
-            </MudButton>
+                            </MudButton>
+                        }
 
         </MudTd>
 
@@ -712,11 +769,19 @@
 
 </MudTable>
 </MudPaper>
+    }
 </MudContainer>
 @code {
 private List<Employee> employees = new();
 private bool isLoading = true;
 private bool isSaving = false;
+    private bool CanView;
+    private bool DebugEmployeeView;
+    private List<string> DebugPermissions = new();
+    private string DebugEmployeeRoles = "";
+    private bool CanCreate;
+    private bool CanEdit;
+    private bool CanDeactivate;
 private bool showForm = false;
 private Guid EditingId = Guid.Empty;
 private string? errorMessage;
@@ -744,6 +809,7 @@ private readonly Dictionary<Guid, List<EmployeeRole>> employeeRolesMap = new();
 private Guid? selectedDepartmentId;
 private Guid? selectedRoleId;
 private Guid? selectedResponsibilityDepartmentId;
+private Guid? editingResponsibilityId;
 
 private DepartmentResponsibilityType selectedResponsibilityType =
     DepartmentResponsibilityType.SectionHead;
@@ -751,16 +817,79 @@ private DepartmentResponsibilityType selectedResponsibilityType =
 private bool departmentIsPrimary;
 private bool roleIsPrimary;
 private bool responsibilityIsPrimary;
-protected override async Task OnInitializedAsync()
-{
-await LoadDepartmentsAndRoles();
-await LoadEmployees();
-}
-private async Task LoadDepartmentsAndRoles()
-{
-departments = await DepartmentService.GetAllAsync();
-roles = await RoleRepository.GetAllAsync();
-}
+    protected override async Task OnInitializedAsync()
+    {
+        CanView =
+            await PermissionService.HasPermissionAsync(
+                "Employee.View");
+
+        DebugEmployeeView =
+          await PermissionService.HasPermissionAsync(
+          CurrentUserService.EmployeeId ?? Guid.Empty,
+          "Employee.View");
+
+        DebugPermissions =
+            await PermissionService.GetCurrentUserPermissionCodesAsync();
+
+        DebugEmployeeView =
+            await PermissionService.HasPermissionAsync(
+                CurrentUserService.EmployeeId ?? Guid.Empty,
+                "Employee.View");
+
+        DebugPermissions =
+            await PermissionService.GetCurrentUserPermissionCodesAsync();
+
+        CanCreate =
+            await PermissionService.HasPermissionAsync(
+                "Employee.Create");
+
+        CanEdit =
+            await PermissionService.HasPermissionAsync(
+                "Employee.Edit");
+
+        CanDeactivate =
+            await PermissionService.HasPermissionAsync(
+                "Employee.Deactivate");
+
+        if (CanView)
+        {
+            await LoadDepartmentsAndRoles();
+            await LoadEmployees();
+        }
+    }
+    private async Task RefreshPermissions()
+    {
+        var employeeId = CurrentUserService.EmployeeId;
+
+        if (!employeeId.HasValue)
+            return;
+
+        CanView =
+            await PermissionService.HasPermissionAsync(
+                employeeId.Value,
+                "Employee.View");
+
+        DebugEmployeeView = CanView;
+
+        DebugPermissions =
+            await PermissionService.GetPermissionCodesAsync(
+                employeeId.Value);
+        DebugEmployeeRoles =
+await PermissionService.DebugEmployeeRolesAsync(
+employeeId.Value);
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+private Guid? DebugEmployeeId => CurrentUserService.EmployeeId;
+    private async Task LoadDepartmentsAndRoles()
+    {
+        roles = await RoleRepository.GetAllAsync();
+
+        departments =
+         await DepartmentRepository.GetActiveAsync();
+
+    }
 private async Task LoadEmployees()
 {
 try
@@ -1109,6 +1238,55 @@ private async Task AddRoleToEmployee()
         isSaving = false;
     }
 }
+private void EditResponsibility(DepartmentResponsibility responsibility)
+{
+        editingResponsibilityId = responsibility.Id;
+        selectedResponsibilityDepartmentId = responsibility.DepartmentId;
+        selectedResponsibilityType = responsibility.ResponsibilityType;
+        responsibilityIsPrimary = responsibility.IsPrimary;
+
+        formMessage = null;
+}
+    private async Task RemoveResponsibilityFromEmployee(Guid responsibilityId)
+    {
+        formMessage = null;
+
+        try
+        {
+            isSaving = true;
+
+            var result =
+                await DepartmentResponsibilityService.DeleteAsync(
+                    responsibilityId);
+
+            if (!result)
+            {
+                formMessage = "حذف مسئولیت سازمانی انجام نشد.";
+                formMessageSeverity = Severity.Error;
+                return;
+            }
+
+            await LoadEmployeeRelations(EditingId);
+            await LoadEmployees();
+
+            editingResponsibilityId = null;
+            selectedResponsibilityDepartmentId = null;
+            responsibilityIsPrimary = false;
+
+            formMessage = "مسئولیت سازمانی با موفقیت حذف شد.";
+            formMessageSeverity = Severity.Success;
+        }
+        catch (Exception ex)
+        {
+            formMessage =
+                $"خطا در حذف مسئولیت سازمانی: {ex.Message}";
+            formMessageSeverity = Severity.Error;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
 
 private async Task AddResponsibilityToEmployee()
 {
@@ -1132,24 +1310,55 @@ private async Task AddResponsibilityToEmployee()
     {
         isSaving = true;
 
-        var responsibility = new DepartmentResponsibility
-        {
-            EmployeeId = EditingId,
-            DepartmentId = selectedResponsibilityDepartmentId.Value,
-            ResponsibilityType = selectedResponsibilityType,
-            IsPrimary = responsibilityIsPrimary,
-            IsActive = true
-        };
+            if (editingResponsibilityId.HasValue)
+            {
+                var responsibility = new DepartmentResponsibility
+                {
+                    Id = editingResponsibilityId.Value,
+                    EmployeeId = EditingId,
+                    DepartmentId = selectedResponsibilityDepartmentId.Value,
+                    ResponsibilityType = selectedResponsibilityType,
+                    IsPrimary = responsibilityIsPrimary,
+                    IsActive = true
+                };
 
-        await DepartmentResponsibilityService.AddAsync(responsibility);
+                var updated =
+                    await DepartmentResponsibilityService.UpdateAsync(
+                        responsibility);
+
+                if (!updated)
+                {
+                    formMessage = "ویرایش مسئولیت سازمانی انجام نشد.";
+                    formMessageSeverity = Severity.Error;
+                    return;
+                }
+
+                formMessage = "مسئولیت سازمانی با موفقیت ویرایش شد.";
+                formMessageSeverity = Severity.Success;
+            }
+            else
+            {
+                var responsibility = new DepartmentResponsibility
+                {
+                    EmployeeId = EditingId,
+                    DepartmentId = selectedResponsibilityDepartmentId.Value,
+                    ResponsibilityType = selectedResponsibilityType,
+                    IsPrimary = responsibilityIsPrimary,
+                    IsActive = true
+                };
+
+                await DepartmentResponsibilityService.AddAsync(responsibility);
+
+                formMessage = "مسئولیت سازمانی با موفقیت ثبت شد.";
+                formMessageSeverity = Severity.Success;
+            }
 
         await LoadEmployeeRelations(EditingId);
 
         selectedResponsibilityDepartmentId = null;
         responsibilityIsPrimary = false;
 
-        formMessage = "مسئولیت سازمانی با موفقیت ثبت شد.";
-        formMessageSeverity = Severity.Success;
+       
     }
     catch (Exception ex)
     {

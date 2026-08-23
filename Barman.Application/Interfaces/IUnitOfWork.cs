@@ -24,7 +24,15 @@ public interface IUnitOfWork
 
     ICustomerTestPanelRepository CustomerTestPanels { get; }
 
+    IDefaultTestSetRepository DefaultTestSets { get; }
+
     IDepartmentRepository Departments { get; }
+
+    IRoleRepository Roles { get; }
+
+    IRolePermissionRepository RolePermissions { get; }
+
+    IPermissionRepository Permissions { get; }
 
     ITestAssignmentRepository TestAssignments { get; }
 

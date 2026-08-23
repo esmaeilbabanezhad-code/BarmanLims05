@@ -6,24 +6,34 @@ namespace Barman.Application.Services;
 public class DepartmentService : IDepartmentService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IPermissionService _permissionService;
 
-    public DepartmentService(IUnitOfWork unitOfWork)
+    public DepartmentService(
+        IUnitOfWork unitOfWork,
+        IPermissionService permissionService)
     {
         _unitOfWork = unitOfWork;
+        _permissionService = permissionService;
     }
 
     public async Task<List<Department>> GetAllAsync()
     {
+        await EnsurePermissionAsync("Department.View");
+
         return await _unitOfWork.Departments.GetAllAsync();
     }
 
     public async Task<Department?> GetByIdAsync(Guid id)
     {
+        await EnsurePermissionAsync("Department.View");
+
         return await _unitOfWork.Departments.GetByIdAsync(id);
     }
 
     public async Task<Department> CreateAsync(Department department)
     {
+        await EnsurePermissionAsync("Department.Create");
+
         var list = await _unitOfWork.Departments.GetAllAsync();
 
         if (list.Any(x => x.Code == department.Code))
@@ -43,6 +53,8 @@ public class DepartmentService : IDepartmentService
 
     public async Task<Department?> UpdateAsync(Department department)
     {
+        await EnsurePermissionAsync("Department.Edit");
+
         var current =
             await _unitOfWork.Departments.GetByIdAsync(department.Id);
 
@@ -63,6 +75,8 @@ public class DepartmentService : IDepartmentService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
+        await EnsurePermissionAsync("Department.Delete");
+
         var current =
             await _unitOfWork.Departments.GetByIdAsync(id);
 
@@ -75,8 +89,11 @@ public class DepartmentService : IDepartmentService
 
         return true;
     }
+
     public async Task<Department> ActivateAsync(Guid id)
     {
+        await EnsurePermissionAsync("Department.Edit");
+
         var department =
             await _unitOfWork.Departments.GetByIdAsync(id);
 
@@ -95,6 +112,8 @@ public class DepartmentService : IDepartmentService
 
     public async Task<Department> DeactivateAsync(Guid id)
     {
+        await EnsurePermissionAsync("Department.Edit");
+
         var department =
             await _unitOfWork.Departments.GetByIdAsync(id);
 
@@ -109,5 +128,18 @@ public class DepartmentService : IDepartmentService
         await _unitOfWork.SaveChangesAsync();
 
         return department;
+    }
+
+    private async Task EnsurePermissionAsync(string permissionCode)
+    {
+        var allowed =
+            await _permissionService.HasPermissionAsync(
+                permissionCode);
+
+        if (!allowed)
+        {
+            throw new UnauthorizedAccessException(
+                $"Permission denied: {permissionCode}");
+        }
     }
 }

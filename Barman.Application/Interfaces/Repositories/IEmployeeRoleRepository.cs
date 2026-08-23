@@ -8,6 +8,9 @@ public interface IEmployeeRoleRepository
 
     Task<List<EmployeeRole>> GetByEmployeeIdAsync(Guid employeeId);
 
+    Task<List<EmployeeRole>> GetWithPermissionsByEmployeeIdAsync(
+    Guid employeeId);
+
     Task<EmployeeRole?> GetByIdAsync(Guid id);
 
     void Update(EmployeeRole employeeRole);

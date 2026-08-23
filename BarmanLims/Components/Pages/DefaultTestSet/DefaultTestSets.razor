@@ -1,0 +1,1217 @@
+﻿@page "/default-test-sets"
+
+@using Barman.Application.DTOs.DefaultTestSet
+@using Barman.Application.DTOs.Test
+@using Barman.Application.DTOs.Customer
+@using Barman.Application.DTOs.SampleCategory
+@using Barman.Domain.Entities
+@using Barman.Application.Interfaces
+
+@inject Barman.Application.Interfaces.IDefaultTestSetService DefaultTestSetService
+@inject Barman.Application.Interfaces.ICustomerService CustomerService
+@inject Barman.Application.Interfaces.ISampleCategoryService SampleCategoryService
+@inject Barman.Application.Interfaces.IMatrixService MatrixService
+@inject Barman.Application.Interfaces.ITestService TestService
+@inject Barman.Application.Interfaces.ITestPanelService TestPanelService
+@inject ICurrentUserService CurrentUserService
+<p>CurrentUser InstanceId: @CurrentUserService.InstanceId</p>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+
+    <MudPaper Class="pa-4">
+
+        <MudStack Row="true"
+                  Justify="Justify.SpaceBetween"
+                  AlignItems="AlignItems.Center"
+                  Class="mb-4">
+
+            <MudText Typo="Typo.h5">
+                مجموعه‌های آزمون پیش‌فرض
+            </MudText>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="NewSet">
+
+                مجموعه جدید
+
+            </MudButton>
+
+        </MudStack>
+
+
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mb-3">
+
+                @ErrorMessage
+
+            </MudAlert>
+        }
+
+
+        @if (!string.IsNullOrWhiteSpace(SuccessMessage))
+        {
+            <MudAlert Severity="Severity.Success"
+                      Class="mb-3">
+
+                @SuccessMessage
+
+            </MudAlert>
+        }
+
+
+        @if (IsLoading)
+        {
+            <MudProgressLinear Indeterminate="true"
+                               Color="Color.Primary" />
+        }
+        else
+        {
+            <MudTable Items="FilteredSets"
+                      Dense="true"
+                      Hover="true"
+                      Striped="true"
+                      Bordered="true">
+
+                <ToolBarContent>
+
+                    <MudTextField @bind-Value="SetSearchText"
+                                  Immediate="true"
+                                  Placeholder="جستجوی کد یا نام مجموعه..."
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Clearable="true"
+                                  Variant="Variant.Outlined"
+                                  Class="mt-2 mb-2" />
+
+                </ToolBarContent>
+
+                <HeaderContent>
+
+                    <MudTh>کد</MudTh>
+                    <MudTh>نام</MudTh>
+                    <MudTh>مشتری</MudTh>
+                    <MudTh>دسته‌بندی نمونه</MudTh>
+                    <MudTh>ماتریس</MudTh>
+                    <MudTh>تعداد آیتم</MudTh>
+                    <MudTh>اولویت</MudTh>
+                    <MudTh>عملیات</MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd>
+                        @context.Code
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Name
+                    </MudTd>
+
+                    <MudTd>
+                        @(Customers.FirstOrDefault(x =>
+                                            x.Id == context.CustomerId)?.DisplayName ?? "-")
+                                                                                        </MudTd>
+
+                    <MudTd>
+                        @(SampleCategories.FirstOrDefault(x =>
+                                            x.Id == context.SampleCategoryId)?.Name ?? "-")
+                                                                                       </MudTd>
+
+                    <MudTd>
+                        @(Matrices.FirstOrDefault(x =>
+                                            x.Id == context.MatrixId)?.Name ?? "-")
+                </MudTd>
+
+                    <MudTd>
+                        @context.Items.Count
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Priority
+                    </MudTd>
+
+                    <MudTd>
+
+                        <MudStack Row="true"
+                                  Spacing="1">
+
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="@(() => EditSet(context))" />
+
+                            <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                           Color="Color.Info"
+                                           Size="Size.Small"
+                                           OnClick="@(() => ViewItems(context))" />
+
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           OnClick="@(() => DeleteSet(context.Id))" />
+
+                        </MudStack>
+
+                    </MudTd>
+
+                </RowTemplate>
+
+                <NoRecordsContent>
+
+                    <MudAlert Severity="Severity.Info">
+                        هیچ مجموعه آزمونی ثبت نشده است.
+                    </MudAlert>
+
+                </NoRecordsContent>
+
+            </MudTable>
+                }
+
+    </MudPaper>
+
+
+    @* ========================================================= *@
+    @* Create / Edit Dialog                                     *@
+    @* ========================================================= *@
+
+    <MudDialog @bind-Visible="DialogVisible">
+
+        <DialogContent>
+
+            <MudText Typo="Typo.h6"
+                     Class="mb-3">
+
+                @(EditingSet.Id == Guid.Empty
+                                ? "ایجاد مجموعه آزمون پیش‌فرض"
+                                : "ویرایش مجموعه آزمون پیش‌فرض")
+
+            </MudText>
+
+
+            <MudGrid>
+
+                <MudItem xs="12" md="6">
+
+                    <MudTextField Label="کد"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  @bind-Value="EditingSet.Code" />
+
+                </MudItem>
+
+
+                <MudItem xs="12" md="6">
+
+                    <MudTextField Label="نام"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  @bind-Value="EditingSet.Name" />
+
+                </MudItem>
+
+
+                <MudItem xs="12">
+
+                    <MudTextField Label="توضیحات"
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  @bind-Value="EditingSet.Description" />
+
+                </MudItem>
+
+
+                <MudItem xs="12" md="6">
+                    <MudAlert Severity="Severity.Info">
+                        تعداد مشتری‌های Load شده:
+                        @Customers.Count
+                    </MudAlert>
+
+                    <MudAutocomplete T="CustomerLookupDto"
+                                     Label="مشتری"
+                                     Variant="Variant.Outlined"
+                                     Clearable="true"
+                                     Dense="true"
+                                     SearchFunc="SearchCustomers"
+                                     ToStringFunc="@(x => x?.DisplayName ?? "")"
+                                     Value="SelectedCustomer"
+                                     ValueChanged="OnCustomerSelected"
+                                     ResetValueOnEmptyText="true"
+                                     CoerceText="true"
+                                     CoerceValue="true" />
+
+                </MudItem>
+
+
+                <MudItem xs="12" md="6">
+
+                    <MudAutocomplete T="SampleCategoryLookupDto"
+                                     Label="دسته‌بندی نمونه"
+                                     Variant="Variant.Outlined"
+                                     Clearable="true"
+                                     Dense="true"
+                                     SearchFunc="SearchSampleCategories"
+                                     ToStringFunc="@(x => x?.Name ?? "")"
+                                     Value="SelectedSampleCategory"
+                                     ValueChanged="OnSampleCategorySelected"
+                                     ResetValueOnEmptyText="true"
+                                     CoerceText="true"
+                                     CoerceValue="true" />
+
+                </MudItem>
+
+
+                <MudItem xs="12" md="6">
+
+                    <MudAutocomplete T="Matrix"
+                                     Label="ماتریس"
+                                     Variant="Variant.Outlined"
+                                     Clearable="true"
+                                     Dense="true"
+                                     SearchFunc="SearchMatrices"
+                                     ToStringFunc="@(x => x?.Name ?? "")"
+                                     Value="SelectedMatrix"
+                                     ValueChanged="OnMatrixSelected"
+                                     ResetValueOnEmptyText="true"
+                                     CoerceText="true"
+                                     CoerceValue="true" />
+
+                </MudItem>
+
+
+                <MudItem xs="12" md="6">
+
+                    <MudNumericField T="int"
+                                     Label="اولویت"
+                                     Variant="Variant.Outlined"
+                                     Min="0"
+                                     @bind-Value="EditingSet.Priority" />
+
+                </MudItem>
+
+            </MudGrid>
+
+
+            <MudDivider Class="my-4" />
+
+
+            <MudText Typo="Typo.subtitle1"
+                     Class="mb-2">
+
+                آیتم‌های مجموعه
+
+            </MudText>
+
+
+            @if (EditingSet.Items.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info">
+
+                    هنوز آزمونی به این مجموعه اضافه نشده است.
+
+                </MudAlert>
+            }
+            else
+            {
+                <MudTable Items="EditingSet.Items"
+                          Dense="true"
+                          Hover="true"
+                          Bordered="true">
+
+                    <HeaderContent>
+
+                        <MudTh>نوع</MudTh>
+                        <MudTh>آزمون / Panel</MudTh>
+                        <MudTh>ترتیب</MudTh>
+                        <MudTh></MudTh>
+
+                    </HeaderContent>
+
+                    <RowTemplate>
+
+                        <MudTd>
+
+                            @(context.IsPanel
+                                                    ? "Panel"
+                                                    : "آزمون")
+
+                    </MudTd>
+
+                        <MudTd>
+
+                        @if (context.IsPanel)
+                            {
+                                <MudText>
+                                    @context.TestPanelCode -
+                                    @context.TestPanelName
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText>
+                                    @context.TestCode -
+                                    @context.TestName
+                                </MudText>
+                            }
+
+                        </MudTd>
+
+                        <MudTd>
+
+                            <MudNumericField T="int"
+                                             Value="@context.SortOrder"
+                                             ValueChanged="@((int value) =>
+                                                                                              ChangeSortOrder(context, value))"
+                                         Min="0"
+                                         Style="width:90px;"
+                                         Immediate="true" />
+
+                        </MudTd>
+
+                        <MudTd>
+
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           OnClick="@(() => RemoveItem(context))" />
+
+                        </MudTd>
+
+                    </RowTemplate>
+
+                </MudTable>
+                        }
+
+
+            <MudDivider Class="my-4" />
+
+
+            @* ================================================= *@
+            @* Add Tests                                         *@
+            @* ================================================= *@
+
+            <MudText Typo="Typo.subtitle1">
+                افزودن آزمون
+            </MudText>
+
+
+            <MudTextField @bind-Value="TestSearchText"
+                          Immediate="true"
+                          Label="جستجوی آزمون"
+                          Placeholder="بخشی از نام یا کد آزمون..."
+                          Variant="Variant.Outlined"
+                          Clearable="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Class="mt-2" />
+
+
+            <MudPaper Outlined="true"
+                      Class="pa-2 mt-2"
+                      Style="max-height:250px; overflow-y:auto;">
+
+                @foreach (var test in FilteredTests)
+                {
+                    <MudCheckBox T="bool"
+                                 Label="@test.DisplayName"
+                                 Value="@IsTestSelected(test.Id)"
+                                 ValueChanged="@((bool value) =>
+                                                                      ToggleTest(test.Id, value))" />
+                                }
+
+            </MudPaper>
+
+
+            @* ================================================= *@
+            @* Add Panels                                        *@
+            @* ================================================= *@
+
+            <MudText Typo="Typo.subtitle1"
+                     Class="mt-4">
+
+                افزودن Test Panel
+            </MudText>
+
+
+            <MudTextField @bind-Value="PanelSearchText"
+                          Immediate="true"
+                          Label="جستجوی Panel"
+                          Placeholder="بخشی از نام یا کد Panel..."
+                          Variant="Variant.Outlined"
+                          Clearable="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Class="mt-2" />
+
+
+            <MudPaper Outlined="true"
+                      Class="pa-2 mt-2"
+                      Style="max-height:250px; overflow-y:auto;">
+
+                @foreach (var panel in FilteredPanels)
+                {
+                    <MudCheckBox T="bool"
+                                 Label="@($"{panel.Code} - {panel.Name}")"
+                                 Value="@IsPanelSelected(panel.Id)"
+                                 ValueChanged="@((bool value) =>
+                                                                      TogglePanel(panel, value))" />
+                                }
+
+            </MudPaper>
+
+        </DialogContent>
+
+
+        <DialogActions>
+
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="SaveSet">
+
+                ذخیره
+
+            </MudButton>
+
+
+            <MudButton Color="Color.Secondary"
+                       OnClick="CloseDialog">
+
+                انصراف
+
+            </MudButton>
+
+        </DialogActions>
+
+    </MudDialog>
+
+
+    @* ========================================================= *@
+    @* View Items Dialog                                       *@
+    @* ========================================================= *@
+
+    <MudDialog @bind-Visible="ItemsDialogVisible">
+
+        <DialogContent>
+
+            <MudText Typo="Typo.h6">
+
+                @SelectedSet?.Code -
+                @SelectedSet?.Name
+
+            </MudText>
+
+            <MudDivider Class="my-3" />
+
+
+            @if (SelectedSet != null)
+            {
+                <MudTable Items="SelectedSet.Items"
+                          Dense="true"
+                          Hover="true"
+                          Bordered="true">
+
+                    <HeaderContent>
+
+                        <MudTh>نوع</MudTh>
+                        <MudTh>مورد</MudTh>
+                        <MudTh>ترتیب</MudTh>
+
+                    </HeaderContent>
+
+                    <RowTemplate>
+
+                        <MudTd>
+                            @(context.IsPanel ? "Panel" : "آزمون")
+                        </MudTd>
+
+                        <MudTd>
+                            @if (context.IsPanel)
+                            {
+                                <MudText>
+                                    @($"{context.TestPanelCode} - {context.TestPanelName}")
+                                </MudText>
+                            }
+                            else
+                            {
+                                <MudText>
+                                    @($"{context.TestCode} - {context.TestName}")
+                                </MudText>
+                            }
+                        </MudTd>
+
+                        <MudTd>
+                            @context.SortOrder
+                        </MudTd>
+
+                    </RowTemplate>
+
+                </MudTable>
+            }
+
+        </DialogContent>
+
+
+        <DialogActions>
+
+            <MudButton Color="Color.Secondary"
+                       OnClick="CloseItemsDialog">
+
+                بستن
+
+            </MudButton>
+
+        </DialogActions>
+
+    </MudDialog>
+
+</MudContainer>
+
+
+@code {
+
+    // =========================================================
+    // Data
+    // =========================================================
+
+    private List<DefaultTestSetDto> Sets = new();
+
+    private List<CustomerLookupDto> Customers = new();
+
+    private List<SampleCategoryLookupDto> SampleCategories = new();
+
+    private List<Matrix> Matrices = new();
+
+    private List<TestLookupDto> Tests = new();
+
+    private List<TestPanel> TestPanels = new();
+
+
+    // =========================================================
+    // State
+    // =========================================================
+
+    private bool IsLoading;
+
+    private bool DialogVisible;
+
+    private bool ItemsDialogVisible;
+
+    private string SetSearchText = "";
+
+    private string TestSearchText = "";
+
+    private string PanelSearchText = "";
+
+    private string ErrorMessage = "";
+
+    private string SuccessMessage = "";
+
+
+    private DefaultTestSetDto EditingSet = new();
+    private CustomerLookupDto? SelectedCustomer;
+    private SampleCategoryLookupDto? SelectedSampleCategory;
+    private Matrix? SelectedMatrix;
+
+    private Task<IEnumerable<CustomerLookupDto>> SearchCustomers(
+    string? value,
+    CancellationToken cancellationToken)
+    {
+        Console.WriteLine("========== SEARCH CUSTOMERS CALLED ==========");
+        Console.WriteLine($"Search value = [{value}]");
+        Console.WriteLine($"Customers count = {Customers.Count}");
+
+        IEnumerable<CustomerLookupDto> result;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            result = Customers.Take(50);
+        }
+        else
+        {
+            var search = value.Trim();
+
+            result = Customers
+                .Where(x =>
+                    (x.DisplayName ?? "")
+                        .Contains(
+                            search,
+                            StringComparison.OrdinalIgnoreCase))
+                .Take(50);
+        }
+
+        Console.WriteLine(
+            $"Search result count = {result.Count()}");
+
+        return Task.FromResult(result);
+    }
+
+    private Task<IEnumerable<SampleCategoryLookupDto>> SearchSampleCategories(
+    string value,
+    CancellationToken cancellationToken)
+    {
+        IEnumerable<SampleCategoryLookupDto> result =
+            SampleCategories;
+
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            result = SampleCategories.Where(x =>
+                (x.Name ?? "")
+                    .Contains(
+                        value.Trim(),
+                        StringComparison.OrdinalIgnoreCase));
+        }
+
+        return Task.FromResult(result);
+    }
+
+    private Task<IEnumerable<Matrix>> SearchMatrices(
+        string value,
+        CancellationToken cancellationToken)
+    {
+        IEnumerable<Matrix> result =
+            Matrices;
+
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            result = Matrices.Where(x =>
+                (x.Name ?? "")
+                    .Contains(
+                        value.Trim(),
+                        StringComparison.OrdinalIgnoreCase));
+        }
+
+        return Task.FromResult(result);
+    }
+
+    private Task OnSampleCategorySelected(
+    SampleCategoryLookupDto? category)
+    {
+        SelectedSampleCategory = category;
+
+        EditingSet.SampleCategoryId =
+            category?.Id;
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnMatrixSelected(
+        Matrix? matrix)
+    {
+        SelectedMatrix = matrix;
+
+        EditingSet.MatrixId =
+            matrix?.Id;
+
+        return Task.CompletedTask;
+    }
+
+    private void OnCustomerSelected(CustomerLookupDto? customer)
+    {
+        SelectedCustomer = customer;
+
+        EditingSet.CustomerId =
+            customer?.Id;
+    }
+
+    private DefaultTestSetDto? SelectedSet;
+
+    // =========================================================
+    // Filtered
+    // =========================================================
+
+    private IEnumerable<DefaultTestSetDto> FilteredSets =>
+        string.IsNullOrWhiteSpace(SetSearchText)
+            ? Sets
+            : Sets.Where(x =>
+                x.Code.Contains(
+                    SetSearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                x.Name.Contains(
+                    SetSearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase));
+
+
+    private IEnumerable<TestLookupDto> FilteredTests =>
+        string.IsNullOrWhiteSpace(TestSearchText)
+            ? Tests
+            : Tests.Where(x =>
+                (x.Code ?? "")
+                    .Contains(
+                        TestSearchText.Trim(),
+                        StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.Name ?? "")
+                    .Contains(
+                        TestSearchText.Trim(),
+                        StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.DisplayName ?? "")
+                    .Contains(
+                        TestSearchText.Trim(),
+                        StringComparison.OrdinalIgnoreCase));
+
+
+    private IEnumerable<TestPanel> FilteredPanels =>
+        string.IsNullOrWhiteSpace(PanelSearchText)
+            ? TestPanels
+            : TestPanels.Where(x =>
+                x.Code.Contains(
+                    PanelSearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                x.Name.Contains(
+                    PanelSearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase));
+
+
+    // =========================================================
+    // Init
+    // =========================================================
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+
+    private async Task LoadData()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = "";
+            SuccessMessage = "";
+
+            // Tests
+            Tests = await TestService.GetAllAsync();
+
+            // Test Panels
+            TestPanels = await TestPanelService.GetAllAsync();
+
+            // Default Test Sets
+            try
+            {
+                Sets = await DefaultTestSetService.GetAllAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    $"[DefaultTestSets] DefaultTestSets load ERROR: {ex}");
+
+                Sets = new();
+            }
+
+            // Customers
+            try
+            {
+                Console.WriteLine(
+                    "[DefaultTestSets] Customer Service CALL START");
+
+                Customers =
+                    await CustomerService.GetLookupWithDefaultPanelAsync();
+
+                Console.WriteLine(
+                    $"[DefaultTestSets] Customer COUNT AFTER SERVICE = {Customers.Count}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    $"[DefaultTestSets] Customer load ERROR: {ex}");
+
+                Customers = new();
+            }
+
+            // Sample Categories
+            try
+            {
+                SampleCategories =
+                    await SampleCategoryService.GetLookupAsync();
+            }
+            catch
+            {
+                SampleCategories = new();
+            }
+
+            // Matrices
+            try
+            {
+                Matrices =
+                    await MatrixService.GetAllAsync();
+            }
+            catch
+            {
+                Matrices = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+
+            Console.WriteLine(
+                $"[DefaultTestSets] LoadData ERROR: {ex}");
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+
+    // =========================================================
+    // New
+    // =========================================================
+
+    private void NewSet()
+    {
+        ErrorMessage = "";
+
+        SuccessMessage = "";
+
+        EditingSet = new DefaultTestSetDto
+        {
+            Priority = 100
+        };
+
+        TestSearchText = "";
+
+        PanelSearchText = "";
+
+        DialogVisible = true;
+    }
+
+
+    // =========================================================
+    // Edit
+    // =========================================================
+
+    private void EditSet(
+        DefaultTestSetDto set)
+    {
+        ErrorMessage = "";
+
+        SuccessMessage = "";
+
+        EditingSet = new DefaultTestSetDto
+        {
+            Id = set.Id,
+
+            Code = set.Code,
+
+            Name = set.Name,
+
+            Description = set.Description,
+
+            CustomerId = set.CustomerId,
+
+            SampleCategoryId =
+                set.SampleCategoryId,
+
+            MatrixId =
+                set.MatrixId,
+
+            Priority = set.Priority,
+
+            Items = set.Items
+                .Select(x => new DefaultTestSetItemDto
+                {
+                    Id = x.Id,
+
+                    DefaultTestSetId =
+                        x.DefaultTestSetId,
+
+                    IsPanel = x.IsPanel,
+
+                    TestId = x.TestId,
+
+                    TestPanelId =
+                        x.TestPanelId,
+
+                    SortOrder =
+                        x.SortOrder,
+
+                    TestCode =
+                        x.TestCode,
+
+                    TestName =
+                        x.TestName,
+
+                    TestPanelCode =
+                        x.TestPanelCode,
+
+                    TestPanelName =
+                        x.TestPanelName
+                })
+                .ToList()
+        };
+        
+        SelectedCustomer = Customers
+          .FirstOrDefault(x => x.Id == EditingSet.CustomerId);
+
+        TestSearchText = "";
+
+        PanelSearchText = "";
+
+        DialogVisible = true;
+    }
+
+
+    // =========================================================
+    // Save
+    // =========================================================
+
+    private async Task SaveSet()
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            SuccessMessage = "";
+
+            NormalizeSortOrder();
+
+            if (EditingSet.Id == Guid.Empty)
+            {
+                await DefaultTestSetService.CreateAsync(
+                    EditingSet);
+
+                SuccessMessage =
+                    "مجموعه آزمون با موفقیت ایجاد شد.";
+            }
+            else
+            {
+                await DefaultTestSetService.UpdateAsync(
+                    EditingSet);
+
+                SuccessMessage =
+                    "مجموعه آزمون با موفقیت ویرایش شد.";
+            }
+
+            DialogVisible = false;
+
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+
+    // =========================================================
+    // Delete
+    // =========================================================
+
+    private async Task DeleteSet(Guid id)
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            SuccessMessage = "";
+
+            var result =
+                await DefaultTestSetService.DeleteAsync(id);
+
+            if (result)
+            {
+                SuccessMessage =
+                    "مجموعه آزمون حذف شد.";
+
+                await LoadData();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+
+    // =========================================================
+    // Items
+    // =========================================================
+
+    private void RemoveItem(
+        DefaultTestSetItemDto item)
+    {
+        EditingSet.Items.Remove(item);
+
+        NormalizeSortOrder();
+    }
+
+
+    private void ChangeSortOrder(
+        DefaultTestSetItemDto item,
+        int value)
+    {
+        item.SortOrder = value;
+    }
+
+
+    private void NormalizeSortOrder()
+    {
+        var items = EditingSet.Items
+            .OrderBy(x => x.SortOrder)
+            .ToList();
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            items[i].SortOrder = i + 1;
+        }
+    }
+
+
+    // =========================================================
+    // Tests
+    // =========================================================
+
+    private bool IsTestSelected(Guid id)
+    {
+        return EditingSet.Items.Any(x =>
+            !x.IsPanel &&
+            x.TestId == id);
+    }
+
+
+    private void ToggleTest(
+        Guid id,
+        bool selected)
+    {
+        var existing =
+            EditingSet.Items.FirstOrDefault(x =>
+                !x.IsPanel &&
+                x.TestId == id);
+
+        if (selected)
+        {
+            if (existing != null)
+                return;
+
+            var test =
+                Tests.FirstOrDefault(x =>
+                    x.Id == id);
+
+            EditingSet.Items.Add(
+                new DefaultTestSetItemDto
+                {
+                    Id = Guid.NewGuid(),
+
+                    DefaultTestSetId =
+                        EditingSet.Id,
+
+                    IsPanel = false,
+
+                    TestId = id,
+
+                    SortOrder =
+                        EditingSet.Items.Count + 1,
+
+                    TestCode =
+                        test?.Code,
+
+                    TestName =
+                        test?.Name
+                });
+        }
+        else
+        {
+            if (existing != null)
+                EditingSet.Items.Remove(existing);
+        }
+
+        NormalizeSortOrder();
+    }
+
+
+    // =========================================================
+    // Panels
+    // =========================================================
+
+    private bool IsPanelSelected(Guid id)
+    {
+        return EditingSet.Items.Any(x =>
+            x.IsPanel &&
+            x.TestPanelId == id);
+    }
+
+
+    private void TogglePanel(
+        TestPanel panel,
+        bool selected)
+    {
+        var existing =
+            EditingSet.Items.FirstOrDefault(x =>
+                x.IsPanel &&
+                x.TestPanelId == panel.Id);
+
+        if (selected)
+        {
+            if (existing != null)
+                return;
+
+            EditingSet.Items.Add(
+                new DefaultTestSetItemDto
+                {
+                    Id = Guid.NewGuid(),
+
+                    DefaultTestSetId =
+                        EditingSet.Id,
+
+                    IsPanel = true,
+
+                    TestPanelId =
+                        panel.Id,
+
+                    SortOrder =
+                        EditingSet.Items.Count + 1,
+
+                    TestPanelCode =
+                        panel.Code,
+
+                    TestPanelName =
+                        panel.Name
+                });
+        }
+        else
+        {
+            if (existing != null)
+                EditingSet.Items.Remove(existing);
+        }
+
+        NormalizeSortOrder();
+    }
+
+
+    // =========================================================
+    // View
+    // =========================================================
+
+    private void ViewItems(
+        DefaultTestSetDto set)
+    {
+        SelectedSet = set;
+
+        ItemsDialogVisible = true;
+    }
+
+
+    private void CloseItemsDialog()
+    {
+        ItemsDialogVisible = false;
+
+        SelectedSet = null;
+    }
+
+
+    private void CloseDialog()
+    {
+        DialogVisible = false;
+    }
+    
+
+}

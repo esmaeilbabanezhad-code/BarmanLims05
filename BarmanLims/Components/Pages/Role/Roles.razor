@@ -2,9 +2,11 @@
 
 @using Barman.Domain.Entities
 @using Barman.Application.Interfaces.Repositories
+@using Barman.Application.Interfaces
 
-@inject IGenericRepository<Role> RoleRepository
-@inject Barman.Application.Interfaces.IUnitOfWork UnitOfWork
+@inject IRoleService RoleService
+@inject IRolePermissionService RolePermissionService
+
 
 <PageTitle>مدیریت نقش‌ها</PageTitle>
 
@@ -48,7 +50,14 @@
             @(EditingId == Guid.Empty ? "افزودن نقش" : "ذخیره تغییرات")
 
         </MudButton>
+        <MudButton Class="mt-4 ml-2"
+                   Variant="Variant.Outlined"
+                   Color="Color.Warning"
+                   OnClick="ShowDeletedItems">
 
+            موارد حذف‌شده
+
+        </MudButton>
         @if (!string.IsNullOrWhiteSpace(Message))
         {
             <MudAlert Severity="@MessageSeverity"
@@ -77,6 +86,7 @@
                 <MudTh>کد</MudTh>
                 <MudTh>نام نقش</MudTh>
                 <MudTh>توضیحات</MudTh>
+                <MudTh>وضعیت</MudTh>
                 <MudTh>عملیات</MudTh>
             </HeaderContent>
 
@@ -92,6 +102,34 @@
 
                 <MudTd>
 
+                    @if (context.IsActive)
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Success"
+                                 Size="Size.Small">
+                            فعال
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Error"
+                                 Size="Size.Small">
+                            غیرفعال
+                        </MudChip>
+                    }
+
+                </MudTd>
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Text"
+                           Color="Color.Error"
+                           OnClick="@(() => Delete(context.Id))">
+
+                    حذف
+
+                </MudButton>
+                <MudTd>
+
                     <MudButton Size="Size.Small"
                                Variant="Variant.Outlined"
                                Color="Color.Primary"
@@ -100,6 +138,152 @@
                         ویرایش
 
                     </MudButton>
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Outlined"
+                               Color="Color.Info"
+                               OnClick="@(() => OpenPermissions(context))">
+
+                        دسترسی‌ها
+
+                    </MudButton>
+
+
+                </MudTd>
+                @if (context.IsActive)
+                {
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Text"
+                               Color="Color.Warning"
+                               OnClick="@(() => Deactivate(context.Id))">
+
+                        غیرفعال
+
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Text"
+                               Color="Color.Success"
+                               OnClick="@(() => Activate(context.Id))">
+
+                        فعال
+
+                    </MudButton>
+                }
+            </RowTemplate>
+
+        </MudTable>
+        @if (DeletedDialogVisible)
+        {
+            <MudDialog @bind-Visible="DeletedDialogVisible">
+
+                <DialogContent>
+
+                    <MudText Typo="Typo.h6" Class="mb-3">
+                        نقش‌های حذف‌شده
+                    </MudText>
+
+                    <MudTable Items="DeletedRoleList"
+                              Dense="true"
+                              Hover="true"
+                              Bordered="true">
+
+                        <HeaderContent>
+                            <MudTh>کد</MudTh>
+                            <MudTh>نام نقش</MudTh>
+                            <MudTh>توضیحات</MudTh>
+                            <MudTh>عملیات</MudTh>
+                        </HeaderContent>
+
+                        <RowTemplate>
+
+                            <MudTd>@context.Code</MudTd>
+
+                            <MudTd>@context.Name</MudTd>
+
+                            <MudTd>
+                                @(context.Description ?? "-")
+                            </MudTd>
+
+                            <MudTd>
+
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Success"
+                                           OnClick="@(() => Restore(context.Id))">
+
+                                    بازیابی
+
+                                </MudButton>
+
+                            </MudTd>
+
+                        </RowTemplate>
+
+                    </MudTable>
+
+                </DialogContent>
+
+                <DialogActions>
+
+                    <MudButton Color="Color.Secondary"
+                               OnClick="ClosePermissionDialog">
+
+                        بستن
+
+                    </MudButton>
+
+                </DialogActions>
+
+            </MudDialog>
+        }
+    </MudPaper>
+
+</MudContainer>
+
+<MudDialog @bind-Visible="PermissionDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            مدیریت دسترسی‌های نقش
+        </MudText>
+
+        @if (PermissionRole is not null)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mb-3">
+                نقش:
+                <b>@PermissionRole.Name</b>
+            </MudText>
+        }
+
+        <MudTable Items="PermissionList"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="true">
+
+            <HeaderContent>
+                <MudTh>کد</MudTh>
+                <MudTh>دسترسی</MudTh>
+                <MudTh>فعال</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd>
+                    @context.Code
+                </MudTd>
+
+                <MudTd>
+                    @context.Name
+                </MudTd>
+
+                <MudTd>
+
+                    <MudCheckBox T="bool"
+                                 Value="@SelectedPermissionIds.Contains(context.Id)"
+                                 ValueChanged="@((bool value) => TogglePermission(context.Id, value))" />
 
                 </MudTd>
 
@@ -107,14 +291,44 @@
 
         </MudTable>
 
-    </MudPaper>
+    </DialogContent>
 
-</MudContainer>
+    <DialogActions>
 
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SavePermissionsAsync">
+
+            ذخیره دسترسی‌ها
+
+        </MudButton>
+
+        <MudButton Color="Color.Secondary"
+                   OnClick="ClosePermissionDialog">
+
+            بستن
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
 
 @code {
 
     private List<Role> RoleList = new();
+
+    private List<Role> DeletedRoleList = new();
+
+    private bool DeletedDialogVisible;
+
+    private bool PermissionDialogVisible;
+
+    private Role? PermissionRole;
+
+    private List<Permission> PermissionList = new();
+
+    private HashSet<Guid> SelectedPermissionIds = new();
 
     private Guid EditingId = Guid.Empty;
 
@@ -134,7 +348,7 @@
 
     private async Task LoadAsync()
     {
-        RoleList = await RoleRepository.GetAllAsync();
+        RoleList = await RoleService.GetAllAsync();
     }
 
 
@@ -165,7 +379,7 @@
 
         if (EditingId == Guid.Empty)
         {
-            await RoleRepository.AddAsync(new Role
+            await RoleService.CreateAsync(new Role
             {
                 Code = Code.Trim(),
                 Name = Name.Trim(),
@@ -177,7 +391,7 @@
         else
         {
             var role =
-                await RoleRepository.GetByIdAsync(EditingId);
+                await RoleService.GetByIdAsync(EditingId);
 
             if (role is null)
             {
@@ -193,10 +407,10 @@
                     ? null
                     : Description.Trim();
 
-            RoleRepository.Update(role);
+            await RoleService.UpdateAsync(role);
         }
 
-        await UnitOfWork.SaveChangesAsync();
+        
 
         ClearForm();
         await LoadAsync();
@@ -222,5 +436,95 @@
         Code = "";
         Name = "";
         Description = null;
+    }
+    private async Task Activate(Guid id)
+    {
+        await RoleService.ActivateAsync(id);
+        await LoadAsync();
+    }
+
+    private async Task Deactivate(Guid id)
+    {
+        await RoleService.DeactivateAsync(id);
+        await LoadAsync();
+    }
+    private async Task Delete(Guid id)
+    {
+        await RoleService.DeleteAsync(id);
+        await LoadAsync();
+    }
+    private async Task ShowDeletedItems()
+    {
+        DeletedRoleList =
+            await RoleService.GetDeletedAsync();
+
+        DeletedDialogVisible = true;
+    }
+    private async Task Restore(Guid id)
+    {
+        await RoleService.RestoreAsync(id);
+
+        await LoadAsync();
+
+        DeletedRoleList =
+            await RoleService.GetDeletedAsync();
+    }
+
+
+    private void CloseDeletedDialog()
+    {
+        DeletedDialogVisible = false;
+    }
+
+    private async Task OpenPermissions(Role role)
+    {
+        PermissionRole = role;
+
+        PermissionList =
+          (await RolePermissionService.GetAllPermissionsAsync())
+             .OrderBy(x => x.Code)
+             .ToList();
+
+        var rolePermissions =
+            await RolePermissionService.GetByRoleIdAsync(role.Id);
+
+        SelectedPermissionIds =
+            rolePermissions
+                .Select(x => x.Id)
+                .ToHashSet();
+
+        PermissionDialogVisible = true;
+    }
+    private void TogglePermission(Guid permissionId, bool value)
+    {
+        if (value)
+        {
+            SelectedPermissionIds.Add(permissionId);
+        }
+        else
+        {
+            SelectedPermissionIds.Remove(permissionId);
+        }
+    }
+
+    private async Task SavePermissionsAsync()
+    {
+        if (PermissionRole is null)
+            return;
+
+        await RolePermissionService.SavePermissionsAsync(
+            PermissionRole.Id,
+            SelectedPermissionIds);
+
+        PermissionDialogVisible = false;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ClosePermissionDialog()
+    {
+        PermissionDialogVisible = false;
+
+        await InvokeAsync(StateHasChanged);
     }
 }

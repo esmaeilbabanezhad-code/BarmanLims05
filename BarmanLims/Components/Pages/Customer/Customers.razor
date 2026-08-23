@@ -1,15 +1,25 @@
-@page "/customers"
+﻿@page "/customers"
 
 @using MudBlazor
 @using Barman.Domain.Entities
 
 @inject Barman.Application.Interfaces.ICustomerService CustomerService
+@inject Barman.Application.Interfaces.IPermissionService PermissionService
 
 <PageTitle>Customers</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
-
+    
+    @if (!CanView)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">
+            شما مجوز مشاهده مشتریان را ندارید.
+        </MudAlert>
+    }
+    else
+    {
     <MudPaper Class="pa-4">
+    
 
         <div class="d-flex justify-space-between">
 
@@ -17,11 +27,14 @@
                 Customers
             </MudText>
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       OnClick="NewCustomer">
-                New
-            </MudButton>
+            @if (CanCreate)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="NewCustomer">
+                    New
+                </MudButton>
+            }
 
         </div>
 
@@ -79,38 +92,47 @@
 
                 <MudTd>
 
-                    <MudButton Size="Size.Small"
-                               Variant="Variant.Outlined"
-                               Color="Color.Primary"
-                               OnClick="@(() => Edit(context))">
-                        Edit
-                    </MudButton>
-
-                    @if (context.IsActive)
+                    @if (CanEdit)
                     {
                         <MudButton Size="Size.Small"
-                                   Variant="Variant.Text"
-                                   Color="Color.Warning"
-                                   OnClick="@(() => Deactivate(context.Id))">
-                            Disable
-                        </MudButton>
-                    }
-                    else
-                    {
-                        <MudButton Size="Size.Small"
-                                   Variant="Variant.Text"
-                                   Color="Color.Success"
-                                   OnClick="@(() => Activate(context.Id))">
-                            Activate
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => Edit(context))">
+                            Edit
                         </MudButton>
                     }
 
-                    <MudButton Size="Size.Small"
-                               Variant="Variant.Text"
-                               Color="Color.Error"
-                               OnClick="@(() => Delete(context.Id))">
-                        Delete
-                    </MudButton>
+                            @if (CanEdit)
+                            {
+                                @if (context.IsActive)
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Warning"
+                                               OnClick="@(() => Deactivate(context.Id))">
+                                        Disable
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Success"
+                                               OnClick="@(() => Activate(context.Id))">
+                                        Activate
+                                    </MudButton>
+                                }
+                            }
+
+                    @if (CanDelete)
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Error"
+                                   OnClick="@(() => Delete(context.Id))">
+                            Delete
+                        </MudButton>
+                    }
 
                 </MudTd>
 
@@ -188,7 +210,7 @@
         </MudDialog>
 
     </MudPaper>
-
+            }
 </MudContainer>
 
 @code {
@@ -200,10 +222,33 @@
     private Customer CurrentCustomer = new();
 
     private bool IsEdit;
+    private bool CanView;
+    private bool CanCreate;
+    private bool CanEdit;
+    private bool CanDelete;
 
     protected override async Task OnInitializedAsync()
     {
-        await Load();
+        CanView =
+            await PermissionService.HasPermissionAsync(
+                "Customer.View");
+
+        CanCreate =
+            await PermissionService.HasPermissionAsync(
+                "Customer.Create");
+
+        CanEdit =
+            await PermissionService.HasPermissionAsync(
+                "Customer.Edit");
+
+        CanDelete =
+            await PermissionService.HasPermissionAsync(
+                "Customer.Delete");
+
+        if (CanView)
+        {
+            await Load();
+        }
     }
 
     private async Task Load()

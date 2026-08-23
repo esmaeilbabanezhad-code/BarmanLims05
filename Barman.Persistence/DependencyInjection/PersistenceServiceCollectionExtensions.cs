@@ -24,9 +24,18 @@ public static class PersistenceServiceCollectionExtensions
         // Repositories
         services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
         services.AddScoped<INumberSequenceRepository, NumberSequenceRepository>();
+        services.AddScoped<IRoleRepository, RoleRepository>();
+        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IUnitOfWork, ApplicationUnitOfWork>();
         services.AddScoped<ISampleCategoryService, SampleCategoryService>();
         services.AddScoped<IMatrixService, MatrixService>();
+        services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<IRolePermissionService, RolePermissionService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IDefaultTestSetService, DefaultTestSetService>();
 
         return services;
     }

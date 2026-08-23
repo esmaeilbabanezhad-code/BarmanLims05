@@ -240,7 +240,7 @@
                     <MudDivider Class="my-3" />
 
                     <MudText Typo="Typo.subtitle1">
-                        Add Test
+                        افزودن آزمون به Panel
                     </MudText>
 
                     @if (!string.IsNullOrWhiteSpace(TestErrorMessage))
@@ -252,19 +252,50 @@
                         </MudAlert>
                     }
 
-                    <MudAutocomplete T="TestLookupDto"
-                                     Label="Select Test"
-                                     Variant="Variant.Outlined"
-                                     Dense="true"
-                                     Class="mt-2"
-                                     SearchFunc="SearchTests"
-                                     ToStringFunc="@(test => test?.DisplayName ?? string.Empty)"
-                                     ValueChanged="OnTestSelected"
-                                     Clearable="true"
-                                     ResetValueOnEmptyText="true"
-                                     CoerceText="true"
-                                     CoerceValue="true"
-                                     MinCharacters="1" />
+                    <MudTextField T="string"
+                                  @bind-Value="PanelTestSearchText"
+                                  Immediate="true"
+                                  Label="جستجوی آزمون"
+                                  Placeholder="بخشی از کد یا نام آزمون..."
+                                  Variant="Variant.Outlined"
+                                  Clearable="true"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Class="mt-2" />
+
+                    <MudPaper Outlined="true"
+                              Class="pa-2 mt-2"
+                              Style="max-height:300px; overflow-y:auto;">
+
+                        @foreach (var test in GetFilteredAvailablePanelTests())
+                        {
+                            <MudCheckBox T="bool"
+                                         Value="@SelectedPanelTestIds.Contains(test.Id)"
+                                         ValueChanged="@((bool value) =>
+                                                                  TogglePanelTest(test.Id, value))"
+                                 Dense="true">
+
+                                @test.DisplayName
+
+                            </MudCheckBox>
+                                        }
+
+                    </MudPaper>
+
+                    <MudText Typo="Typo.caption" Class="mt-1">
+                        تعداد آزمون‌های انتخاب‌شده:
+                        <b>@SelectedPanelTestIds.Count</b>
+                    </MudText>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Class="mt-2"
+                               Disabled="@(SelectedPanelTestIds.Count == 0)"
+                               OnClick="AddSelectedTests">
+
+                        افزودن آزمون‌های انتخاب‌شده
+
+                    </MudButton>
 
                 
                 }
@@ -305,6 +336,10 @@
     private List<TestLookupDto> AvailableTests = new();
 
     private Guid SelectedTestId = Guid.Empty;
+
+    private string PanelTestSearchText = "";
+
+    private HashSet<Guid> SelectedPanelTestIds = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -368,6 +403,9 @@
         SelectedPanel = panel;
 
         SelectedTestId = Guid.Empty;
+
+        SelectedPanelTestIds.Clear();
+        PanelTestSearchText = "";
 
         PanelItems =
             await TestPanelItemService.GetByPanelIdAsync(panel.Id);
@@ -434,7 +472,80 @@
     {
         SelectedTestId = test?.Id ?? Guid.Empty;
     }
+    private IEnumerable<TestLookupDto> GetFilteredAvailablePanelTests()
+    {
+        if (string.IsNullOrWhiteSpace(PanelTestSearchText))
+            return AvailableTests;
 
+        var search = PanelTestSearchText.Trim();
+
+        return AvailableTests
+            .Where(x =>
+                x.Code.Contains(
+                    search,
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                x.Name.Contains(
+                    search,
+                    StringComparison.OrdinalIgnoreCase))
+            .OrderBy(x => x.Code);
+    }
+
+    private void TogglePanelTest(Guid testId, bool selected)
+    {
+        if (selected)
+            SelectedPanelTestIds.Add(testId);
+        else
+            SelectedPanelTestIds.Remove(testId);
+    }
+
+    private async Task AddSelectedTests()
+    {
+        TestErrorMessage = null;
+
+        if (SelectedPanel == null ||
+            SelectedPanelTestIds.Count == 0)
+            return;
+
+        var nextSortOrder =
+            PanelItems == null || PanelItems.Count == 0
+                ? 1
+                : PanelItems.Max(x => x.SortOrder) + 1;
+
+        try
+        {
+            foreach (var testId in SelectedPanelTestIds)
+            {
+                await TestPanelItemService.AddAsync(
+                    SelectedPanel.Id,
+                    testId,
+                    nextSortOrder);
+
+                nextSortOrder++;
+            }
+
+            PanelItems =
+                await TestPanelItemService.GetByPanelIdAsync(
+                    SelectedPanel.Id);
+
+            var existingTestIds =
+                PanelItems
+                    .Select(x => x.TestId)
+                    .ToHashSet();
+
+            AvailableTests =
+                (await TestService.GetReceptionLookupAsync())
+                    .Where(x => !existingTestIds.Contains(x.Id))
+                    .OrderBy(x => x.Code)
+                    .ToList();
+
+            SelectedPanelTestIds.Clear();
+        }
+        catch (InvalidOperationException ex)
+        {
+            TestErrorMessage = ex.Message;
+        }
+    }
     private void CloseTestDialog()
     {
         TestDialogVisible = false;
@@ -446,6 +557,9 @@
         AvailableTests = new();
 
         SelectedTestId = Guid.Empty;
+
+        SelectedPanelTestIds.Clear();
+        PanelTestSearchText = "";
 
         TestErrorMessage = null;
     }
