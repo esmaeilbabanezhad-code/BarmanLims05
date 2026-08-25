@@ -17,6 +17,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<ITestService, TestService>();
         services.AddScoped<TestAssignmentService>();
+        services.AddScoped<ITestLimitChangeRequestService, TestLimitChangeRequestService>();
         services.AddScoped<IDepartmentService, DepartmentService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<IDepartmentResponsibilityService, DepartmentResponsibilityService>();

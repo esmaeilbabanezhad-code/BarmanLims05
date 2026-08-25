@@ -1,4 +1,4 @@
-﻿using Barman.Application.DTOs.Reception;
+using Barman.Application.DTOs.Reception;
 using Barman.Application.Interfaces;
 using Barman.Domain.Entities;
 
@@ -68,9 +68,9 @@ public class ReceptionService : IReceptionService
 
                 SampleCategoryId = sampleDto.SampleCategoryId,
 
-                Matrix = string.IsNullOrWhiteSpace(sampleDto.Matrix)
-                    ? null
-                    : sampleDto.Matrix.Trim(),
+                MatrixId = sampleDto.MatrixId,
+
+                StandardSampleId = sampleDto.StandardSampleId,
 
                 Quantity = sampleDto.Quantity,
 
@@ -89,7 +89,7 @@ public class ReceptionService : IReceptionService
 
             await _unitOfWork.Samples.AddAsync(sample);
 
-            // ایجاد TestAssignment برای تست‌های انتخاب‌شده
+            // ????? TestAssignment ???? ??????? ??????????
             var testIds = sampleDto.TestIds
                 .Where(x => x != Guid.Empty)
                 .Distinct()
@@ -142,3 +142,4 @@ public class ReceptionService : IReceptionService
             .GetAllAsync(cancellationToken);
     }
 }
+

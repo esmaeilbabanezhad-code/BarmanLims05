@@ -353,7 +353,10 @@ public class TestService : ITestService
                 test.DefaultResult,
 
             Description =
-                test.Description
+                test.Description,
+
+            ReferenceLimits =
+                test.ReferenceLimits.ToList()
         };
     }
 

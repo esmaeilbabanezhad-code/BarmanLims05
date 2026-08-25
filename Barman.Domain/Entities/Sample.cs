@@ -1,4 +1,4 @@
-﻿using Barman.Domain.Common;
+using Barman.Domain.Common;
 
 namespace Barman.Domain.Entities;
 
@@ -16,7 +16,13 @@ public class Sample : BaseEntity
 
     public SampleCategory? SampleCategory { get; set; }
 
-    public string? Matrix { get; set; }
+    public Guid? MatrixId { get; set; }
+
+    public Matrix? Matrix { get; set; }
+
+    public Guid? StandardSampleId { get; set; }
+
+    public StandardSample? StandardSample { get; set; }
 
     public decimal? Quantity { get; set; }
 

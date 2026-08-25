@@ -27,6 +27,10 @@ public class ReceptionRepository : IReceptionRepository
             .Include(x => x.Customer)
             .Include(x => x.Samples)
                 .ThenInclude(x => x.SampleCategory)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.Matrix)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.StandardSample)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
                 cancellationToken);

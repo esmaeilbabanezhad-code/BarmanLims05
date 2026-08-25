@@ -1,4 +1,6 @@
-﻿namespace Barman.Application.DTOs.Test;
+﻿using Barman.Domain.Entities;
+
+namespace Barman.Application.DTOs.Test;
 
 public class TestLookupDto
 {
@@ -33,6 +35,8 @@ public class TestLookupDto
     public string? DefaultResult { get; set; }
 
     public string? Description { get; set; }
+
+    public List<ReferenceLimit> ReferenceLimits { get; set; } = new();
 
     public string DisplayName =>
         string.IsNullOrWhiteSpace(Code)

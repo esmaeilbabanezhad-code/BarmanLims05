@@ -50,6 +50,9 @@ public class ApplicationDbContext : DbContext
     public DbSet<Matrix> Matrices
         => Set<Matrix>();
 
+    public DbSet<StandardSample> StandardSamples
+    => Set<StandardSample>();
+
     public DbSet<TestPanel> TestPanels
         => Set<TestPanel>();
 
@@ -71,7 +74,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<ReferenceLimit> ReferenceLimits
         => Set<ReferenceLimit>();
-
+    public DbSet<TestLimitChangeRequest> TestLimitChangeRequests
+    => Set<TestLimitChangeRequest>();
     public DbSet<NumberSequence> NumberSequences
         => Set<NumberSequence>();
 

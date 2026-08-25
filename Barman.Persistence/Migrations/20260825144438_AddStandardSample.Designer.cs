@@ -3,6 +3,7 @@ using System;
 using Barman.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Barman.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260825144438_AddStandardSample")]
+    partial class AddStandardSample
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1890,18 +1893,15 @@ namespace Barman.Persistence.Migrations
                         .HasForeignKey("SampleCategoryId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Barman.Domain.Entities.StandardSample", "StandardSample")
+                    b.HasOne("Barman.Domain.Entities.StandardSample", null)
                         .WithMany("Samples")
-                        .HasForeignKey("StandardSampleId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .HasForeignKey("StandardSampleId");
 
                     b.Navigation("Matrix");
 
                     b.Navigation("Reception");
 
                     b.Navigation("SampleCategory");
-
-                    b.Navigation("StandardSample");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.StandardSample", b =>

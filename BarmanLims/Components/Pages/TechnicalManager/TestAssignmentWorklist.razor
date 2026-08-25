@@ -15,102 +15,308 @@
             کارتابل مسئول فنی
         </MudText>
 
-        @if (IsLoading)
-        {
-            <MudProgressLinear Indeterminate="true"
-                               Color="Color.Primary" />
-        }
-        else if (!string.IsNullOrWhiteSpace(ErrorMessage))
-        {
-            <MudAlert Severity="Severity.Error">
-                @ErrorMessage
-            </MudAlert>
-        }
-        else
-        {
-            <MudText Typo="Typo.body2" Class="mb-3">
-                تعداد آزمون‌های در انتظار بررسی:
-                <b>@Assignments.Count</b>
-            </MudText>
+        <MudTabs @bind-ActivePanelIndex="ActiveTab"
+                 Rounded="true"
+                 Elevation="0"
+                 Class="mb-4">
 
-            <MudTable Items="Assignments"
-                      Dense="true"
-                      Hover="true"
-                      Striped="true"
-                      Bordered="true">
+            <MudTabPanel Text="ارجاعات">
 
-                <HeaderContent>
-
-                    <MudTh>نمونه</MudTh>
-                    <MudTh>کد آزمون</MudTh>
-                    <MudTh>نام آزمون</MudTh>
-                    <MudTh>بخش</MudTh>
-                    <MudTh>عملیات</MudTh>
-
-                </HeaderContent>
-
-                <RowTemplate>
-
-                    <MudTd DataLabel="نمونه">
-                        @context.Sample?.SampleCode
-                    </MudTd>
-
-                    <MudTd DataLabel="کد آزمون">
-                        @context.Test?.Code
-                    </MudTd>
-
-                    <MudTd DataLabel="نام آزمون">
-                        @context.Test?.Name
-                    </MudTd>
-
-                    <MudTd DataLabel="بخش">
-
-                        <MudSelect T="Guid?"
-                                   @bind-Value="context.DepartmentId"
-                                   Dense="true"
-                                   Variant="Variant.Outlined"
-                                   Margin="Margin.Dense"
-                                   Clearable="true"
-                                   Style="min-width:220px">
-
-                            @foreach (var department in Departments)
-                            {
-                                <MudSelectItem T="Guid?"
-                                               Value="@((Guid?)department.Id)">
-                                    @department.Name
-                                </MudSelectItem>
-                            }
-
-                        </MudSelect>
-
-                    </MudTd>
-
-                    <MudTd DataLabel="عملیات">
-
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Size="Size.Small"
-                                   Disabled="!context.DepartmentId.HasValue"
-                                   OnClick="@(() => AssignToDepartment(context))">
-
-                            ارجاع به بخش
-
-                        </MudButton>
-
-                    </MudTd>
-
-                </RowTemplate>
-
-                <NoRecordsContent>
-
-                    <MudAlert Severity="Severity.Info">
-                        آزمونی در انتظار بررسی مسئول فنی وجود ندارد.
+                @if (IsLoading)
+                {
+                    <MudProgressLinear Indeterminate="true"
+                                       Color="Color.Primary" />
+                }
+                else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <MudAlert Severity="Severity.Error">
+                        @ErrorMessage
                     </MudAlert>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        آزمون‌های در انتظار بررسی مسئول فنی:
+                        <b>@Assignments.Count</b>
+                    </MudText>
 
-                </NoRecordsContent>
+                    <MudTable Items="Assignments"
+                              Dense="true"
+                              Hover="true"
+                              Striped="true"
+                              Bordered="true">
 
-            </MudTable>
-        }
+                        <HeaderContent>
+
+                            <MudTh>نمونه</MudTh>
+                            <MudTh>کد آزمون</MudTh>
+                            <MudTh>نام آزمون</MudTh>
+                            <MudTh>بخش</MudTh>
+                            <MudTh>عملیات</MudTh>
+
+                        </HeaderContent>
+
+                        <RowTemplate>
+
+                            <MudTd DataLabel="نمونه">
+                                @context.Sample?.SampleCode
+                            </MudTd>
+
+                            <MudTd DataLabel="کد آزمون">
+                                @context.Test?.Code
+                            </MudTd>
+
+                            <MudTd DataLabel="نام آزمون">
+                                @context.Test?.Name
+                            </MudTd>
+
+                            <MudTd DataLabel="بخش">
+
+                                <MudSelect T="Guid?"
+                                           @bind-Value="context.DepartmentId"
+                                           Dense="true"
+                                           Variant="Variant.Outlined"
+                                           Margin="Margin.Dense"
+                                           Clearable="true"
+                                           Style="min-width:220px">
+
+                                    @foreach (var department in Departments)
+                                    {
+                                        <MudSelectItem T="Guid?"
+                                                       Value="@((Guid?)department.Id)">
+                                            @department.Name
+                                        </MudSelectItem>
+                                    }
+
+                                </MudSelect>
+
+                            </MudTd>
+
+                            <MudTd DataLabel="عملیات">
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           Disabled="!context.DepartmentId.HasValue"
+                                           OnClick="@(() => AssignToDepartment(context))">
+
+                                    ارجاع به بخش
+
+                                </MudButton>
+
+                            </MudTd>
+
+                        </RowTemplate>
+
+                        <NoRecordsContent>
+
+                            <MudAlert Severity="Severity.Info">
+                                آزمونی در انتظار بررسی مسئول فنی وجود ندارد.
+                            </MudAlert>
+
+                        </NoRecordsContent>
+
+                    </MudTable>
+                }
+
+            </MudTabPanel>
+
+            <MudTabPanel Text="تأییدیه نتایج">
+
+                @if (IsLoadingResultApprovals)
+                {
+                    <MudProgressLinear Indeterminate="true"
+                                       Color="Color.Primary" />
+                }
+                else if (PendingResultApprovals.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        هیچ نتیجه‌ای در انتظار تأیید مسئول فنی نیست.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Class="mb-3">
+                        تعداد نتایج در انتظار تأیید:
+                        <b>@PendingResultApprovals.Count</b>
+                    </MudText>
+
+                    <MudTable Items="PendingResultApprovals"
+                              Hover="true"
+                              Dense="true"
+                              Striped="true"
+                              Bordered="true">
+
+                        <HeaderContent>
+
+                            <MudTh>نمونه</MudTh>
+                            <MudTh>کد آزمون</MudTh>
+                            <MudTh>نام آزمون</MudTh>
+                            <MudTh>نتیجه</MudTh>
+                            <MudTh>واحد</MudTh>
+                            <MudTh>عملیات</MudTh>
+
+                        </HeaderContent>
+
+                        <RowTemplate>
+
+                            <MudTd DataLabel="نمونه">
+                                @context.Sample?.SampleCode
+                            </MudTd>
+
+                            <MudTd DataLabel="کد آزمون">
+                                @context.Test?.Code
+                            </MudTd>
+
+                            <MudTd DataLabel="نام آزمون">
+                                @context.Test?.Name
+                            </MudTd>
+
+                            <MudTd DataLabel="نتیجه">
+                                @context.Result
+                            </MudTd>
+
+                            <MudTd DataLabel="واحد">
+                                @context.Unit
+                            </MudTd>
+
+                            <MudTd DataLabel="عملیات">
+
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="@(() => OpenResultApproval(context))">
+
+                                    بررسی
+
+                                </MudButton>
+
+                            </MudTd>
+
+                        </RowTemplate>
+
+                    </MudTable>
+                }
+                @if (SelectedResultApproval is not null)
+                {
+                    <MudDivider Class="my-4" />
+
+                    <MudPaper Class="pa-4" Outlined="true">
+
+                        <MudText Typo="Typo.h6" Class="mb-4">
+                            بررسی نتیجه آزمون
+                        </MudText>
+
+                        <MudGrid>
+
+                            <MudItem xs="12" md="3">
+                                <MudText Typo="Typo.caption">نمونه</MudText>
+                                <MudText Typo="Typo.body1">
+                                    @SelectedResultApproval.Sample?.SampleCode
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" md="3">
+                                <MudText Typo="Typo.caption">کد آزمون</MudText>
+                                <MudText Typo="Typo.body1">
+                                    @SelectedResultApproval.Test?.Code
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" md="3">
+                                <MudText Typo="Typo.caption">نام آزمون</MudText>
+                                <MudText Typo="Typo.body1">
+                                    @SelectedResultApproval.Test?.Name
+                                </MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" md="3">
+                                <MudText Typo="Typo.caption">واحد</MudText>
+                                <MudText Typo="Typo.body1">
+                                    @SelectedResultApproval.Unit
+                                </MudText>
+                            </MudItem>
+
+                        </MudGrid>
+
+                        <MudDivider Class="my-3" />
+
+                        <MudText Typo="Typo.subtitle1">
+                            نتیجه ثبت‌شده
+                        </MudText>
+
+                        <MudTextField T="string"
+                                      Value="@SelectedResultApproval.Result"
+                                      Label="نتیجه"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true"
+                                      FullWidth="true"
+                                      Class="mb-3" />
+
+                        <MudTextField T="string"
+                                      Value="@SelectedResultApproval.Comment"
+                                      Label="توضیحات کارشناس"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true"
+                                      FullWidth="true"
+                                      Lines="3"
+                                      Class="mb-3" />
+
+                        <MudDivider Class="my-4" />
+
+                        <MudText Typo="Typo.subtitle1" Class="mb-3">
+                            حدود و مشخصات آزمون
+                        </MudText>
+
+                        <MudGrid>
+
+                            <MudItem xs="12" md="3">
+                                <MudTextField T="decimal?"
+                                              Value="@SelectedResultApproval.Test?.LOD"
+                                              Label="LOD فعلی"
+                                              Variant="Variant.Outlined"
+                                              ReadOnly="true" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="3">
+                                <MudTextField T="decimal?"
+                                              Value="@SelectedResultApproval.Test?.LOQ"
+                                              Label="LOQ فعلی"
+                                              Variant="Variant.Outlined"
+                                              ReadOnly="true" />
+                            </MudItem>
+
+                        </MudGrid>
+
+                        <MudDivider Class="my-4" />
+
+                        <MudStack Row="true"
+                                  Spacing="2">
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Success"
+                                       OnClick="ApproveSelectedResultAsync">
+                                تأیید نتیجه
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error">
+                                رد نتیجه
+                            </MudButton>
+
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Default"
+                                       OnClick="@(() => SelectedResultApproval = null)">
+                                بستن
+                            </MudButton>
+
+                        </MudStack>
+
+                    </MudPaper>
+                }
+            </MudTabPanel>
+
+        </MudTabs>
 
     </MudPaper>
 
@@ -126,9 +332,18 @@
 
     private string ErrorMessage = "";
 
+    private int ActiveTab = 0;
+
+    private List<TestAssignment> PendingResultApprovals = new();
+
+    private TestAssignment? SelectedResultApproval;
+
+    private bool IsLoadingResultApprovals = false;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
+        await LoadPendingResultApprovalsAsync();
     }
 
     private async Task LoadData()
@@ -159,6 +374,27 @@
         }
     }
 
+    private async Task LoadPendingResultApprovalsAsync()
+    {
+        try
+        {
+            IsLoadingResultApprovals = true;
+
+            PendingResultApprovals =
+                await TestAssignmentService
+                    .GetPendingResultApprovalForTechnicalManagerAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            PendingResultApprovals = new();
+        }
+        finally
+        {
+            IsLoadingResultApprovals = false;
+        }
+    }
+
     private async Task AssignToDepartment(
         TestAssignment assignment)
     {
@@ -180,6 +416,35 @@
                     assignment.DepartmentId);
 
             Assignments.Remove(assignment);
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+    private void OpenResultApproval(TestAssignment assignment)
+    {
+        SelectedResultApproval = assignment;
+    }
+    private async Task ApproveSelectedResultAsync()
+    {
+        if (SelectedResultApproval is null)
+            return;
+
+        try
+        {
+            ErrorMessage = "";
+
+            await TestAssignmentService
+                .ApproveResultByTechManagerAsync(
+                    SelectedResultApproval.Id);
+
+            PendingResultApprovals.Remove(
+                SelectedResultApproval);
+
+            SelectedResultApproval = null;
 
             StateHasChanged();
         }

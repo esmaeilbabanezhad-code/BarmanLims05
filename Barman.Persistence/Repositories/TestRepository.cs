@@ -24,6 +24,7 @@ public class TestRepository : ITestRepository
         return await _context.Tests
             .Include(x => x.TestMethod)
             .Include(x => x.Instrument)
+            .Include(x => x.ReferenceLimits)
             .FirstOrDefaultAsync(x => x.Id == id);
     }
 

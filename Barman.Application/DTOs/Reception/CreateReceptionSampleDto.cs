@@ -1,4 +1,4 @@
-﻿namespace Barman.Application.DTOs.Reception;
+namespace Barman.Application.DTOs.Reception;
 
 public class CreateReceptionSampleDto
 {
@@ -6,7 +6,9 @@ public class CreateReceptionSampleDto
 
     public Guid? SampleCategoryId { get; set; }
 
-    public string? Matrix { get; set; }
+    public Guid? MatrixId { get; set; }
+
+    public Guid? StandardSampleId { get; set; }
 
     public decimal? Quantity { get; set; }
 

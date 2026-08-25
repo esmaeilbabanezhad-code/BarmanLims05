@@ -1,0 +1,544 @@
+﻿@page "/analyst/worklist"
+
+@using Barman.Application.Services
+@using Barman.Domain.Entities
+
+@inject TestAssignmentService TestAssignmentService
+@inject Barman.Application.Interfaces.ICurrentUserService CurrentUserService
+@inject Barman.Application.Interfaces.ITestLimitChangeRequestService TestLimitChangeRequestService
+
+
+<MudPaper Class="pa-4">
+
+    <MudText Typo="Typo.h6" Class="mb-4">
+        کارتابل کارشناس
+    </MudText>
+    <MudAlert Severity="Severity.Info">
+        CurrentUser InstanceId: @CurrentUserService.InstanceId
+        <br />
+        EmployeeId: @(CurrentUserService.EmployeeId?.ToString() ?? "NULL")
+    </MudAlert>
+    @if (IsLoading)
+    {
+        <MudProgressLinear Indeterminate="true" />
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error">
+            @ErrorMessage
+        </MudAlert>
+    }
+    else
+    {
+        @if (SelectedAssignment is not null)
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-4">
+
+                <MudText Typo="Typo.subtitle1">
+                    ثبت نتیجه آزمون
+                </MudText>
+
+                <div class="mt-2">
+                    نمونه:
+                    <b>@SelectedAssignment.Sample?.SampleCode</b>
+                </div>
+
+                <div>
+                    کد آزمون:
+                    <b>@SelectedAssignment.Test?.Code</b>
+                </div>
+
+                <div>
+                    نام آزمون:
+                    <b>@SelectedAssignment.Test?.Name</b>
+                </div>
+
+                <div>
+                    نوع آزمون:
+                    <b>
+                        @(SelectedAssignment.Test?.IsQuantitative == true
+                                        ? "کمی"
+                                        : "کیفی")
+            </b>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(SelectedAssignment.Test?.Unit))
+                {
+                    <div>
+                        واحد:
+                        <b>@SelectedAssignment.Test.Unit</b>
+                    </div>
+                }
+                @if (SelectedAssignment.Test?.LOD.HasValue == true)
+                {
+                    <div>
+                        LOD:
+                        <b>@SelectedAssignment.Test.LOD</b>
+                    </div>
+                }
+
+                @if (SelectedAssignment.Test?.LOQ.HasValue == true)
+                {
+                    <div>
+                        LOQ:
+                        <b>@SelectedAssignment.Test.LOQ</b>
+                    </div>
+                }
+
+                @if (SelectedAssignment.Test?.ReferenceLimits?.Any() == true)
+                {
+                    <div class="mt-2">
+                        <b>حدود مجاز:</b>
+
+                        @foreach (var limit in SelectedAssignment.Test.ReferenceLimits
+                                    .OrderBy(x => x.Priority))
+                        {
+                            <div class="ml-4">
+                                @if (limit.MinValue.HasValue && limit.MaxValue.HasValue)
+                                {
+                                    <span>
+                                        @limit.MinValue تا @limit.MaxValue
+                                    </span>
+                                }
+                                else if (limit.MinValue.HasValue)
+                                {
+                                    <span>
+                                        ≥ @limit.MinValue
+                                    </span>
+                                }
+                                else if (limit.MaxValue.HasValue)
+                                {
+                                    <span>
+                                        ≤ @limit.MaxValue
+                                    </span>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(limit.Unit))
+                                {
+                                    <span> @limit.Unit</span>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(limit.ProductName))
+                                {
+                                    <span> — @limit.ProductName</span>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(limit.OrganizationName))
+                                {
+                                    <span> — @limit.OrganizationName</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                
+            </MudAlert>
+        }
+    @if (SelectedAssignment is not null)
+    {
+            @if (SelectedAssignment.Test?.IsQuantitative == true)
+            {
+                <MudTextField T="string"
+                              Label="نتیجه"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              FullWidth="true"
+                              @bind-Value="ResultValue"
+                              @bind-Value:after="OnResultValueChanged"
+                              Class="@GetResultFieldClass()" />
+            }
+            else
+            {
+                <MudTextField T="string"
+                              Label="نتیجه"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              FullWidth="true"
+                              @bind-Value="ResultValue"
+                              Class="mb-3" />
+            }
+
+        <MudTextField T="string"
+                      Label="توضیحات"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      FullWidth="true"
+                      Lines="3"
+                      @bind-Value="ResultComment"
+                      Class="mb-3" />
+            <MudDivider Class="my-4" />
+
+            <MudText Typo="Typo.subtitle1" Class="mb-3">
+                پیشنهاد تغییر حدود آزمون
+            </MudText>
+
+            <MudGrid>
+
+                <MudItem xs="12" md="6">
+
+                    <MudTextField T="decimal?"
+                                  Label="LOD فعلی"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Value="@(SelectedAssignment.Test?.LOD)"
+                                  ReadOnly="true"
+                                  Class="mb-3" />
+
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+
+                    <MudNumericField T="decimal?"
+                                     Label="LOD پیشنهادی"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     @bind-Value="RequestedLOD"
+                                     Class="mb-3" />
+
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+
+                    <MudTextField T="decimal?"
+                                  Label="LOQ فعلی"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Value="@(SelectedAssignment.Test?.LOQ)"
+                                  ReadOnly="true"
+                                  Class="mb-3" />
+
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+
+                    <MudNumericField T="decimal?"
+                                     Label="LOQ پیشنهادی"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     @bind-Value="RequestedLOQ"
+                                     Class="mb-3" />
+
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="decimal?"
+                                     Label="حد پایین مجاز پیشنهادی"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     @bind-Value="RequestedMinValue"
+                                     Class="mb-3" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="decimal?"
+                                     Label="حد بالا مجاز پیشنهادی"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     @bind-Value="RequestedMaxValue"
+                                     Class="mb-3" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField T="string"
+                          Label="علت درخواست تغییر"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          FullWidth="true"
+                          Lines="3"
+                          @bind-Value="LimitChangeReason"
+                          Class="mb-3" />
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Warning"
+                       FullWidth="true"
+                       Class="mb-4"
+                       OnClick="SubmitLimitChangeRequestAsync"
+                       Disabled="@(SelectedAssignment is null ||
+                                             (!RequestedLOD.HasValue &&
+                                              !RequestedLOQ.HasValue &&
+                                              !RequestedMinValue.HasValue &&
+                                              !RequestedMaxValue.HasValue) ||
+                                             string.IsNullOrWhiteSpace(LimitChangeReason))">
+
+        ثبت درخواست تغییر حدود آزمون
+
+            </MudButton>
+
+            <MudDivider Class="my-4" />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Success"
+                       OnClick="SaveResultAsync"
+                       Disabled="@(SelectedAssignment is null || string.IsNullOrWhiteSpace(ResultValue))">
+
+                ذخیره نتیجه
+
+            </MudButton>
+        }
+        <MudTable Items="Assignments"
+                  RowClassFunc="GetAssignmentRowClass"
+                  Dense="true"
+                  Hover="true"
+                  Striped="true"
+                  Bordered="true">
+
+            <HeaderContent>
+
+                <MudTh>نمونه</MudTh>
+                <MudTh>کد آزمون</MudTh>
+                <MudTh>نام آزمون</MudTh>
+                <MudTh>بخش</MudTh>
+                <MudTh>وضعیت</MudTh>
+                <MudTh>عملیات</MudTh>
+
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd DataLabel="نمونه">
+                    @context.Sample?.SampleCode
+                </MudTd>
+
+                <MudTd DataLabel="کد آزمون">
+                    @context.Test?.Code
+                </MudTd>
+
+                <MudTd DataLabel="نام آزمون">
+                    @context.Test?.Name
+                </MudTd>
+
+                <MudTd DataLabel="بخش">
+                    @(context.Department?.Name ?? "-")
+                </MudTd>
+
+                <MudTd DataLabel="وضعیت">
+
+                    <MudChip T="string"
+                             Color="Color.Warning"
+                             Size="Size.Small">
+                        در انتظار ثبت نتیجه
+                    </MudChip>
+
+                </MudTd>
+                <MudTd DataLabel="عملیات">
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="@(() => OpenResultEntry(context))">
+
+                        ثبت نتیجه
+
+                    </MudButton>
+
+                </MudTd>
+
+            </RowTemplate>
+
+            <NoRecordsContent>
+
+                <MudAlert Severity="Severity.Info">
+                    هیچ آزمونی در انتظار ثبت نتیجه نیست.
+                </MudAlert>
+
+            </NoRecordsContent>
+
+        </MudTable>
+    }
+
+</MudPaper>
+
+@code {
+
+    private List<TestAssignment> Assignments = new();
+
+    private bool IsLoading;
+    private string ErrorMessage = "";
+    private TestAssignment? SelectedAssignment;
+    private string ResultValue = "";
+    private string ResultComment = "";
+    private decimal? RequestedLOD;
+    private decimal? RequestedLOQ;
+    private decimal? RequestedMinValue;
+    private decimal? RequestedMaxValue;
+
+    private string LimitChangeReason = "";
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+    private string GetAssignmentRowClass(TestAssignment assignment, int rowNumber)
+    {
+        return TestAssignmentService.IsResultOutOfLimit(assignment)
+            ? "out-of-limit-row"
+            : "";
+    }
+    private async Task Load()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = "";
+
+            if (!CurrentUserService.EmployeeId.HasValue)
+            {
+                ErrorMessage = "کاربر جاری مشخص نیست.";
+                Assignments = new();
+                return;
+            }
+
+            Assignments =
+                await TestAssignmentService
+                    .GetPendingForAnalystAsync(
+                        CurrentUserService.EmployeeId.Value);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    private void OpenResultEntry(TestAssignment assignment)
+    {
+        SelectedAssignment = assignment;
+
+        ResultValue = assignment.Result ?? "";
+        ResultComment = assignment.Comment ?? "";
+
+        RequestedLOD = null;
+        RequestedLOQ = null;
+        LimitChangeReason = "";
+    }
+    private async Task SubmitLimitChangeRequestAsync()
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            if (SelectedAssignment is null)
+            {
+                ErrorMessage = "ابتدا یک آزمون را انتخاب کنید.";
+                return;
+            }
+
+            if (!CurrentUserService.EmployeeId.HasValue)
+            {
+                ErrorMessage = "کاربر جاری مشخص نیست.";
+                return;
+            }
+
+            if (!RequestedLOD.HasValue && !RequestedLOQ.HasValue)
+            {
+                ErrorMessage =
+                    "حداقل یکی از مقادیر LOD یا LOQ پیشنهادی را وارد کنید.";
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(LimitChangeReason))
+            {
+                ErrorMessage =
+                    "علت درخواست تغییر را وارد کنید.";
+
+                return;
+            }
+            Console.WriteLine(
+            $"LIMIT REQUEST: TestId={SelectedAssignment.TestId}, " +
+            $"EmployeeId={CurrentUserService.EmployeeId}, " +
+            $"LOD={RequestedLOD}, LOQ={RequestedLOQ}, " +
+            $"Reason={LimitChangeReason}");
+            await TestLimitChangeRequestService.CreateRequestAsync(
+             SelectedAssignment.TestId,
+             CurrentUserService.EmployeeId.Value,
+             null,
+             RequestedLOD,
+             RequestedLOQ,
+             RequestedMinValue,
+             RequestedMaxValue,
+             null,
+             null,
+             LimitChangeReason);
+
+            RequestedLOD = null;
+            RequestedLOQ = null;
+            RequestedMinValue = null;
+            RequestedMaxValue = null;
+            LimitChangeReason = "";
+
+            ErrorMessage = "";
+
+            await Load();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"خطا در ثبت درخواست: {ex.Message}";
+            Console.WriteLine(ex.ToString());
+        }
+    }
+    private async Task SaveResultAsync()
+    {
+        if (SelectedAssignment is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(ResultValue))
+        {
+            ErrorMessage = "نتیجه آزمون را وارد کنید.";
+            return;
+        }
+
+        try
+        {
+            ErrorMessage = "";
+
+            await TestAssignmentService.SaveResultAsync(
+                SelectedAssignment.Id,
+                ResultValue,
+                ResultComment);
+
+            SelectedAssignment.Result = ResultValue;
+            SelectedAssignment.Comment = ResultComment;
+
+            Assignments.Remove(SelectedAssignment);
+
+            SelectedAssignment = null;
+            ResultValue = "";
+            ResultComment = "";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+    private void OnResultValueChanged()
+    {
+        StateHasChanged();
+    }
+    private string GetResultFieldClass()
+    {
+        if (SelectedAssignment is null ||
+            string.IsNullOrWhiteSpace(ResultValue))
+            return "mb-3";
+
+        return TestAssignmentService.IsResultOutOfLimit(SelectedAssignment)
+            ? "mb-3 result-out-of-limit"
+            : "mb-3";
+    }
+}
+<style>
+    .out-of-limit-row {
+        background-color: #ffcccc !important;
+    }
+</style>
+<style>
+    .result-out-of-limit input {
+        color: var(--mud-palette-error) !important;
+        font-weight: 700;
+    }
+
+    .result-out-of-limit .mud-input-outlined-border {
+        border-color: var(--mud-palette-error) !important;
+        border-width: 2px !important;
+    }
+</style>

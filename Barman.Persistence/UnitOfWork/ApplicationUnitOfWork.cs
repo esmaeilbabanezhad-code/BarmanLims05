@@ -23,6 +23,8 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
     public ITestRepository Tests { get; }
 
+    public IReferenceLimitRepository ReferenceLimits { get; }
+
     public ITestPanelRepository TestPanels { get; }
 
     public ITestPanelItemRepository TestPanelItems { get; }
@@ -40,6 +42,8 @@ public class ApplicationUnitOfWork : IUnitOfWork
     public IPermissionRepository Permissions { get; }
 
     public ITestAssignmentRepository TestAssignments { get; }
+
+    public ITestLimitChangeRequestRepository TestLimitChangeRequests { get; }
 
     public IEmployeeRepository Employees { get; }
 
@@ -69,6 +73,8 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
         Tests = new TestRepository(context);
 
+        ReferenceLimits = new ReferenceLimitRepository(context);
+
         TestPanels = new TestPanelRepository(context);
 
         TestPanelItems = new TestPanelItemRepository(context);
@@ -92,6 +98,9 @@ public class ApplicationUnitOfWork : IUnitOfWork
         EmployeeRoles = new EmployeeRoleRepository(context);
 
         TestAssignments = new TestAssignmentRepository(context);
+
+        TestLimitChangeRequests =
+    new TestLimitChangeRequestRepository(context);
 
         DepartmentResponsibilities =
             new DepartmentResponsibilityRepository(context);

@@ -42,11 +42,27 @@ public class SampleConfiguration : IEntityTypeConfiguration<Sample>
     .OnDelete(DeleteBehavior.Restrict);
 
         // =============================
+        // Matrix
+        // =============================
+
+        builder.HasOne(x => x.Matrix)
+            .WithMany()
+            .HasForeignKey(x => x.MatrixId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // =============================
+        // Standard Sample
+        // =============================
+
+        builder.HasOne(x => x.StandardSample)
+            .WithMany(x => x.Samples)
+            .HasForeignKey(x => x.StandardSampleId)
+            .OnDelete(DeleteBehavior.Restrict);
+        // =============================
         // Other Information
         // =============================
 
-        builder.Property(x => x.Matrix)
-            .HasMaxLength(150);
+
 
         builder.Property(x => x.Unit)
             .HasMaxLength(50);

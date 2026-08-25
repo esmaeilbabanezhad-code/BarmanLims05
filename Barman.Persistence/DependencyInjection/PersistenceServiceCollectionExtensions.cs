@@ -31,11 +31,16 @@ public static class PersistenceServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, ApplicationUnitOfWork>();
         services.AddScoped<ISampleCategoryService, SampleCategoryService>();
         services.AddScoped<IMatrixService, MatrixService>();
+        services.AddScoped<IStandardSampleRepository, StandardSampleRepository>();
+        services.AddScoped<IStandardSampleService, StandardSampleService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IRolePermissionService, RolePermissionService>();
         services.AddScoped<IPermissionService, PermissionService>();
-        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddSingleton<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IDefaultTestSetService, DefaultTestSetService>();
+        services.AddScoped<
+           ITestLimitChangeRequestRepository,
+           TestLimitChangeRequestRepository>();
 
         return services;
     }

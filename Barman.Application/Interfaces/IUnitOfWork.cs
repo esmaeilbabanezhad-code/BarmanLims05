@@ -18,6 +18,8 @@ public interface IUnitOfWork
 
     ITestRepository Tests { get; }
 
+    IReferenceLimitRepository ReferenceLimits { get; }
+
     ITestPanelRepository TestPanels { get; }
 
     ITestPanelItemRepository TestPanelItems { get; }
@@ -35,6 +37,8 @@ public interface IUnitOfWork
     IPermissionRepository Permissions { get; }
 
     ITestAssignmentRepository TestAssignments { get; }
+
+    ITestLimitChangeRequestRepository TestLimitChangeRequests { get; }
 
     IEmployeeRepository Employees { get; }
 

@@ -1,0 +1,192 @@
+﻿@page "/reception"
+
+@using MudBlazor
+@using Barman.Domain.Entities
+
+@inject Barman.Application.Interfaces.IReceptionService ReceptionService
+@inject NavigationManager NavigationManager
+
+<PageTitle>پذیرش‌ها</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+    <MudPaper Class="pa-4">
+
+        <div class="d-flex justify-space-between align-center">
+
+            <MudText Typo="Typo.h5">
+                پذیرش‌ها
+            </MudText>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="NewReception">
+
+                ثبت پذیرش جدید
+
+            </MudButton>
+
+        </div>
+
+        <MudDivider Class="my-3" />
+
+        @if (IsLoading)
+        {
+            <div class="d-flex justify-center pa-6">
+
+                <MudProgressCircular Indeterminate="true"
+                                     Color="Color.Primary" />
+
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error">
+                @ErrorMessage
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="ReceptionList"
+                      Hover="true"
+                      Dense="true"
+                      Bordered="true"
+                      Striped="true">
+
+                <HeaderContent>
+
+                    <MudTh>شماره پذیرش</MudTh>
+                    <MudTh>مشتری</MudTh>
+                    <MudTh>تاریخ پذیرش</MudTh>
+                    <MudTh>وضعیت</MudTh>
+                    <MudTh>فوری</MudTh>
+                    <MudTh>تعداد نمونه</MudTh>
+                    <MudTh></MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd>
+                        @context.ReceptionNumber
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.Customer?.DisplayName ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @context.ReceptionDate
+                        .ToLocalTime()
+                        .ToString("yyyy/MM/dd HH:mm")
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Status
+                    </MudTd>
+
+                    <MudTd>
+
+                        @if (context.IsUrgent)
+                        {
+                            <MudChip T="string"
+                                     Color="Color.Warning"
+                                     Size="Size.Small">
+
+                                فوری
+
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string"
+                                     Color="Color.Default"
+                                     Size="Size.Small">
+
+                                عادی
+
+                            </MudChip>
+                        }
+
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Samples.Count
+                    </MudTd>
+
+                    <MudTd>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => ViewDetails(context.Id))">
+
+                            جزئیات
+
+                        </MudButton>
+
+                    </MudTd>
+
+                </RowTemplate>
+
+                <NoRecordsContent>
+
+                    <MudText Class="pa-4">
+                        هیچ پذیرشی ثبت نشده است.
+                    </MudText>
+
+                </NoRecordsContent>
+
+            </MudTable>
+        }
+
+    </MudPaper>
+
+</MudContainer>
+
+@code {
+
+    private List<Reception> ReceptionList = new();
+
+    private bool IsLoading;
+
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            ReceptionList =
+                await ReceptionService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در بارگذاری پذیرش‌ها: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void NewReception()
+    {
+        NavigationManager.NavigateTo("/reception/create");
+    }
+
+    private void ViewDetails(Guid id)
+    {
+        NavigationManager.NavigateTo(
+            $"/reception/details/{id}");
+    }
+}

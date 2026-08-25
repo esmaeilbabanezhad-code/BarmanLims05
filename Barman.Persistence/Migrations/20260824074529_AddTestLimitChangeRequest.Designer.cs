@@ -3,6 +3,7 @@ using System;
 using Barman.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Barman.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260824074529_AddTestLimitChangeRequest")]
+    partial class AddTestLimitChangeRequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -592,8 +595,7 @@ namespace Barman.Persistence.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
+                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -602,8 +604,7 @@ namespace Barman.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -619,21 +620,16 @@ namespace Barman.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasColumnType("text");
 
                     b.Property<Guid>("SampleCategoryId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SampleCategoryId", "Code")
-                        .IsUnique();
+                    b.HasIndex("SampleCategoryId");
 
-                    b.HasIndex("SampleCategoryId", "Name")
-                        .IsUnique();
-
-                    b.ToTable("Matrices", (string)null);
+                    b.ToTable("Matrices");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.NumberSequence", b =>
@@ -1020,8 +1016,9 @@ namespace Barman.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid?>("MatrixId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("Matrix")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
 
                     b.Property<DateTimeOffset?>("ModifiedAt")
                         .HasColumnType("timestamp with time zone");
@@ -1049,16 +1046,11 @@ namespace Barman.Persistence.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
-                    b.Property<Guid?>("StandardSampleId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Unit")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("MatrixId");
 
                     b.HasIndex("ReceptionId");
 
@@ -1066,8 +1058,6 @@ namespace Barman.Persistence.Migrations
 
                     b.HasIndex("SampleCode")
                         .IsUnique();
-
-                    b.HasIndex("StandardSampleId");
 
                     b.ToTable("Samples", (string)null);
                 });
@@ -1119,63 +1109,6 @@ namespace Barman.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("SampleCategories", (string)null);
-                });
-
-            modelBuilder.Entity("Barman.Domain.Entities.StandardSample", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("MatrixId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("ModifiedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("ModifiedBy")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<Guid>("SampleCategoryId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SampleCategoryId");
-
-                    b.HasIndex("MatrixId", "Code")
-                        .IsUnique();
-
-                    b.HasIndex("MatrixId", "Name")
-                        .IsUnique();
-
-                    b.ToTable("StandardSamples", (string)null);
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerSectionHead", b =>
@@ -1492,19 +1425,6 @@ namespace Barman.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
-                    b.Property<string>("TechnicalManagerApprovalComment")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<DateTimeOffset?>("TechnicalManagerApprovedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("TechnicalManagerApprovedByEmployeeId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("TechnicalManagerStatus")
-                        .HasColumnType("integer");
-
                     b.Property<Guid>("TestId")
                         .HasColumnType("uuid");
 
@@ -1515,8 +1435,6 @@ namespace Barman.Persistence.Migrations
                     b.HasIndex("ReferenceLimitId");
 
                     b.HasIndex("RequestedByEmployeeId");
-
-                    b.HasIndex("TechnicalManagerApprovedByEmployeeId");
 
                     b.HasIndex("TestId", "Status");
 
@@ -1804,7 +1722,7 @@ namespace Barman.Persistence.Migrations
                     b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
                         .WithMany()
                         .HasForeignKey("SampleCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("SampleCategory");
@@ -1874,11 +1792,6 @@ namespace Barman.Persistence.Migrations
 
             modelBuilder.Entity("Barman.Domain.Entities.Sample", b =>
                 {
-                    b.HasOne("Barman.Domain.Entities.Matrix", "Matrix")
-                        .WithMany()
-                        .HasForeignKey("MatrixId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Barman.Domain.Entities.Reception", "Reception")
                         .WithMany("Samples")
                         .HasForeignKey("ReceptionId")
@@ -1890,35 +1803,7 @@ namespace Barman.Persistence.Migrations
                         .HasForeignKey("SampleCategoryId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Barman.Domain.Entities.StandardSample", "StandardSample")
-                        .WithMany("Samples")
-                        .HasForeignKey("StandardSampleId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Matrix");
-
                     b.Navigation("Reception");
-
-                    b.Navigation("SampleCategory");
-
-                    b.Navigation("StandardSample");
-                });
-
-            modelBuilder.Entity("Barman.Domain.Entities.StandardSample", b =>
-                {
-                    b.HasOne("Barman.Domain.Entities.Matrix", "Matrix")
-                        .WithMany()
-                        .HasForeignKey("MatrixId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
-                        .WithMany()
-                        .HasForeignKey("SampleCategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Matrix");
 
                     b.Navigation("SampleCategory");
                 });
@@ -2024,11 +1909,6 @@ namespace Barman.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Barman.Domain.Entities.Employee", "TechnicalManagerApprovedByEmployee")
-                        .WithMany()
-                        .HasForeignKey("TechnicalManagerApprovedByEmployeeId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Barman.Domain.Entities.Test", "Test")
                         .WithMany()
                         .HasForeignKey("TestId")
@@ -2040,8 +1920,6 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("ReferenceLimit");
 
                     b.Navigation("RequestedByEmployee");
-
-                    b.Navigation("TechnicalManagerApprovedByEmployee");
 
                     b.Navigation("Test");
                 });
@@ -2129,11 +2007,6 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("Samples");
 
                     b.Navigation("TestPanelRules");
-                });
-
-            modelBuilder.Entity("Barman.Domain.Entities.StandardSample", b =>
-                {
-                    b.Navigation("Samples");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Test", b =>

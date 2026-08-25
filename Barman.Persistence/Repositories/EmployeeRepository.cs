@@ -45,6 +45,10 @@ public class EmployeeRepository : IEmployeeRepository
         return await _context.Employees
             .Where(x => x.EmployeeDepartments
                 .Any(ed => ed.DepartmentId == departmentId))
+            .Include(x => x.EmployeeDepartments)
+                .ThenInclude(x => x.Department)
+            .Include(x => x.EmployeeRoles)
+                .ThenInclude(x => x.Role)
             .OrderBy(x => x.FullName)
             .ToListAsync();
     }

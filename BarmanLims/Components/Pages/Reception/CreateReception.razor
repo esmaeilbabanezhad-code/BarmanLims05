@@ -3,6 +3,7 @@
 @using MudBlazor
 @using Barman.Application.DTOs.Reception
 @using Barman.Application.DTOs.Customer
+@using Barman.Application.DTOs.SampleCategory
 @using Barman.Domain.Entities
 @using Barman.Application.DTOs.Test
 @using Barman.Application.Interfaces
@@ -11,7 +12,9 @@
 @inject Barman.Application.Interfaces.IReceptionService ReceptionService
 @inject Barman.Application.Interfaces.ICustomerService CustomerService
 @inject Barman.Application.Interfaces.IMatrixService MatrixService
+@inject Barman.Application.Interfaces.ISampleCategoryService SampleCategoryService
 @inject Barman.Application.Interfaces.ITestService TestService
+@inject Barman.Application.Interfaces.IStandardSampleService StandardSampleService
 @inject NavigationManager NavigationManager
 @inject ITestPanelService TestPanelService
 
@@ -134,7 +137,30 @@
                                           Disabled="@IsSaving" />
 
                         </MudItem>
+                        @* ============================= *@
+                        @* Sample Category               *@
+                        @* ============================= *@
 
+                        <MudItem xs="12" sm="6">
+
+                            <MudSelect T="Guid?"
+                                       Label="دسته‌بندی نمونه"
+                                       Variant="Variant.Outlined"
+                                       Required="true"
+                                       @bind-Value="sample.SampleCategoryId"
+                                       @bind-Value:after="@(() => OnSampleCategoryChanged(sample))"
+                                       Disabled="@IsSaving">
+
+                                @foreach (var category in SampleCategories)
+                                {
+                                    <MudSelectItem T="Guid?" Value="@category.Id">
+                                        @category.Code - @category.Name
+                                    </MudSelectItem>
+                                }
+
+                            </MudSelect>
+
+                        </MudItem>
                         @* ============================= *@
                         @* Tests                         *@
                         @* ============================= *@
@@ -255,19 +281,40 @@
 
                         <MudItem xs="12" sm="6">
 
-                            <MudSelect T="string"
+                            <MudSelect T="Guid?"
                                        Label="ماتریس"
                                        Variant="Variant.Outlined"
-                                       @bind-Value="sample.Matrix"
+                                       @bind-Value="sample.MatrixId"
                                        Disabled="@IsSaving">
 
-                                @foreach (var matrix in Matrices)
+                                @foreach (var matrix in SampleMatrices[sample])
                                 {
-                                    <MudSelectItem T="string"
-                                                   Value="@matrix.Name">
-
+                                    <MudSelectItem T="Guid?" Value="@matrix.Id">
                                         @matrix.Name
+                                    </MudSelectItem>
+                                }
 
+                            </MudSelect>
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Standard Sample                *@
+                        @* ============================= *@
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudSelect T="Guid?"
+                                       Label="Standard Sample"
+                                       Variant="Variant.Outlined"
+                                       @bind-Value="sample.StandardSampleId"
+                                       Disabled="@IsSaving">
+
+                                @foreach (var standardSample in GetStandardSamples(sample))
+                                {
+                                    <MudSelectItem T="Guid?"
+                                                   Value="@standardSample.Id">
+                                        @standardSample.Code - @standardSample.Name
                                     </MudSelectItem>
                                 }
 
@@ -420,7 +467,17 @@
 
     private List<CustomerLookupDto> Customers = new();
 
+
+    private List<SampleCategory> SampleCategories = new();
+
+
+
     private List<Matrix> Matrices = new();
+
+    private List<StandardSample> StandardSamples = new();
+
+    private Dictionary<CreateReceptionSampleDto, List<Matrix>> SampleMatrices
+    = new();
 
     private List<TestLookupDto> Tests = new();
 
@@ -463,7 +520,20 @@
             Customers =
               await CustomerService.GetLookupWithDefaultPanelAsync();
 
+            // -----------------------------
+            // Active Sample Categories
+            // -----------------------------
 
+            var allSampleCategories =
+                await SampleCategoryService.GetAllAsync();
+
+            SampleCategories =
+                allSampleCategories
+                    .Where(x =>
+                        x.IsActive &&
+                        !x.IsDeleted)
+                    .OrderBy(x => x.Name)
+                    .ToList();
             // -----------------------------
             // Active Matrices
             // -----------------------------
@@ -479,6 +549,20 @@
                     .OrderBy(x => x.Name)
                     .ToList();
 
+            // -----------------------------
+            // Active Standard Samples
+            // -----------------------------
+
+            var allStandardSamples =
+                await StandardSampleService.GetAllAsync();
+
+            StandardSamples =
+                allStandardSamples
+                    .Where(x =>
+                        x.IsActive &&
+                        !x.IsDeleted)
+                    .OrderBy(x => x.Name)
+                    .ToList();
 
             // -----------------------------
             // Active Reception Tests
@@ -519,7 +603,8 @@
         var sample = new CreateReceptionSampleDto
         {
             SampleName = "",
-            Matrix = ""
+            SampleCategoryId = null,
+            MatrixId = null
         };
 
         Samples.Add(sample);
@@ -527,11 +612,23 @@
         SelectedTests[sample] =
             new HashSet<Guid>();
 
+        SampleMatrices[sample] =
+            new List<Matrix>();
+
         await ApplyDefaultTestPanel(sample);
 
         Result = "";
     }
+    private IEnumerable<StandardSample> GetStandardSamples(
+    CreateReceptionSampleDto sample)
+    {
+        if (sample.MatrixId == null)
+            return Enumerable.Empty<StandardSample>();
 
+        return StandardSamples
+            .Where(x => x.MatrixId == sample.MatrixId)
+            .OrderBy(x => x.Name);
+    }
     private async Task OnCustomerChanged()
     {
         foreach (var sample in Samples)
@@ -541,7 +638,32 @@
 
         StateHasChanged();
     }
+    private async Task OnSampleCategoryChanged(
+    CreateReceptionSampleDto sample)
+    {
+        // ماتریس قبلی دیگر معتبر نیست
+        sample.MatrixId = null;
 
+        // اگر دسته‌بندی انتخاب نشده باشد
+        if (!sample.SampleCategoryId.HasValue ||
+            sample.SampleCategoryId.Value == Guid.Empty)
+        {
+            SampleMatrices[sample] = new List<Matrix>();
+            return;
+        }
+
+        // دریافت ماتریس‌های مربوط به همین دسته‌بندی
+        var matrices = await MatrixService.GetBySampleCategoryIdAsync(
+            sample.SampleCategoryId.Value);
+
+        // فقط ماتریس‌های فعال و حذف‌نشده
+        SampleMatrices[sample] = matrices
+            .Where(x => x.IsActive && !x.IsDeleted)
+            .OrderBy(x => x.Name)
+            .ToList();
+
+        await InvokeAsync(StateHasChanged);
+    }
     private async Task ApplyDefaultTestPanel(
     CreateReceptionSampleDto sample)
     {
@@ -700,9 +822,9 @@
             // =================================================
 
             var sampleWithoutMatrix =
-                validSamples.FirstOrDefault(x =>
-                    string.IsNullOrWhiteSpace(
-                        x.Matrix));
+              validSamples.FirstOrDefault(x =>
+              !x.MatrixId.HasValue ||
+              x.MatrixId == Guid.Empty);
 
 
             if (sampleWithoutMatrix != null)
