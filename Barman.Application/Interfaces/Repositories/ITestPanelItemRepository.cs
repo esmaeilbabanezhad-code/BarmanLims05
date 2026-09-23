@@ -12,6 +12,11 @@ public interface ITestPanelItemRepository
         Guid id,
         CancellationToken cancellationToken = default);
 
+    Task<TestPanelItem?> GetByPanelAndTestAsync(
+    Guid testPanelId,
+    Guid testId,
+    CancellationToken cancellationToken = default);
+
     Task AddAsync(
         TestPanelItem entity,
         CancellationToken cancellationToken = default);

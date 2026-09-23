@@ -12,6 +12,18 @@ public class Sample : BaseEntity
 
     public string SampleName { get; set; } = "";
 
+    public string? CustomerSampleName { get; set; }
+
+    public DateOnly? ProductionDate { get; set; }
+
+    public DateOnly? ExpiryDate { get; set; }
+
+    public string? BatchLotNumber { get; set; }
+
+    public string? QuotaNumber { get; set; }
+
+    public string? ShipmentNumber { get; set; }
+
     public Guid? SampleCategoryId { get; set; }
 
     public SampleCategory? SampleCategory { get; set; }
@@ -34,4 +46,7 @@ public class Sample : BaseEntity
 
     public ICollection<TestAssignment> TestAssignments { get; set; }
         = new List<TestAssignment>();
+
+    public ICollection<CustomFieldValue> CustomFieldValues { get; set; }
+    = new List<CustomFieldValue>();
 }

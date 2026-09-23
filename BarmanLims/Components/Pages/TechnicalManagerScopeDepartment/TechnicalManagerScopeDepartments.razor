@@ -1,0 +1,571 @@
+@page "/technical-manager-scope-departments"
+
+@using Barman.Application.Interfaces
+@using Barman.Domain.Entities
+
+@inject ITechnicalManagerScopeService TechnicalManagerScopeService
+@inject ITechnicalManagerScopeDepartmentService ScopeDepartmentService
+@inject IDepartmentService DepartmentService
+
+<PageTitle>Technical Manager Scope Departments</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+    <MudPaper Class="pa-5">
+
+        <MudText Typo="Typo.h5" Class="mb-4">
+            Technical Manager Scope Departments
+        </MudText>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="ShowAddForm">
+            Add Department Relation
+        </MudButton>
+
+        @if (showForm)
+        {
+            <MudPaper Outlined="true" Class="pa-4 mt-4">
+
+                <MudText Typo="Typo.h6" Class="mb-4">
+                    @(EditingId == Guid.Empty
+                                    ? "Add Scope Department Relation"
+                                    : "Edit Scope Department Relation")
+            </MudText>
+
+                <MudGrid>
+
+                    <MudItem xs="12" sm="6">
+
+                        <MudSelect T="Guid"
+                                   Value="SelectedScopeId"
+                                   ValueChanged="OnScopeChanged"
+                                   Label="Technical Manager Scope"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   FullWidth="true">
+
+                        @foreach (var scope in scopes)
+                            {
+                                <MudSelectItem Value="@scope.Id">
+                                    @scope.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+
+                        <MudSelect T="Guid"
+                                   @bind-Value="SelectedDepartmentId"
+                                   Label="Department"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   FullWidth="true">
+
+                            @foreach (var department in departments)
+                            {
+                                <MudSelectItem Value="@department.Id">
+                                    @department.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+
+                        <MudNumericField T="int"
+                                         @bind-Value="Priority"
+                                         Label="Priority"
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         FullWidth="true" />
+
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+
+                        <MudCheckBox @bind-Value="IsPrimary"
+                                     Label="Primary" />
+
+                    </MudItem>
+
+                </MudGrid>
+
+                @if (!string.IsNullOrWhiteSpace(formMessage))
+                {
+                    <MudAlert Severity="@formMessageSeverity"
+                              Class="mt-4">
+                        @formMessage
+                    </MudAlert>
+                }
+
+                <div class="mt-4">
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="SaveRelation"
+                               Disabled="@isSaving">
+                        @(isSaving ? "Saving..." : "Save")
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               Class="mr-2"
+                               OnClick="CancelForm"
+                               Disabled="@isSaving">
+                        Cancel
+                    </MudButton>
+
+                </div>
+
+            </MudPaper>
+        }
+
+    </MudPaper>
+
+    <MudPaper Class="pa-5 mt-5">
+
+        <MudText Typo="Typo.h6" Class="mb-3">
+            Scope Department Relations
+        </MudText>
+
+        @if (isLoading)
+        {
+            <MudProgressLinear Indeterminate="true"
+                               Color="Color.Primary"
+                               Class="mb-4" />
+        }
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mb-4">
+                @errorMessage
+            </MudAlert>
+        }
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="LoadRelations"
+                   Disabled="@isLoading">
+            Refresh
+        </MudButton>
+
+        <MudTable Items="relations"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="true"
+                  Striped="true"
+                  Class="mt-4">
+
+            <HeaderContent>
+
+                <MudTh>Scope</MudTh>
+                <MudTh>Department</MudTh>
+                <MudTh>Priority</MudTh>
+                <MudTh>Primary</MudTh>
+                <MudTh>Actions</MudTh>
+
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd DataLabel="Scope">
+                    @context.TechnicalManagerScope?.Name
+                </MudTd>
+
+                <MudTd DataLabel="Department">
+                    @context.Department?.Name
+                </MudTd>
+
+                <MudTd DataLabel="Priority">
+                    @context.Priority
+                </MudTd>
+
+                <MudTd DataLabel="Primary">
+
+                    @if (context.IsPrimary)
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Success"
+                                 Size="Size.Small">
+                            Primary
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Default"
+                                 Size="Size.Small">
+                            No
+                        </MudChip>
+                    }
+
+                </MudTd>
+
+                <MudTd DataLabel="Actions">
+
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               OnClick="@(() => EditRelation(context))">
+                        Edit
+                    </MudButton>
+
+                    @if (context.IsActive)
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Warning"
+                                   Class="mr-2"
+                                   OnClick="@(() => DeactivateRelation(context.Id))"
+                                   Disabled="@isSaving">
+                            Deactivate
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Success"
+                                   Class="mr-2"
+                                   OnClick="@(() => ActivateRelation(context.Id))"
+                                   Disabled="@isSaving">
+                            Activate
+                        </MudButton>
+                    }
+
+                </MudTd>
+
+            </RowTemplate>
+
+            <NoRecordsContent>
+
+                <MudText Class="pa-4">
+                    No scope department relation has been registered.
+                </MudText>
+
+            </NoRecordsContent>
+
+        </MudTable>
+
+    </MudPaper>
+
+</MudContainer>
+
+@code {
+
+    private List<TechnicalManagerScope> scopes = new();
+    private List<Department> departments = new();
+    private List<TechnicalManagerScopeDepartment> relations = new();
+
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool showForm = false;
+
+    private Guid EditingId = Guid.Empty;
+    private Guid SelectedScopeId = Guid.Empty;
+    private Guid SelectedDepartmentId = Guid.Empty;
+
+    private int Priority = 100;
+    private bool IsPrimary = false;
+
+    private string? errorMessage;
+    private string? formMessage;
+
+    private Severity formMessageSeverity = Severity.Info;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            scopes =
+                await TechnicalManagerScopeService
+                    .GetAllAsync();
+
+            departments =
+                await DepartmentService
+                    .GetAllAsync();
+
+            await LoadRelations();
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Error loading data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadRelations()
+    {
+        try
+        {
+            if (SelectedScopeId != Guid.Empty)
+            {
+                relations =
+                    await ScopeDepartmentService
+                        .GetByScopeIdAsync(SelectedScopeId);
+            }
+            else
+            {
+                relations = new List<TechnicalManagerScopeDepartment>();
+
+                foreach (var scope in scopes)
+                {
+                    var items =
+                        await ScopeDepartmentService
+                            .GetByScopeIdAsync(scope.Id);
+
+                    relations.AddRange(items);
+                }
+
+                relations = relations
+                    .OrderBy(x => x.TechnicalManagerScope?.Name)
+                    .ThenBy(x => x.Priority)
+                    .ThenBy(x => x.Department?.Name)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Error loading relations: {ex.Message}";
+        }
+    }
+
+    private async Task OnScopeChanged(Guid scopeId)
+    {
+        SelectedScopeId = scopeId;
+
+        await LoadRelations();
+    }
+
+    private void ShowAddForm()
+    {
+        EditingId = Guid.Empty;
+
+        SelectedScopeId =
+            scopes.FirstOrDefault()?.Id
+            ?? Guid.Empty;
+
+        SelectedDepartmentId = Guid.Empty;
+
+        Priority = 100;
+        IsPrimary = false;
+
+        formMessage = null;
+        showForm = true;
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+        ClearForm();
+        formMessage = null;
+    }
+
+    private void ClearForm()
+    {
+        EditingId = Guid.Empty;
+        SelectedScopeId = Guid.Empty;
+        SelectedDepartmentId = Guid.Empty;
+        Priority = 100;
+        IsPrimary = false;
+    }
+
+    private void EditRelation(
+        TechnicalManagerScopeDepartment relation)
+    {
+        EditingId = relation.Id;
+
+        SelectedScopeId =
+            relation.TechnicalManagerScopeId;
+
+        SelectedDepartmentId =
+            relation.DepartmentId;
+
+        Priority = relation.Priority;
+        IsPrimary = relation.IsPrimary;
+
+        formMessage = null;
+        showForm = true;
+    }
+
+    private async Task SaveRelation()
+    {
+        formMessage = null;
+
+        if (SelectedScopeId == Guid.Empty)
+        {
+            formMessage = "Technical Manager Scope is required.";
+            formMessageSeverity = Severity.Error;
+            return;
+        }
+
+        if (SelectedDepartmentId == Guid.Empty)
+        {
+            formMessage = "Department is required.";
+            formMessageSeverity = Severity.Error;
+            return;
+        }
+
+        if (Priority < 0)
+        {
+            formMessage = "Priority cannot be negative.";
+            formMessageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+
+            if (EditingId == Guid.Empty)
+            {
+                var relation =
+                    new TechnicalManagerScopeDepartment
+                    {
+                        TechnicalManagerScopeId =
+                            SelectedScopeId,
+
+                        DepartmentId =
+                            SelectedDepartmentId,
+
+                        Priority = Priority,
+
+                        IsPrimary = IsPrimary,
+
+                        IsActive = true,
+
+                        IsDeleted = false
+                    };
+
+                await ScopeDepartmentService
+                    .AddAsync(relation);
+
+                formMessage =
+                    "Scope department relation created successfully.";
+            }
+            else
+            {
+                var relation =
+                    await ScopeDepartmentService
+                        .GetByIdAsync(EditingId);
+
+                if (relation is null)
+                {
+                    formMessage =
+                        "Scope department relation was not found.";
+
+                    formMessageSeverity =
+                        Severity.Error;
+
+                    return;
+                }
+
+                relation.TechnicalManagerScopeId =
+                    SelectedScopeId;
+
+                relation.DepartmentId =
+                    SelectedDepartmentId;
+
+                relation.Priority =
+                    Priority;
+
+                relation.IsPrimary =
+                    IsPrimary;
+
+                await ScopeDepartmentService
+                    .UpdateAsync(relation);
+
+                formMessage =
+                    "Scope department relation updated successfully.";
+            }
+
+            formMessageSeverity = Severity.Success;
+
+            await LoadRelations();
+
+            ClearForm();
+
+            showForm = false;
+        }
+        catch (Exception ex)
+        {
+            formMessage =
+                $"Error saving relation: {ex.Message}";
+
+            formMessageSeverity =
+                Severity.Error;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task ActivateRelation(Guid id)
+    {
+        try
+        {
+            isSaving = true;
+
+            await ScopeDepartmentService
+                .ActivateAsync(id);
+
+            await LoadRelations();
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Error activating relation: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeactivateRelation(Guid id)
+    {
+        try
+        {
+            isSaving = true;
+
+            await ScopeDepartmentService
+                .DeactivateAsync(id);
+
+            await LoadRelations();
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"Error deactivating relation: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

@@ -2,8 +2,12 @@
 
 @using Barman.Domain.Entities
 @using Barman.Application.Services
+@using Barman.Application.DTOs.Test
+@using Barman.Application.Interfaces
 
 @inject TestAssignmentService TestAssignmentService
+@inject ITestAssignmentResultValueService TestAssignmentResultValueService
+@inject ITestResultSetItemService TestResultSetItemService
 
 <PageTitle>کارتابل مدیر ارشد</PageTitle>
 
@@ -154,21 +158,268 @@
                             </MudText>
                         </MudItem>
 
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.caption">
+                                شماره پذیرش
+                            </MudText>
+
+                            <MudText Typo="Typo.body1">
+                                @SelectedResultApproval.Sample?.Reception?.ReceptionNumber
+                            </MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.caption">
+                                مشتری
+                            </MudText>
+
+                            <MudText Typo="Typo.body1">
+                                @SelectedResultApproval.Sample?.Reception?.Customer?.DisplayName
+                            </MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.caption">
+                                تاریخ دریافت
+                            </MudText>
+
+                            <MudText Typo="Typo.body1">
+                                @SelectedResultApproval.Sample?.Reception?.ReceptionDate.ToString("yyyy/MM/dd")
+                            </MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.caption">
+                                کد نمونه
+                            </MudText>
+
+                            <MudText Typo="Typo.body1">
+                                @SelectedResultApproval.Sample?.SampleCode
+                            </MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.caption">
+                                نام نمونه
+                            </MudText>
+
+                            <MudText Typo="Typo.body1">
+                                @SelectedResultApproval.Sample?.SampleName
+                            </MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.caption">
+                                دسته‌بندی نمونه
+                            </MudText>
+
+                            <MudText Typo="Typo.body1">
+                                @SelectedResultApproval.Sample?.SampleCategory?.Name
+                            </MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" md="3">
+                            <MudText Typo="Typo.caption">
+                                ماتریس
+                            </MudText>
+
+                            <MudText Typo="Typo.body1">
+                                @SelectedResultApproval.Sample?.Matrix?.Name
+                            </MudText>
+                        </MudItem>
                     </MudGrid>
 
                     <MudDivider Class="my-3" />
+                    <MudText Typo="Typo.subtitle1" Class="mb-2">
+                        نتایج آزمون‌های نمونه
+                    </MudText>
 
+                    <MudTable Items="SelectedSampleAssignments"
+                              Dense="true"
+                              Hover="true"
+                              Striped="true"
+                              Bordered="true"
+                              Class="mb-4">
+
+                        <HeaderContent>
+
+                            <MudTh>ردیف</MudTh>
+                            <MudTh>کد آزمون</MudTh>
+                            <MudTh>نام آزمون</MudTh>
+                            <MudTh>نتیجه</MudTh>
+                            <MudTh>واحد</MudTh>
+
+                        </HeaderContent>
+
+                        <RowTemplate>
+
+                            <MudTd DataLabel="ردیف">
+                                @(SelectedSampleAssignments.IndexOf(context) + 1)
+                            </MudTd>
+
+                            <MudTd DataLabel="کد آزمون">
+                                @context.Test?.Code
+                            </MudTd>
+
+                            <MudTd DataLabel="نام آزمون">
+                                @context.Test?.Name
+                            </MudTd>
+
+                            <MudTd DataLabel="نتیجه">
+                                @context.Result
+                            </MudTd>
+
+                            <MudTd DataLabel="واحد">
+                                @context.Unit
+                            </MudTd>
+
+                        </RowTemplate>
+
+                    </MudTable>
+
+                    <MudDivider Class="my-4" />
                     <MudText Typo="Typo.subtitle1">
                         نتیجه ثبت‌شده
                     </MudText>
 
-                    <MudTextField T="string"
-                                  Value="@SelectedResultApproval.Result"
-                                  Label="نتیجه"
-                                  Variant="Variant.Outlined"
-                                  ReadOnly="true"
-                                  FullWidth="true"
-                                  Class="mb-3" />
+                    @if (SelectedResultApproval.TestResultSetId.HasValue &&
+                                SelectedResultApproval.TestResultSetId.Value != Guid.Empty &&
+                                SelectedResultSetItems.Count > 0)
+                    {
+                        <MudText Typo="Typo.subtitle1"
+                                 Class="mb-2">
+                            نتایج آزمون
+                        </MudText>
+
+                        <MudTable Items="SelectedResultSetItems"
+                                  Dense="true"
+                                  Hover="true"
+                                  Bordered="true"
+                                  Striped="true"
+                                  Class="mb-4">
+
+                            <HeaderContent>
+                                <MudTh>ردیف</MudTh>
+                                <MudTh>آزمون / پارامتر</MudTh>
+                                <MudTh>نتیجه</MudTh>
+                                <MudTh>واحد</MudTh>
+                                <MudTh>LOD</MudTh>
+                                <MudTh>LOQ</MudTh>
+                                <MudTh>حداقل</MudTh>
+                                <MudTh>حداکثر</MudTh>
+                                <MudTh>وضعیت</MudTh>
+                            </HeaderContent>
+
+                            <RowTemplate>
+                                @{
+                                    var resultValue =
+                                    SelectedResultValues
+                                    .FirstOrDefault(x =>
+                                    x.TestResultSetItemId == context.Id);
+
+                                    var valueText =
+                                    resultValue?.Value;
+
+                                    var hasNumericValue =
+                                    decimal.TryParse(
+                                    valueText,
+                                    out var numericValue);
+
+                                    var hasLimit =
+                                    context.MinValue.HasValue ||
+                                    context.MaxValue.HasValue;
+
+                                    var isOutOfLimit =
+                                    hasNumericValue &&
+                                    (
+                                    (context.MinValue.HasValue &&
+                                    numericValue < context.MinValue.Value)
+                                    ||
+                                    (context.MaxValue.HasValue &&
+                                    numericValue > context.MaxValue.Value)
+                                    );
+                                }
+
+                                <MudTd DataLabel="ردیف">
+                                    @context.DisplayOrder
+                                </MudTd>
+
+                                <MudTd DataLabel="آزمون / پارامتر">
+                                    @context.Name
+                                </MudTd>
+
+                                <MudTd DataLabel="نتیجه">
+                                    @(valueText ?? "-")
+                                </MudTd>
+
+                                <MudTd DataLabel="واحد">
+                                    @context.Unit
+                                </MudTd>
+
+                                <MudTd DataLabel="LOD">
+                                    @(context.LOD?.ToString() ?? "-")
+                                </MudTd>
+
+                                <MudTd DataLabel="LOQ">
+                                    @(context.LOQ?.ToString() ?? "-")
+                                </MudTd>
+
+                                <MudTd DataLabel="حداقل">
+                                    @(context.MinValue?.ToString() ?? "-")
+                                </MudTd>
+
+                                <MudTd DataLabel="حداکثر">
+                                    @(context.MaxValue?.ToString() ?? "-")
+                                </MudTd>
+
+                                <MudTd DataLabel="وضعیت">
+                                    @if (string.IsNullOrWhiteSpace(valueText))
+                                    {
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="Color.Default">
+                                            بدون نتیجه
+                                        </MudChip>
+                                    }
+                                    else if (isOutOfLimit)
+                                    {
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="Color.Error">
+                                            خارج از محدوده
+                                        </MudChip>
+                                    }
+                                    else if (!hasLimit)
+                                    {
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="Color.Warning">
+                                            بدون حدود مجاز
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="Color.Success">
+                                            پاس
+                                        </MudChip>
+                                    }
+                                </MudTd>
+                            </RowTemplate>
+
+                        </MudTable>
+                    }
+                    else
+                    {
+                        <MudTextField T="string"
+                                      Value="@SelectedResultApproval.Result"
+                                      Label="نتیجه"
+                                      Variant="Variant.Outlined"
+                                      ReadOnly="true"
+                                      FullWidth="true"
+                                      Class="mb-3" />
+                    }
 
                     <MudTextField T="string"
                                   Value="@SelectedResultApproval.Comment"
@@ -183,6 +434,13 @@
 
                     <MudStack Row="true"
                               Spacing="2">
+                        <MudTextField T="string"
+                                      @bind-Value="RejectReason"
+                                      Label="علت رد نتیجه"
+                                      Variant="Variant.Outlined"
+                                      Lines="3"
+                                      FullWidth="true"
+                                      Class="mb-3" />
 
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Success"
@@ -191,7 +449,13 @@
                             تأیید نهایی
 
                         </MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   OnClick="RejectSelectedResultAsync">
 
+                            رد نتیجه
+
+                        </MudButton>
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Default"
                                    OnClick="@(() => SelectedResultApproval = null)">
@@ -215,6 +479,14 @@
     private List<TestAssignment> PendingResultApprovals = new();
 
     private TestAssignment? SelectedResultApproval;
+
+    private List<TestAssignmentResultValue> SelectedResultValues = new();
+
+    private List<TestResultSetItemDto> SelectedResultSetItems = new();
+
+    private string RejectReason = "";
+
+    private List<TestAssignment> SelectedSampleAssignments = new();
 
     private bool IsLoading = true;
 
@@ -248,9 +520,40 @@
         }
     }
 
-    private void OpenResultApproval(TestAssignment assignment)
+    private async Task OpenResultApproval(TestAssignment assignment)
     {
-        SelectedResultApproval = assignment;
+        try
+        {
+            ErrorMessage = "";
+
+            SelectedResultApproval = assignment;
+
+            SelectedSampleAssignments =
+                await TestAssignmentService
+                    .GetBySampleIdAsync(assignment.SampleId);
+
+            SelectedResultSetItems = new();
+            SelectedResultValues = new();
+
+            if (assignment.TestResultSetId.HasValue &&
+                assignment.TestResultSetId.Value != Guid.Empty)
+            {
+                SelectedResultSetItems =
+                    await TestResultSetItemService
+                        .GetByResultSetIdAsync(
+                            assignment.TestResultSetId.Value);
+
+                SelectedResultValues =
+                    await TestAssignmentResultValueService
+                        .GetByAssignmentIdAsync(
+                            assignment.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            SelectedSampleAssignments = new();
+        }
     }
 
     private async Task ApproveSelectedResultAsync()
@@ -272,6 +575,36 @@
             SelectedResultApproval = null;
 
             StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+    private async Task RejectSelectedResultAsync()
+    {
+        if (SelectedResultApproval is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(RejectReason))
+        {
+            ErrorMessage = "علت رد نتیجه را وارد کنید.";
+            return;
+        }
+
+        try
+        {
+            await TestAssignmentService
+                .RejectResultByDirectorAsync(
+                    SelectedResultApproval.Id,
+                    RejectReason);
+
+            PendingResultApprovals.Remove(
+                SelectedResultApproval);
+
+            SelectedResultApproval = null;
+            RejectReason = "";
+            ErrorMessage = "";
         }
         catch (Exception ex)
         {

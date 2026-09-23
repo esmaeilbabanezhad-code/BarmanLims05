@@ -2,9 +2,14 @@
 
 @using MudBlazor
 @using Barman.Domain.Entities
+@using Barman.Application.DTOs.Reception
+@using BarmanLims.Components.Authorization
+@attribute [RequirePermission("Reception.View")]
 
 @inject Barman.Application.Interfaces.IReceptionService ReceptionService
 @inject Barman.Application.Services.TestAssignmentService TestAssignmentService
+@inject NavigationManager NavigationManager
+
 
 <PageTitle>جزئیات پذیرش</PageTitle>
 
@@ -60,8 +65,7 @@
                     </MudText>
 
                     <MudText Typo="Typo.body2"
-                             Color="Color.Secondary"
-                             Class="mt-1">
+                             Color="Color.Secondary">
 
                         @Reception.ReceptionNumber
 
@@ -69,19 +73,7 @@
 
                 </div>
 
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Refresh"
-                           OnClick="LoadData">
-
-                    بازخوانی
-
-                </MudButton>
-
             </div>
-
-            <MudDivider Class="my-4" />
-
 
             @* ========================================================= *@
             @* Reception information                                       *@
@@ -179,9 +171,9 @@
                 @foreach (var sample in Reception.Samples.OrderBy(x => x.SampleCode))
                 {
                     var assignments =
-                    Assignments
+                    ReceptionTestStatuses
                     .Where(x => x.SampleId == sample.Id)
-                    .OrderBy(x => x.Test?.Code)
+                    .OrderBy(x => x.TestCode)
                     .ToList();
 
                     <MudPaper Class="pa-4 mt-4"
@@ -211,27 +203,40 @@
 
                             </div>
 
+                            <div class="d-flex align-center gap-2">
 
-                            @if (assignments.Count > 0)
-                            {
-                                <MudChip T="string"
-                                         Color="Color.Success"
-                                         Size="Size.Small">
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.Description"
+                                           OnClick="@(() => NavigationManager.NavigateTo($"/final-report-preview/{sample.Id}"))">
 
-                                    @assignments.Count آزمون
+                                    مشاهده گزارش
 
-                                </MudChip>
-                            }
-                            else
-                            {
-                                <MudChip T="string"
-                                         Color="Color.Warning"
-                                         Size="Size.Small">
+                                </MudButton>
 
-                                    بدون آزمون
+                                @if (assignments.Count > 0)
+                                {
+                                    <MudChip T="string"
+                                             Color="Color.Success"
+                                             Size="Size.Small">
 
-                                </MudChip>
-                            }
+                                        @assignments.Count آزمون
+
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string"
+                                             Color="Color.Warning"
+                                             Size="Size.Small">
+
+                                        بدون آزمون
+
+                                    </MudChip>
+                                }
+
+                            </div>
 
                         </div>
 
@@ -368,54 +373,24 @@
                                 <RowTemplate>
 
                                     <MudTd DataLabel="کد آزمون">
-
-                                        @context.Test?.Code
-
+                                        @context.TestCode
                                     </MudTd>
 
-
                                     <MudTd DataLabel="نام آزمون">
-
-                                        @context.Test?.Name
-
+                                        @context.TestName
                                     </MudTd>
 
                                     <MudTd DataLabel="بخش">
-
-                                        <MudSelect T="Guid?"
-                                                   Value="@context.DepartmentId"
-                                                   ValueChanged="@(value => ChangeDepartment(context, value))"
-                                                   Dense="true"
-                                                   Variant="Variant.Outlined"
-                                                   Margin="Margin.Dense"
-                                                   Clearable="true">
-
-                                            @foreach (var department in Departments)
-                                            {
-                                                <MudSelectItem T="Guid?"
-                                                               Value="@department.Id">
-
-                                                    @department.Name
-
-                                                </MudSelectItem>
-                                            }
-
-                                       </MudSelect>
-
+                                        @(context.DepartmentName ?? "-")
                                     </MudTd>
 
                                     <MudTd DataLabel="واحد">
-
-                                        @(context.Unit
-                                                                ?? context.Test?.Unit
-                                                                ?? "-")
-
-                    </MudTd>
-
+                                        @(context.Unit ?? "-")
+                                    </MudTd>
 
                                     <MudTd DataLabel="نوع">
 
-                        @if (context.Test?.IsQuantitative == true)
+                                        @if (context.IsQuantitative)
                                         {
                                             <MudChip T="string"
                                                      Color="Color.Primary"
@@ -438,26 +413,25 @@
 
                                     </MudTd>
 
-
                                     <MudTd DataLabel="وضعیت نتیجه">
 
-                                        @if (string.IsNullOrWhiteSpace(context.Result))
+                                        @if (context.HasResult)
                                         {
                                             <MudChip T="string"
-                                                     Color="Color.Default"
+                                                     Color="Color.Success"
                                                      Size="Size.Small">
 
-                                                نتیجه ثبت نشده
+                                                ثبت شد
 
                                             </MudChip>
                                         }
                                         else
                                         {
                                             <MudChip T="string"
-                                                     Color="Color.Success"
+                                                     Color="Color.Default"
                                                      Size="Size.Small">
 
-                                                @context.Result
+                                                ثبت نشده
 
                                             </MudChip>
                                         }
@@ -467,6 +441,7 @@
                                 </RowTemplate>
 
                             </MudTable>
+                        }
                         }
 
                     </MudPaper>
@@ -528,6 +503,7 @@
 
     private List<TestAssignment> Assignments = new();
 
+    private List<ReceptionTestStatusDto> ReceptionTestStatuses = new();
 
     private bool IsLoading;
 
@@ -566,43 +542,43 @@
                 return;
             }
 
-            Assignments =
-                await TestAssignmentService
-                    .GetByReceptionIdAsync(Id);
+            ReceptionTestStatuses =
+                    await TestAssignmentService
+                        .GetReceptionTestStatusesAsync(Id);
 
             Departments =
-await TestAssignmentService
-.GetDepartmentsAsync();
-        }
-        catch (Exception ex)
-        {
+                await TestAssignmentService
+                .GetDepartmentsAsync();
+                        }
+                        catch (Exception ex)
+                        {
             ErrorMessage =
                 $"خطا در بارگذاری اطلاعات پذیرش: {ex.Message}";
 
-            Assignments.Clear();
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
-    private async Task ChangeDepartment(
-    TestAssignment assignment,
-    Guid? departmentId)
-    {
-        try
-        {
-            await TestAssignmentService
-                .SetDepartmentAsync(
-                    assignment.Id,
-                    departmentId);
+            ReceptionTestStatuses.Clear();
+                        }
+                        finally
+                        {
+                            IsLoading = false;
+                        }
+                    }
+                    private async Task ChangeDepartment(
+                    TestAssignment assignment,
+                    Guid? departmentId)
+                    {
+                        try
+                        {
+                            await TestAssignmentService
+                                .SetDepartmentAsync(
+                                    assignment.Id,
+                                    departmentId);
 
-            assignment.DepartmentId = departmentId;
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage =
-                $"خطا در ذخیره بخش: {ex.Message}";
-        }
-    }
+                            assignment.DepartmentId = departmentId;
+                        }
+                        catch (Exception ex)
+                        {
+                            ErrorMessage =
+                                $"خطا در ذخیره بخش: {ex.Message}";
+                        }
+                    }
 }

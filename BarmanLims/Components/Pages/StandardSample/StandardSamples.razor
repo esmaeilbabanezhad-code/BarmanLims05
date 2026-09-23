@@ -1,4 +1,4 @@
-@page "/standard-samples"
+﻿@page "/standard-samples"
 
 @using MudBlazor
 @using Barman.Application.Interfaces
@@ -8,6 +8,7 @@
 @inject IStandardSampleService StandardSampleService
 @inject IMatrixService MatrixService
 @inject ISampleCategoryService SampleCategoryService
+@inject INumberSequenceService NumberSequenceService
 
 <MudPaper Class="pa-4">
 
@@ -199,7 +200,8 @@
         <DialogContent>
 
             <MudTextField Label="Code"
-                          @bind-Value="CurrentStandardSample.Code" />
+                          @bind-Value="CurrentStandardSample.Code"
+                          ReadOnly="true" />
 
             <MudTextField Label="Name"
                           @bind-Value="CurrentStandardSample.Name" />
@@ -325,21 +327,34 @@
     }
 
 
-    private void NewStandardSample()
+    private async Task NewStandardSample()
     {
-        CurrentStandardSample = new StandardSample
+        try
         {
-            IsActive = true,
-            IsDeleted = false,
-            SampleCategoryId =
-                Categories.FirstOrDefault()?.Id
-                ?? Guid.Empty,
-            MatrixId = Guid.Empty
-        };
+            var code =
+                await NumberSequenceService
+                    .GetNextCodeAsync("StandardSample");
 
-        IsEdit = false;
+            CurrentStandardSample = new StandardSample
+            {
+                Code = code,
+                IsActive = true,
+                IsDeleted = false,
+                SampleCategoryId =
+                    Categories.FirstOrDefault()?.Id
+                    ?? Guid.Empty,
+                MatrixId = Guid.Empty
+            };
 
-        DialogVisible = true;
+            IsEdit = false;
+
+            DialogVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(
+                $"خطا در تولید کد StandardSample: {ex.Message}");
+        }
     }
 
 

@@ -7,6 +7,8 @@
 @inject Barman.Application.Interfaces.ITestPanelService TestPanelService
 @inject Barman.Application.Interfaces.ITestPanelItemService TestPanelItemService
 @inject Barman.Application.Interfaces.ITestService TestService
+@inject Barman.Application.Interfaces.INumberSequenceService NumberSequenceService
+@inject Barman.Application.Interfaces.IEmployeeService EmployeeService
 
 <PageTitle>Test Panels</PageTitle>
 
@@ -29,7 +31,16 @@
         </div>
 
         <MudDivider Class="my-3" />
-
+        <MudTextField T="string"
+                      @bind-Value="PanelSearchText"
+                      Label="جستجوی Panel"
+                      Placeholder="کد، نام یا توضیحات..."
+                      Variant="Variant.Outlined"
+                      Clearable="true"
+                      Immediate="true"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Class="mb-3" />
         @if (PanelList == null)
         {
             <MudProgressCircular Indeterminate="true"
@@ -37,18 +48,45 @@
         }
         else
         {
-            <MudTable Items="PanelList"
+            <MudTable Items="FilteredPanels"
                       Hover="true"
                       Dense="true"
-                      Striped="true">
+                      Striped="true"
+                      RowsPerPage="25">
 
                 <HeaderContent>
-                    <MudTh>Code</MudTh>
-                    <MudTh>Name</MudTh>
-                    <MudTh>Description</MudTh>
-                    <MudTh>Status</MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestPanel"
+                                           SortBy="@(x => x.Code)">
+                            Code
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestPanel"
+                                           SortBy="@(x => x.Name)">
+                            Name
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestPanel"
+                                           SortBy="@(x => x.Description)">
+                            Description
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestPanel"
+                                           SortBy="@(x => x.IsActive)">
+                            Status
+                        </MudTableSortLabel>
+                    </MudTh>
+
                     <MudTh>Tests</MudTh>
                     <MudTh></MudTh>
+
                 </HeaderContent>
 
                 <RowTemplate>
@@ -131,7 +169,10 @@
                     </MudTd>
 
                 </RowTemplate>
-
+                <PagerContent>
+                    <MudTablePager RowsPerPageString="تعداد در صفحه"
+                                   PageSizeOptions="@(new[] { 10, 25, 50, 100 })" />
+                </PagerContent>
             </MudTable>
         }
 
@@ -141,7 +182,8 @@
 
                 <MudTextField Label="Code"
                               @bind-Value="CurrentPanel.Code"
-                              Required="true" />
+                              Required="true"
+                              ReadOnly="true" />
 
                 <MudTextField Label="Name"
                               @bind-Value="CurrentPanel.Name"
@@ -203,7 +245,7 @@
                                 <MudTh>Order</MudTh>
                                 <MudTh>Code</MudTh>
                                 <MudTh>Test</MudTh>
-                                <MudTh></MudTh>
+                                <MudTh>کارشناس پیش‌فرض</MudTh>
                             </HeaderContent>
 
                             <RowTemplate>
@@ -223,7 +265,25 @@
                                 <MudTd>
                                     @context.Test?.Name
                                 </MudTd>
+                                <MudTd>
+                                    <MudSelect T="Guid?"
+                                               Value="@context.DefaultAnalystId"
+                                               ValueChanged="@((Guid? value) => ChangeDefaultAnalyst(context, value))"
+                                               Dense="true"
+                                               Variant="Variant.Outlined"
+                                               Clearable="true"
+                                               Style="min-width:180px;">
 
+                                        @foreach (var employee in Employees.Where(x => x.IsActive))
+                                        {
+                                            <MudSelectItem T="Guid?"
+                                                           Value="@employee.Id">
+                                                @employee.FullName
+                                            </MudSelectItem>
+                                        }
+
+                                    </MudSelect>
+                                </MudTd>
                                 <MudTd>
                                     <MudButton Size="Size.Small"
                                                Variant="Variant.Text"
@@ -333,6 +393,8 @@
 
     private List<TestPanelItem>? PanelItems;
 
+    private List<Employee> Employees = new();
+
     private List<TestLookupDto> AvailableTests = new();
 
     private Guid SelectedTestId = Guid.Empty;
@@ -350,15 +412,34 @@
     {
         PanelList =
             await TestPanelService.GetAllAsync();
+
+        Employees =
+            await EmployeeService.GetAllAsync();
     }
 
-    private void NewPanel()
+    private async Task NewPanel()
     {
-        CurrentPanel = new TestPanel();
+        try
+        {
+            var code =
+                await NumberSequenceService
+                    .GetNextCodeAsync("TestPanel");
 
-        IsEdit = false;
+            CurrentPanel = new TestPanel
+            {
+                Code = code,
+                IsActive = true
+            };
 
-        DialogVisible = true;
+            IsEdit = false;
+
+            DialogVisible = true;
+        }
+        catch (Exception ex)
+        {
+            TestErrorMessage =
+                $"خطا در تولید کد Panel: {ex.Message}";
+        }
     }
 
     private void Edit(TestPanel panel)
@@ -672,6 +753,27 @@
         }
     }
 
+    private async Task ChangeDefaultAnalyst(
+    TestPanelItem item,
+    Guid? defaultAnalystId)
+    {
+        if (item.DefaultAnalystId == defaultAnalystId)
+            return;
+
+        var success =
+            await TestPanelItemService.UpdateDefaultAnalystAsync(
+                item.Id,
+                defaultAnalystId);
+
+        if (success && SelectedPanel != null)
+        {
+            PanelItems =
+                await TestPanelItemService.GetByPanelIdAsync(
+                    SelectedPanel.Id);
+        }
+    }
+
+
     private async Task Activate(Guid id)
     {
         await TestPanelService.ActivateAsync(id);
@@ -692,4 +794,21 @@
 
         await Load();
     }
+    private string PanelSearchText = "";
+
+    private IEnumerable<TestPanel> FilteredPanels =>
+        PanelList == null
+            ? Enumerable.Empty<TestPanel>()
+            : string.IsNullOrWhiteSpace(PanelSearchText)
+                ? PanelList
+                : PanelList.Where(x =>
+                    (x.Code ?? "").Contains(
+                        PanelSearchText.Trim(),
+                        StringComparison.OrdinalIgnoreCase) ||
+                    (x.Name ?? "").Contains(
+                        PanelSearchText.Trim(),
+                        StringComparison.OrdinalIgnoreCase) ||
+                    (x.Description ?? "").Contains(
+                        PanelSearchText.Trim(),
+                        StringComparison.OrdinalIgnoreCase));
 }

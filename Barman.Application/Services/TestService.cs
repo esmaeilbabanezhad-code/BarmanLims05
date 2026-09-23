@@ -148,6 +148,8 @@ public class TestService : ITestService
             SampleCategoryId = dto.SampleCategoryId,
 
             MatrixId = dto.MatrixId,
+
+            DefaultAnalystId = dto.DefaultAnalystId,
         };
 
         await _unitOfWork.Tests.AddAsync(test);
@@ -231,6 +233,8 @@ public class TestService : ITestService
         test.SampleCategoryId = dto.SampleCategoryId;
 
         test.MatrixId = dto.MatrixId;
+
+        test.DefaultAnalystId = dto.DefaultAnalystId;
 
         _unitOfWork.Tests.Update(test);
 
@@ -348,6 +352,8 @@ public class TestService : ITestService
             SampleCategoryId = test.SampleCategoryId,
 
             MatrixId = test.MatrixId,
+
+            DefaultAnalystId = test.DefaultAnalystId,
 
             DefaultResult =
                 test.DefaultResult,

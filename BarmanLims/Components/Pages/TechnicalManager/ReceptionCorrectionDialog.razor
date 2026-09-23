@@ -1,0 +1,65 @@
+﻿@using Barman.Domain.Entities
+
+<MudDialog>
+    <DialogContent>
+
+        <MudText Typo="Typo.body2" Class="mb-3">
+            نمونه:
+            <b>@SampleCode</b>
+        </MudText>
+
+        <MudTextField T="string"
+                      @bind-Value="CorrectionReason"
+                      Label="دلیل درخواست اصلاح"
+                      Variant="Variant.Outlined"
+                      Lines="4"
+                      Required="true"
+                      Immediate="true"
+                      FullWidth="true"
+                      Placeholder="دلیل اصلاح اطلاعات نمونه یا آزمون‌ها را وارد کنید..." />
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="Cancel">
+            انصراف
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Warning"
+                   Disabled="@string.IsNullOrWhiteSpace(CorrectionReason)"
+                   OnClick="Submit">
+            ثبت درخواست اصلاح
+        </MudButton>
+
+    </DialogActions>
+</MudDialog>
+
+@code {
+
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string SampleCode { get; set; } = "";
+
+    [Parameter]
+    public string CorrectionReason { get; set; } = "";
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(CorrectionReason))
+            return;
+
+        MudDialog.Close(DialogResult.Ok(CorrectionReason.Trim()));
+    }
+
+    
+}

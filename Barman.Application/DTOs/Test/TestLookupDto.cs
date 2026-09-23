@@ -16,6 +16,8 @@ public class TestLookupDto
 
     public Guid? MatrixId { get; set; }
 
+    public Guid? DefaultAnalystId { get; set; }
+
     public string? EnglishName { get; set; }
 
     public string? Unit { get; set; }

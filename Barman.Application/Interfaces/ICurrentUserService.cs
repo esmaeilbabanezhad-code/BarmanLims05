@@ -2,14 +2,13 @@
 
 public interface ICurrentUserService
 {
-
-    Guid InstanceId { get; }
     Guid? EmployeeId { get; }
 
     bool IsAuthenticated { get; }
 
+    Guid InstanceId { get; }
+
     void SetUser(Guid employeeId);
 
     void ClearUser();
-
 }

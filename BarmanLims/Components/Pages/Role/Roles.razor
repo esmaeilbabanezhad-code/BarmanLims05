@@ -3,6 +3,8 @@
 @using Barman.Domain.Entities
 @using Barman.Application.Interfaces.Repositories
 @using Barman.Application.Interfaces
+@using BarmanLims.Components.Authorization
+@attribute [RequirePermission("Admin")]
 
 @inject IRoleService RoleService
 @inject IRolePermissionService RolePermissionService
@@ -92,9 +94,13 @@
 
             <RowTemplate>
 
-                <MudTd>@context.Code</MudTd>
+                <MudTd>
+                    @context.Code
+                </MudTd>
 
-                <MudTd>@context.Name</MudTd>
+                <MudTd>
+                    @context.Name
+                </MudTd>
 
                 <MudTd>
                     @(context.Description ?? "-")
@@ -120,14 +126,7 @@
                     }
 
                 </MudTd>
-                <MudButton Size="Size.Small"
-                           Variant="Variant.Text"
-                           Color="Color.Error"
-                           OnClick="@(() => Delete(context.Id))">
 
-                    حذف
-
-                </MudButton>
                 <MudTd>
 
                     <MudButton Size="Size.Small"
@@ -138,39 +137,50 @@
                         ویرایش
 
                     </MudButton>
+
                     <MudButton Size="Size.Small"
                                Variant="Variant.Outlined"
                                Color="Color.Info"
-                               OnClick="@(() => OpenPermissions(context))">
+                               OnClick="@(() => OpenPermissions(context) )">
 
                         دسترسی‌ها
 
                     </MudButton>
 
+                    @if (context.IsActive)
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Warning"
+                                   OnClick="@(() => Deactivate(context.Id))">
+
+                            غیرفعال
+
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Success"
+                                   OnClick="@(() => Activate(context.Id))">
+
+                            فعال
+
+                        </MudButton>
+                    }
+
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Text"
+                               Color="Color.Error"
+                               OnClick="@(() => Delete(context.Id))">
+
+                        حذف
+
+                    </MudButton>
 
                 </MudTd>
-                @if (context.IsActive)
-                {
-                    <MudButton Size="Size.Small"
-                               Variant="Variant.Text"
-                               Color="Color.Warning"
-                               OnClick="@(() => Deactivate(context.Id))">
 
-                        غیرفعال
-
-                    </MudButton>
-                }
-                else
-                {
-                    <MudButton Size="Size.Small"
-                               Variant="Variant.Text"
-                               Color="Color.Success"
-                               OnClick="@(() => Activate(context.Id))">
-
-                        فعال
-
-                    </MudButton>
-                }
             </RowTemplate>
 
         </MudTable>

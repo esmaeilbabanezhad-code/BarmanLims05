@@ -22,7 +22,7 @@ public class DepartmentResponsibilityRepository
         return await _context.Set<DepartmentResponsibility>()
             .Include(x => x.Employee)
             .Include(x => x.Department)
-            .Where(x => x.EmployeeId == employeeId)
+            .Where(x => x.EmployeeId == employeeId && !x.IsDeleted)
             .ToListAsync();
     }
 

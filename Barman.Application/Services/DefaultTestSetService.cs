@@ -62,6 +62,7 @@ public class DefaultTestSetService : IDefaultTestSetService
         Guid? customerId,
         Guid? sampleCategoryId,
         Guid? matrixId,
+        Guid? standardSampleId,
         CancellationToken cancellationToken = default)
     {
         var entity = await _unitOfWork.DefaultTestSets
@@ -69,6 +70,7 @@ public class DefaultTestSetService : IDefaultTestSetService
                 customerId,
                 sampleCategoryId,
                 matrixId,
+                standardSampleId,
                 cancellationToken);
 
         return entity == null
@@ -117,6 +119,8 @@ public class DefaultTestSetService : IDefaultTestSetService
             SampleCategoryId = dto.SampleCategoryId,
 
             MatrixId = dto.MatrixId,
+
+            StandardSampleId = dto.StandardSampleId,
 
             Priority = dto.Priority,
 
@@ -195,6 +199,8 @@ public class DefaultTestSetService : IDefaultTestSetService
         entity.SampleCategoryId = dto.SampleCategoryId;
 
         entity.MatrixId = dto.MatrixId;
+
+        entity.StandardSampleId = dto.StandardSampleId;
 
         entity.Priority = dto.Priority;
 
@@ -303,6 +309,8 @@ public class DefaultTestSetService : IDefaultTestSetService
             SampleCategoryId = entity.SampleCategoryId,
 
             MatrixId = entity.MatrixId,
+
+            StandardSampleId = entity.StandardSampleId,
 
             Priority = entity.Priority,
 

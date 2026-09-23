@@ -35,7 +35,31 @@ public class ReceptionRepository : IReceptionRepository
                 x => x.Id == id,
                 cancellationToken);
     }
-
+    public async Task<Reception?> GetForCorrectionAsync(
+    Guid id,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.Receptions
+            .Include(x => x.Customer)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.SampleCategory)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.Matrix)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.StandardSample)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.TestAssignments)
+                    .ThenInclude(x => x.Test)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.TestAssignments)
+                    .ThenInclude(x => x.TestPanel)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.TestAssignments)
+                    .ThenInclude(x => x.Department)
+            .FirstOrDefaultAsync(
+                x => x.Id == id,
+                cancellationToken);
+    }
     public async Task<List<Reception>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
@@ -43,6 +67,23 @@ public class ReceptionRepository : IReceptionRepository
             .Include(x => x.Customer)
             .Include(x => x.Samples)
                 .ThenInclude(x => x.SampleCategory)
+            .OrderByDescending(x => x.ReceptionDate)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<Reception>> GetHistoryByCustomerIdAsync(
+    Guid customerId,
+    CancellationToken cancellationToken = default)
+    {
+        return await _context.Receptions
+            .Include(x => x.Customer)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.TestAssignments)
+                    .ThenInclude(x => x.Test)
+            .Include(x => x.Samples)
+                .ThenInclude(x => x.TestAssignments)
+                    .ThenInclude(x => x.TestPanel)
+            .Where(x => x.CustomerId == customerId)
             .OrderByDescending(x => x.ReceptionDate)
             .ToListAsync(cancellationToken);
     }

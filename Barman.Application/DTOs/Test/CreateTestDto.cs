@@ -31,4 +31,6 @@ public class CreateTestDto
     public Guid? SampleCategoryId { get; set; }
 
     public Guid? MatrixId { get; set; }
+
+    public Guid? DefaultAnalystId { get; set; }
 }

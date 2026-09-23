@@ -1,0 +1,98 @@
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+@if (isChecking)
+{
+    <div class="pa-4">
+        در حال بررسی دسترسی...
+    </div>
+}
+else if (isAuthorized)
+{
+    <RouteView RouteData="RouteData"
+               DefaultLayout="DefaultLayout" />
+}
+
+@code {
+    [Parameter]
+    public RouteData RouteData { get; set; } = null!;
+
+    [Parameter]
+    public Type? DefaultLayout { get; set; }
+
+    private bool isChecking = true;
+    private bool isAuthorized;
+
+    private const string PermissionClaimType =
+        "Barman.Permission";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState =
+            await AuthenticationStateProvider
+                .GetAuthenticationStateAsync();
+
+        var user = authState.User;
+        var relativePath =
+    NavigationManager.ToBaseRelativePath(
+        NavigationManager.Uri)
+    .Split('?', '#')[0]
+    .Trim('/');
+
+        if (relativePath.Equals(
+                "login",
+                StringComparison.OrdinalIgnoreCase)
+            ||
+            relativePath.Equals(
+                "access-denied",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            isAuthorized = true;
+            isChecking = false;
+            return;
+        }
+
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            NavigationManager.NavigateTo("/login");
+            return;
+        }
+
+        var requiredPermissions =
+    RouteData.PageType
+        .GetCustomAttributes(inherit: true)
+        .OfType<RequirePermissionAttribute>()
+        .Select(x => x.Permission)
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .ToList();
+
+        if (requiredPermissions.Count == 0)
+        {
+            isAuthorized = true;
+        }
+        else
+        {
+            var permissions =
+                user.Claims
+                    .Where(x => x.Type == PermissionClaimType)
+                    .Select(x => x.Value)
+                    .ToHashSet(
+                        StringComparer.OrdinalIgnoreCase);
+
+            isAuthorized =
+                permissions.Contains("Admin") ||
+                requiredPermissions.All(
+                    permissions.Contains);
+        }
+
+        isChecking = false;
+
+        if (!isAuthorized)
+        {
+            NavigationManager.NavigateTo("/access-denied");
+        }
+    }
+}

@@ -1,0 +1,246 @@
+@page "/user-accounts"
+
+@using Barman.Application.Interfaces
+@using Barman.Domain.Entities
+@using BarmanLims.Components.Authorization
+@attribute [RequirePermission("Admin")]
+
+@inject IUserAccountService UserAccountService
+@inject IEmployeeService EmployeeService
+
+<PageTitle>مدیریت حساب‌های کاربری</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+    <MudPaper Class="pa-5">
+
+        <MudText Typo="Typo.h5" Class="mb-4">
+            مدیریت حساب‌های کاربری
+        </MudText>
+
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <MudAlert Severity="@MessageSeverity"
+                      Class="mb-4">
+                @Message
+            </MudAlert>
+        }
+
+        <MudGrid>
+
+            <MudItem xs="12" sm="6">
+                <MudSelect T="Guid?"
+                           @bind-Value="SelectedEmployeeId"
+                           Label="کارمند"
+                           Variant="Variant.Outlined"
+                           Clearable="true">
+
+                    @foreach (var employee in Employees)
+                    {
+                        <MudSelectItem T="Guid?"
+                                       Value="@((Guid?)employee.Id)">
+                            @employee.PersonnelCode - @employee.FullName
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="Username"
+                              Label="نام کاربری"
+                              Variant="Variant.Outlined"
+                              Required="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="Password"
+                              Label="رمز عبور"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Required="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6"
+                     Class="d-flex align-center">
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PersonAdd"
+                           OnClick="CreateAccount"
+                           Disabled="@IsSaving">
+
+                    ایجاد حساب کاربری
+
+                </MudButton>
+
+            </MudItem>
+
+        </MudGrid>
+
+    </MudPaper>
+
+
+    <MudPaper Class="pa-5 mt-4">
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            حساب‌های موجود
+        </MudText>
+
+        <MudTable Items="Accounts"
+                  Dense="true"
+                  Hover="true"
+                  Striped="true"
+                  Bordered="true">
+
+            <HeaderContent>
+
+                <MudTh>کارمند</MudTh>
+                <MudTh>نام کاربری</MudTh>
+                <MudTh>وضعیت</MudTh>
+                <MudTh>آخرین ورود</MudTh>
+
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd>
+                    @context.Employee?.PersonnelCode
+                    -
+                    @context.Employee?.FullName
+                </MudTd>
+
+                <MudTd>
+                    @context.Username
+                </MudTd>
+
+                <MudTd>
+
+                    @if (context.IsActive)
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Success"
+                                 Size="Size.Small">
+                            فعال
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Error"
+                                 Size="Size.Small">
+                            غیرفعال
+                        </MudChip>
+                    }
+
+                </MudTd>
+
+                <MudTd>
+                    @(context.LastLoginAt?.ToLocalTime()
+                        .ToString("yyyy/MM/dd HH:mm")
+                        ?? "—")
+                </MudTd>
+
+            </RowTemplate>
+
+            <NoRecordsContent>
+                <MudText Class="pa-4">
+                    هنوز هیچ حساب کاربری ایجاد نشده است.
+                </MudText>
+            </NoRecordsContent>
+
+        </MudTable>
+
+    </MudPaper>
+
+</MudContainer>
+
+
+@code {
+
+    private List<Employee> Employees = new();
+    private List<UserAccount> Accounts = new();
+
+    private Guid? SelectedEmployeeId;
+
+    private string Username = "";
+    private string Password = "";
+
+    private bool IsSaving;
+
+    private string? Message;
+    private Severity MessageSeverity = Severity.Info;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+
+    private async Task LoadData()
+    {
+        Employees =
+            await EmployeeService.GetAllAsync();
+
+        Accounts =
+            await UserAccountService.GetAllAsync();
+    }
+
+
+    private async Task CreateAccount()
+    {
+        Message = null;
+
+        if (!SelectedEmployeeId.HasValue ||
+            SelectedEmployeeId.Value == Guid.Empty)
+        {
+            Message = "انتخاب کارمند الزامی است.";
+            MessageSeverity = Severity.Warning;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Username))
+        {
+            Message = "نام کاربری الزامی است.";
+            MessageSeverity = Severity.Warning;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Password))
+        {
+            Message = "رمز عبور الزامی است.";
+            MessageSeverity = Severity.Warning;
+            return;
+        }
+
+        try
+        {
+            IsSaving = true;
+
+            await UserAccountService.CreateAsync(
+                SelectedEmployeeId.Value,
+                Username.Trim(),
+                Password);
+
+            Message = "حساب کاربری با موفقیت ایجاد شد.";
+            MessageSeverity = Severity.Success;
+
+            SelectedEmployeeId = null;
+            Username = "";
+            Password = "";
+
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+            MessageSeverity = Severity.Error;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+}

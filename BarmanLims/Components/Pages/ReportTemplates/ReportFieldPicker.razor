@@ -1,0 +1,650 @@
+﻿@using Barman.Application.Reporting
+@using Barman.Application.Interfaces.Services.Reporting
+@using Barman.Domain.Entities.Reporting
+@using Barman.Domain.Entities
+@using Microsoft.JSInterop
+@using Barman.Application.Interfaces
+
+@inject IReportTemplateFieldService ReportTemplateFieldService
+@using Barman.Application.Interfaces
+@inject ICustomFieldService CustomFieldService
+@inject IJSRuntime JS
+
+<div class="modal fade show d-block"
+     tabindex="-1"
+     style="background-color: rgba(0,0,0,.5);">
+
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    انتخاب فیلدهای گزارش
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        @onclick="Cancel">
+                </button>
+            </div>
+
+            <div class="modal-body">
+
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="alert alert-danger">
+                        @ErrorMessage
+                    </div>
+                }
+
+                <div class="row">
+
+                    <div class="col-md-8">
+
+                        <div class="card mb-3">
+    <div class="card-body">
+
+        <div class="row align-items-end">
+
+            <div class="col-md-5">
+                <label class="form-label">
+                    جستجوی فیلد
+                </label>
+
+                <input class="form-control"
+                       placeholder="کد یا عنوان فیلد..."
+                       @bind="SearchText"
+                       @bind:event="oninput" />
+            </div>
+
+            <div class="col-md-5">
+                <label class="form-label">
+                    انتخاب سریع فیلد
+                </label>
+
+                <select class="form-select"
+                        @bind="SelectedQuickFieldCode"
+                        @bind:after="AddQuickSelectedField">
+
+                    <option value="">
+                        -- انتخاب فیلد --
+                    </option>
+
+                    @foreach (var field in FilteredQuickFields)
+                    {
+                        <option value="@field.Code">
+                            @field.Caption - @field.Code
+                        </option>
+                    }
+
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <div class="form-check mb-2">
+
+                    <input class="form-check-input"
+                           type="checkbox"
+                           checked="@AreAllVisibleSelected"
+                           @onchange="ToggleSelectAll" />
+
+                    <label class="form-check-label">
+                        انتخاب همه
+                    </label>
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+                        @foreach (var group in FilteredFieldGroups)
+                        {
+                            <div class="card mb-3">
+
+                                <div class="card-header">
+                                    <strong>@group.Key</strong>
+                                </div>
+
+                                <div class="card-body">
+
+                                    @foreach (var field in group)
+                                    {
+                                        var selected =
+                                            SelectedFields.Any(
+                                                x => x.FieldCode == field.Code);
+
+                                        <div class="row align-items-center mb-2">
+
+                                            <div class="col-md-1">
+                                                <input type="checkbox"
+                                                       class="form-check-input"
+                                                       checked="@selected"
+                                                       @onchange="e => ToggleField(field, e)" />
+                                            </div>
+
+                                            <div class="col-md-5">
+                                                <label class="form-label mb-0">
+                                                    @field.Caption
+                                                </label>
+
+                                                <small class="text-muted d-block">
+                                                    @field.Code
+                                                </small>
+                                            </div>
+
+                                            <div class="col-md-3">
+                                                @if (selected)
+                                                {
+                                                    <label class="form-label mb-0">
+                                                        اولویت
+                                                    </label>
+
+                                                    <input type="number"
+                                                           class="form-control form-control-sm"
+                                                           min="1"
+                                                           @bind="GetSelection(field.Code).DisplayOrder" />
+                                                }
+                                            </div>
+
+                                            <div class="col-md-3">
+                                                @if (selected)
+                                                {
+                                                    <span class="badge bg-secondary">
+                                                        @field.DataType
+                                                    </span>
+                                                }
+                                            </div>
+
+                                        </div>
+                                    }
+
+                                </div>
+                            </div>
+                        }
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <div class="card">
+
+                            <div class="card-header">
+                                <strong>فیلدهای انتخاب‌شده</strong>
+                            </div>
+
+                            <div class="card-body">
+
+                                @if (SelectedFields.Count == 0)
+                                {
+                                    <div class="text-muted">
+                                        هنوز فیلدی انتخاب نشده است.
+                                    </div>
+                                }
+                                else
+                                {
+
+                                    @foreach (var item in SelectedFields
+                                                                    .OrderBy(x => x.DisplayOrder))
+                                    {
+                                        <div class="border rounded p-2 mb-2"
+                                             draggable="true"
+                                             data-report-field-drag="@item.FieldCode">
+
+                                            <div class="d-flex align-items-center">
+
+                                                <span class="me-2"
+                                                      style="cursor: grab; font-size: 20px;">
+                                                    ☰
+                                                </span>
+
+                                                <div class="flex-grow-1">
+
+                                                    <div>
+                                                        <strong>
+                                                            @item.Caption
+                                                        </strong>
+                                                    </div>
+
+                                                    <div class="small text-muted">
+                                                        @item.FieldCode
+                                                    </div>
+
+                                                </div>
+
+                                                <span class="badge bg-secondary">
+                                                    @item.DisplayOrder
+                                                </span>
+
+                                            </div>
+
+                                        </div>
+                                    }
+
+                                }
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button"
+                        class="btn btn-secondary"
+                        @onclick="Cancel">
+                    انصراف
+                </button>
+
+                <button type="button"
+                        class="btn btn-primary"
+                        @onclick="Save">
+                    ذخیره فیلدهای انتخاب‌شده
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+
+    [Parameter]
+    public Guid SectionId { get; set; }
+
+    [Parameter]
+    public EventCallback OnSaved { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelled { get; set; }
+
+    private List<ReportFieldDefinition> FieldDefinitions = new();
+
+    private List<FieldSelection> SelectedFields = new();
+
+    private string? ErrorMessage;
+
+    private string SearchText = "";
+    private string SelectedQuickFieldCode = "";
+
+    private IEnumerable<IGrouping<string, ReportFieldDefinition>> FieldGroups =>
+    FieldDefinitions
+        .GroupBy(x => x.Group)
+        .OrderBy(x => x.Key);
+
+    private IEnumerable<IGrouping<string, ReportFieldDefinition>> FilteredFieldGroups =>
+        FieldDefinitions
+            .Where(x =>
+                string.IsNullOrWhiteSpace(SearchText) ||
+                x.Code.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                x.Caption.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                x.Group.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(x => x.Group)
+            .OrderBy(x => x.Key);
+
+    private IEnumerable<ReportFieldDefinition> VisibleFields =>
+        FilteredFieldGroups.SelectMany(x => x);
+
+
+     private IEnumerable<ReportFieldDefinition> FilteredQuickFields =>
+    FieldDefinitions
+        .Where(x =>
+            string.IsNullOrWhiteSpace(SearchText) ||
+            x.Code.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+            x.Caption.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+            x.Group.Contains(SearchText, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(x => x.Group)
+        .ThenBy(x => x.Caption);
+
+    
+
+    private bool AreAllVisibleSelected =>
+        VisibleFields.Any() &&
+        VisibleFields.All(field =>
+            SelectedFields.Any(x => x.FieldCode == field.Code));
+
+    protected override async Task OnInitializedAsync()
+{
+    FieldDefinitions = ReportFieldCatalog.All.ToList();
+
+    var customFields =
+        await CustomFieldService.GetAllDefinitionsAsync();
+
+    foreach (var customField in customFields
+        .Where(x => x.IsActive && !x.IsDeleted)
+        .OrderBy(x => x.DisplayOrder)
+        .ThenBy(x => x.Title))
+    {
+        FieldDefinitions.Add(
+            new ReportFieldDefinition(
+                $"CustomField:{customField.Id}",
+                customField.Title,
+                "فیلدهای سفارشی پذیرش",
+                customField.DataType,
+                null));
+    }
+
+    var existing =
+        await ReportTemplateFieldService.GetBySectionIdAsync(
+            SectionId);
+
+    SelectedFields = existing
+        .OrderBy(x => x.DisplayOrder)
+        .Select(x => new FieldSelection
+        {
+            FieldCode = x.FieldCode,
+            Caption = x.Caption ?? x.FieldCode,
+            DisplayOrder = x.DisplayOrder,
+            ExistingId = x.Id
+        })
+        .ToList();
+}
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        await JS.InvokeVoidAsync(
+            "reportFieldDnD.init",
+            DotNetObjectReference.Create(this));
+    }
+
+    [JSInvokable]
+public void ReorderFieldFromJavaScript(
+    string sourceCode,
+    string targetCode)
+{
+    if (string.IsNullOrWhiteSpace(sourceCode) ||
+        string.IsNullOrWhiteSpace(targetCode) ||
+        sourceCode == targetCode)
+        return;
+
+    var ordered = SelectedFields
+        .OrderBy(x => x.DisplayOrder)
+        .ToList();
+
+    var source = ordered.FirstOrDefault(
+        x => x.FieldCode == sourceCode);
+
+    var target = ordered.FirstOrDefault(
+        x => x.FieldCode == targetCode);
+
+    if (source is null || target is null)
+        return;
+
+    var sourceIndex = ordered.IndexOf(source);
+    var targetIndex = ordered.IndexOf(target);
+
+    if (sourceIndex < 0 || targetIndex < 0)
+        return;
+
+    ordered.RemoveAt(sourceIndex);
+
+    targetIndex = ordered.IndexOf(target);
+
+    ordered.Insert(targetIndex, source);
+
+    for (var i = 0; i < ordered.Count; i++)
+    {
+        ordered[i].DisplayOrder = i + 1;
+    }
+
+    SelectedFields = ordered;
+
+    InvokeAsync(StateHasChanged);
+}
+
+    private void ToggleField(
+        ReportFieldDefinition field,
+        ChangeEventArgs args)
+    {
+        var isChecked =
+            args.Value is bool value && value;
+
+        var existing =
+            SelectedFields.FirstOrDefault(
+                x => x.FieldCode == field.Code);
+
+        if (isChecked)
+        {
+            if (existing is null)
+            {
+                var nextOrder = SelectedFields.Count == 0
+                    ? 1
+                    : SelectedFields.Max(x => x.DisplayOrder) + 1;
+
+                SelectedFields.Add(
+                    new FieldSelection
+                    {
+                        FieldCode = field.Code,
+                        Caption = field.Caption,
+                        DisplayOrder = nextOrder
+                    });
+            }
+        }
+        else
+        {
+            if (existing is not null)
+            {
+                SelectedFields.Remove(existing);
+            }
+        }
+
+        NormalizeOrders();
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs args)
+    {
+        var isChecked =
+            args.Value is bool value && value;
+
+        var visibleFields = VisibleFields.ToList();
+
+        if (isChecked)
+        {
+            foreach (var field in visibleFields)
+            {
+                if (SelectedFields.Any(
+                    x => x.FieldCode == field.Code))
+                    continue;
+
+                var nextOrder = SelectedFields.Count == 0
+                    ? 1
+                    : SelectedFields.Max(
+                        x => x.DisplayOrder) + 1;
+
+                SelectedFields.Add(
+                    new FieldSelection
+                    {
+                        FieldCode = field.Code,
+                        Caption = field.Caption,
+                        DisplayOrder = nextOrder
+                    });
+            }
+        }
+        else
+        {
+            var visibleCodes =
+                visibleFields
+                    .Select(x => x.Code)
+                    .ToHashSet();
+
+            SelectedFields.RemoveAll(
+                x => visibleCodes.Contains(x.FieldCode));
+        }
+
+        NormalizeOrders();
+    }
+
+
+
+
+    private FieldSelection GetSelection(string fieldCode)
+    {
+        return SelectedFields.First(
+            x => x.FieldCode == fieldCode);
+    }
+
+    private void NormalizeOrders()
+    {
+        var ordered = SelectedFields
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.FieldCode)
+            .ToList();
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            ordered[i].DisplayOrder = i + 1;
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            ErrorMessage = null;
+
+            NormalizeOrders();
+
+            var existing =
+                await ReportTemplateFieldService
+                    .GetBySectionIdAsync(SectionId);
+
+            foreach (var existingField in existing)
+            {
+                var selected =
+                    SelectedFields.Any(
+                        x => x.ExistingId == existingField.Id);
+
+                if (!selected)
+                {
+                    await ReportTemplateFieldService.DeleteAsync(
+                        existingField.Id);
+                }
+            }
+
+            foreach (var selected in SelectedFields)
+            {
+                var definition =
+                    FieldDefinitions.FirstOrDefault(
+                        x => string.Equals(
+                            x.Code,
+                            selected.FieldCode,
+                            StringComparison.OrdinalIgnoreCase));
+
+                if (definition is null)
+                    continue;
+
+                var existingField =
+                    existing.FirstOrDefault(
+                        x => x.Id == selected.ExistingId);
+
+                if (existingField is null)
+                {
+                    await ReportTemplateFieldService.CreateAsync(
+                        new ReportTemplateField
+                        {
+                            ReportTemplateSectionId = SectionId,
+                            FieldCode = definition.Code,
+                            Source = selected.FieldCode.StartsWith(
+                                "CustomField:",
+                                StringComparison.OrdinalIgnoreCase)
+                                ? "CustomField"
+                                : definition.Group,
+                            FieldType = definition.DataType,
+                            Caption = definition.Caption,
+                            DisplayOrder = selected.DisplayOrder,
+                            IsVisible = true,
+                            Alignment = "Right"
+                        });
+                }
+                else
+                {
+                    existingField.FieldCode = definition.Code;
+                    existingField.Source =
+                        selected.FieldCode.StartsWith(
+                            "CustomField:",
+                            StringComparison.OrdinalIgnoreCase)
+                            ? "CustomField"
+                            : definition.Group;
+                    existingField.FieldType = definition.DataType;
+                    existingField.Caption = definition.Caption;
+                    existingField.DisplayOrder =
+                        selected.DisplayOrder;
+
+                    await ReportTemplateFieldService.UpdateAsync(
+                        existingField);
+                }
+            }
+
+            await OnSaved.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancelled.InvokeAsync();
+    }
+
+    private sealed class FieldSelection
+    {
+        public Guid ExistingId { get; set; }
+
+        public string FieldCode { get; set; } = "";
+
+        public string Caption { get; set; } = "";
+
+        public int DisplayOrder { get; set; }
+    }
+
+    private void AddQuickSelectedField()
+{
+    if (string.IsNullOrWhiteSpace(SelectedQuickFieldCode))
+        return;
+
+        var field = FieldDefinitions.FirstOrDefault(
+        x => string.Equals(
+            x.Code,
+            SelectedQuickFieldCode,
+            StringComparison.OrdinalIgnoreCase));
+
+    if (field is null)
+        return;
+
+    if (!SelectedFields.Any(
+        x => x.FieldCode == field.Code))
+    {
+        var nextOrder = SelectedFields.Count == 0
+            ? 1
+            : SelectedFields.Max(
+                x => x.DisplayOrder) + 1;
+
+        SelectedFields.Add(
+            new FieldSelection
+            {
+                FieldCode = field.Code,
+                Caption = field.Caption,
+                DisplayOrder = nextOrder
+            });
+
+        NormalizeOrders();
+    }
+
+    SelectedQuickFieldCode = "";
+}
+   
+    
+       
+}

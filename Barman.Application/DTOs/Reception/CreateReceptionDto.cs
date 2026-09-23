@@ -4,6 +4,8 @@ public class CreateReceptionDto
 {
     public Guid CustomerId { get; set; }
 
+    public DateTime ReceptionDate { get; set; } = DateTime.Now;
+
     public bool IsUrgent { get; set; }
 
     public string? Description { get; set; }

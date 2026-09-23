@@ -12,6 +12,14 @@ public class ReferenceLimit : BaseEntity
 
     public Matrix? Matrix { get; set; }
 
+    public Guid? SampleCategoryId { get; set; }
+
+    public SampleCategory? SampleCategory { get; set; }
+
+    public Guid? CustomerId { get; set; }
+
+    public Customer? Customer { get; set; }
+
     public string? ProductName { get; set; }
 
     public string? OrganizationName { get; set; }

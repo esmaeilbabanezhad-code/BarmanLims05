@@ -15,4 +15,12 @@ public interface IReceptionService
     Task<Reception?> GetByIdAsync(
         Guid id,
         CancellationToken cancellationToken = default);
+
+    Task<List<ReceptionHistoryLookupDto>> GetHistoryByCustomerIdAsync(
+    Guid customerId,
+    CancellationToken cancellationToken = default);
+
+    Task<Reception?> GetForCorrectionAsync(
+    Guid id,
+    CancellationToken cancellationToken = default);
 }

@@ -11,4 +11,6 @@ public interface IReferenceLimitRepository
     Task AddAsync(ReferenceLimit referenceLimit);
 
     void Update(ReferenceLimit referenceLimit);
+
+    void Delete(ReferenceLimit referenceLimit);
 }

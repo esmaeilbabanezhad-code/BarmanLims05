@@ -70,6 +70,18 @@ public class SampleConfiguration : IEntityTypeConfiguration<Sample>
         builder.Property(x => x.ContainerType)
             .HasMaxLength(100);
 
+        builder.Property(x => x.CustomerSampleName)
+             .HasMaxLength(300);
+
+        builder.Property(x => x.BatchLotNumber)
+            .HasMaxLength(100);
+
+        builder.Property(x => x.QuotaNumber)
+            .HasMaxLength(100);
+
+        builder.Property(x => x.ShipmentNumber)
+            .HasMaxLength(100);
+
         builder.Property(x => x.Description)
             .HasMaxLength(2000);
 

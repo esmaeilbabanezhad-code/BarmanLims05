@@ -1,4 +1,5 @@
 ﻿using Barman.Domain.Common;
+using Barman.Domain.Enums;
 
 namespace Barman.Domain.Entities;
 
@@ -12,9 +13,29 @@ public class TestAssignment : BaseEntity
 
     public Test Test { get; set; } = null!;
 
+    public Guid? TestPanelId { get; set; }
+
+    public TestPanel? TestPanel { get; set; }
+
+    public Guid? TestResultSetId { get; set; }
+
+    public TestResultSet? TestResultSet { get; set; }
+
+    public Guid? SelectedLimitRuleId { get; set; }
+
+    public TestLimitRule? SelectedLimitRule { get; set; }
+
     public Guid? DepartmentId { get; set; }
 
     public Department? Department { get; set; }
+
+    public Guid? TechnicalManagerId { get; set; }
+
+    public Employee? TechnicalManager { get; set; }
+
+    public Guid? TechnicalManagerScopeId { get; set; }
+
+    public TechnicalManagerScope? TechnicalManagerScope { get; set; }
 
     public Guid? SectionHeadId { get; set; }
 
@@ -28,7 +49,18 @@ public class TestAssignment : BaseEntity
 
     public string? Comment { get; set; }
 
+    // =========================
+    // Result Values
+    // =========================
+
+    public ICollection<TestAssignmentResultValue> ResultValues { get; set; }
+        = new List<TestAssignmentResultValue>();
+
+    public TestAssignmentWorkflowStage WorkflowStage { get; set; }
+
     public bool IsApprovedBySection { get; set; }
+
+    public bool IsRejectedBySection { get; set; }
 
     public bool IsApprovedByTechManager { get; set; }
 

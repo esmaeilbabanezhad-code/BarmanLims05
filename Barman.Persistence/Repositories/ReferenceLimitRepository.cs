@@ -46,4 +46,8 @@ public class ReferenceLimitRepository : IReferenceLimitRepository
     {
         _context.ReferenceLimits.Update(referenceLimit);
     }
+    public void Delete(ReferenceLimit referenceLimit)
+    {
+        _context.ReferenceLimits.Remove(referenceLimit);
+    }
 }

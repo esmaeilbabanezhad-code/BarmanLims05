@@ -37,7 +37,21 @@ public class TestPanelRepository : ITestPanelRepository
                      !x.IsDeleted,
                 cancellationToken);
     }
+    public async Task<TestPanel?> GetByCodeAsync(
+    string code,
+    CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return null;
 
+        return await _context.TestPanels
+            .Include(x => x.Items)
+            .ThenInclude(x => x.Test)
+            .FirstOrDefaultAsync(
+                x => x.Code == code.Trim() &&
+                     !x.IsDeleted,
+                cancellationToken);
+    }
     public async Task AddAsync(
         TestPanel entity,
         CancellationToken cancellationToken = default)

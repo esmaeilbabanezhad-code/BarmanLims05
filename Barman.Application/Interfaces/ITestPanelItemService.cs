@@ -9,10 +9,11 @@ public interface ITestPanelItemService
         CancellationToken cancellationToken = default);
 
     Task<TestPanelItem> AddAsync(
-        Guid testPanelId,
-        Guid testId,
-        int sortOrder,
-        CancellationToken cancellationToken = default);
+    Guid testPanelId,
+    Guid testId,
+    int sortOrder,
+    Guid? defaultAnalystId = null,
+    CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(
         Guid id,
@@ -22,4 +23,9 @@ public interface ITestPanelItemService
         Guid id,
         int sortOrder,
         CancellationToken cancellationToken = default);
+
+    Task<bool> UpdateDefaultAnalystAsync(
+    Guid id,
+    Guid? defaultAnalystId,
+    CancellationToken cancellationToken = default);
 }

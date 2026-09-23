@@ -87,6 +87,15 @@ public class TestLimitChangeRequestConfiguration
             .OnDelete(DeleteBehavior.Restrict);
 
         // -------------------------
+        // TestResultSetItem
+        // -------------------------
+
+        builder.HasOne(x => x.TestResultSetItem)
+            .WithMany()
+            .HasForeignKey(x => x.TestResultSetItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // -------------------------
         // Requested By
         // -------------------------
 
@@ -128,5 +137,7 @@ public class TestLimitChangeRequestConfiguration
         builder.HasIndex(x => x.RequestedByEmployeeId);
 
         builder.HasIndex(x => x.ApprovedByEmployeeId);
+
+        builder.HasIndex(x => x.TestResultSetItemId);
     }
 }

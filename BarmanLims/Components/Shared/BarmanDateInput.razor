@@ -1,0 +1,151 @@
+﻿@using System.Globalization
+@using System.Text.RegularExpressions
+
+<div>
+    <MudTextField T="string"
+                  Label="@Label"
+                  Variant="Variant.Outlined"
+                  Value="@DisplayValue"
+                  ValueChanged="@OnTextChanged"
+                  Immediate="true"
+                  Disabled="@Disabled"
+                  Placeholder="1405/06/14 یا 2026/09/05"
+                  Adornment="Adornment.End"
+                  AdornmentIcon="@Icons.Material.Filled.CalendarMonth"
+                  FullWidth="true"
+                  Error="@HasError"
+                  ErrorText="@ErrorText" />
+</div>
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = "تاریخ";
+
+    [Parameter]
+    public DateTime? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    private string DisplayValue { get; set; } = "";
+
+    private bool HasError { get; set; }
+
+    private string ErrorText { get; set; } = "";
+
+    protected override void OnParametersSet()
+    {
+        if (Value.HasValue)
+        {
+            DisplayValue = FormatPersianDate(Value);
+        }
+        else
+        {
+            DisplayValue = "";
+        }
+    }
+
+    private async Task OnTextChanged(string? value)
+    {
+        DisplayValue = value ?? "";
+
+        HasError = false;
+        ErrorText = "";
+
+        if (string.IsNullOrWhiteSpace(DisplayValue))
+        {
+            await ValueChanged.InvokeAsync(null);
+            return;
+        }
+
+        var result = TryParseDate(DisplayValue);
+
+        if (result.HasValue)
+        {
+            await ValueChanged.InvokeAsync(result.Value);
+            return;
+        }
+
+        HasError = true;
+        ErrorText = "تاریخ واردشده معتبر نیست.";
+    }
+
+    private static DateTime? TryParseDate(string input)
+    {
+        var text = input.Trim()
+            .Replace('-', '/')
+            .Replace('\\', '/');
+
+        var match = Regex.Match(
+            text,
+            @"^(?<y>\d{4})/(?<m>\d{1,2})/(?<d>\d{1,2})$");
+
+        if (!match.Success)
+            return null;
+
+        if (!int.TryParse(match.Groups["y"].Value, out var year))
+            return null;
+
+        if (!int.TryParse(match.Groups["m"].Value, out var month))
+            return null;
+
+        if (!int.TryParse(match.Groups["d"].Value, out var day))
+            return null;
+
+        // Persian / Jalali
+        if (year >= 1200 && year <= 1499)
+        {
+            try
+            {
+                var calendar = new PersianCalendar();
+
+                return calendar.ToDateTime(
+                    year,
+                    month,
+                    day,
+                    0,
+                    0,
+                    0,
+                    0);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Gregorian
+        if (year >= 1600 && year <= 2500)
+        {
+            try
+            {
+                return new DateTime(year, month, day);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    private static string FormatPersianDate(DateTime? date)
+    {
+        if (!date.HasValue)
+            return "";
+
+        var calendar = new PersianCalendar();
+
+        var dateTime = date.Value.Date;
+
+        var year = calendar.GetYear(dateTime);
+        var month = calendar.GetMonth(dateTime);
+        var day = calendar.GetDayOfMonth(dateTime);
+
+        return $"{year:0000}/{month:00}/{day:00}";
+    }
+}

@@ -1,71 +1,316 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">BarmanLims</a>
     </div>
 </div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+<input type="checkbox"
+       title="Navigation menu"
+       class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable"
+     onclick="document.querySelector('.navbar-toggler').click()">
+
     <nav class="nav flex-column">
 
+        <!-- خانه -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span>
-                Home
+            <NavLink class="nav-link"
+                     href=""
+                     Match="NavLinkMatch.All">
+                <span class="bi bi-house-door-fill-nav-menu"
+                      aria-hidden="true"></span>
+                خانه
             </NavLink>
         </div>
 
+        <!-- پذیرش -->
+        @if (HasPermission("Reception.Create"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="reception/create">
+                    <span class="bi bi-plus-square-fill-nav-menu"
+                          aria-hidden="true"></span>
+                    ثبت پذیرش
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("Reception.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="reception">
+                    <span class="bi bi-list-ul"
+                          aria-hidden="true"></span>
+                    پذیرش‌ها
+                </NavLink>
+            </div>
+        }
+
+        <!-- آزمون‌ها -->
+        @if (HasPermission("Test.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="tests">
+                    <span class="bi bi-list-check"
+                          aria-hidden="true"></span>
+                    مدیریت آزمون‌ها
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("TestPanel.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="testpanels">
+                    <span class="oi oi-list-rich"></span>
+                    پانل‌های آزمون
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("TestPanel.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="default-test-sets">
+                    <span class="oi oi-list-rich"></span>
+                    مجموعه آزمون‌های پیش‌فرض
+                </NavLink>
+            </div>
+        }
+
+        <!-- اطلاعات پایه -->
+        @if (HasPermission("Customer.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="customers">
+                    <span class="oi oi-people"></span>
+                    مشتریان
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("Department.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="departments">
+                    <span class="oi oi-layers"></span>
+                    بخش‌ها
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("Employee.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="employees">
+                    <span class="oi oi-person"></span>
+                    پرسنل
+                </NavLink>
+            </div>
+        }
+
+        <!-- مدیریت سیستم -->
+        @if (HasPermission("Admin"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="roles">
+                    <span class="oi oi-key"></span>
+                    مدیریت نقش‌ها
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="user-accounts">
+                    <span class="oi oi-lock-locked"></span>
+                    مدیریت حساب‌های کاربری
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="admin/database-backup">
+                    <span class="oi oi-data-transfer-download"></span>
+                    پشتیبان‌گیری و بازیابی
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="admin/database-backup-settings">
+                    <span class="oi oi-cog"></span>
+                    تنظیمات پشتیبان‌گیری خودکار
+                </NavLink>
+            </div>
+
+        }
+
+        @if (HasPermission("SampleCategory.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="samplecategories">
+                    <span class="oi oi-tags"></span>
+                    دسته‌بندی نمونه‌ها
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("Matrix.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="matrices">
+                    <span class="oi oi-list"></span>
+                    ماتریس‌ها
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("Sample.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="standard-samples">
+                    <span class="oi oi-list-rich"></span>
+                    نمونه‌های استاندارد
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("MasterData.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="master-data">
+                    <span class="oi oi-calculator"></span>
+                    مستر دیتا
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("LimitReference.View"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="limit-references">
+                    <span class="oi oi-book"></span>
+                    مراجع حدود
+                </NavLink>
+            </div>
+        }
+
+
+
+        @if (HasPermission("Admin"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="report-templates">
+                    <span class="oi oi-document"></span>
+                    قالب‌های گزارش
+                </NavLink>
+            </div>
+        }
+        <!-- کارتابل‌ها -->
+        @if (HasPermission("Result.Entry"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="analyst/worklist">
+                    <span class="oi oi-person"></span>
+                    کارتابل کارشناس
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("Result.SectionApprove"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="section-head/worklist">
+                    <span class="oi oi-briefcase"></span>
+                    کارتابل مسئول بخش
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("Result.TechnicalApprove"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="technical-manager/worklist">
+                    <span class="oi oi-check"></span>
+                    کارتابل مسئول فنی
+                </NavLink>
+            </div>
+        }
+
+        @if (HasPermission("Result.FinalApprove"))
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link"
+                         href="director/worklist">
+                    <span class="oi oi-dashboard"></span>
+                    کارتابل مدیر ارشد
+                </NavLink>
+            </div>
+        }
+
+        <!-- خروج -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="reception/create">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span>
-                ثبت پذیرش
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="reception">
-                <span class="bi bi-list-ul" aria-hidden="true"></span>
-                پذیرش‌ها
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-
-            <NavLink class="nav-link" href="tests">
-                <span class="bi bi-list-check" aria-hidden="true"></span>
-                مدیریت آزمون‌ها
-            </NavLink>
-
-            <NavLink class="nav-link" href="customers">
-                <span class="oi oi-people"></span>
-                Customers
-            </NavLink>
-
-            <NavLink class="nav-link" href="departments">
-                <span class="oi oi-layers"></span>
-                Departments
-            </NavLink>
-
-            <NavLink class="nav-link" href="employees">
-                <span class="oi oi-person"></span>
-                Employees TEST
-            </NavLink>
-
-            <NavLink class="nav-link" href="samplecategories">
-                <span class="oi oi-tags"></span>
-                Sample Categories
-            </NavLink>
-
-            <NavLink class="nav-link" href="matrices">
-                <span class="oi oi-list"></span>
-                Matrices
-            </NavLink>
-
-            <NavLink class="nav-link" href="testpanels">
-                <span class="oi oi-list-rich"></span>
-                Test Panels
-            </NavLink>
-
+            <form method="post" action="/account/logout">
+                <button type="submit"
+                        class="nav-link"
+                        style="border: none; background: none; width: 100%; text-align: left;">
+                    <span class="oi oi-account-logout"></span>
+                    خروج
+                </button>
+            </form>
         </div>
 
     </nav>
 </div>
+
+@code {
+
+    private const string PermissionClaimType = "Barman.Permission";
+
+    private HashSet<string> Permissions =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState =
+            await AuthenticationStateProvider
+                .GetAuthenticationStateAsync();
+
+        var user = authState.User;
+
+        Permissions = user.Claims
+            .Where(x => x.Type == PermissionClaimType)
+            .Select(x => x.Value)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private bool HasPermission(string permissionCode)
+    {
+        return Permissions.Contains("Admin") ||
+               Permissions.Contains(permissionCode);
+    }
+}

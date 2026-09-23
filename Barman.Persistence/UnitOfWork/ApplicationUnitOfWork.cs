@@ -1,7 +1,11 @@
 ﻿using Barman.Application.Interfaces;
 using Barman.Application.Interfaces.Repositories;
+using Barman.Application.Interfaces.Repositories.Reporting;
+using Barman.Application.Services.Resolvers;
 using Barman.Persistence.Contexts;
 using Barman.Persistence.Repositories;
+using Barman.Persistence.Repositories.Reporting;
+
 
 namespace Barman.Persistence.UnitOfWork;
 
@@ -9,13 +13,23 @@ public class ApplicationUnitOfWork : IUnitOfWork
 {
     private readonly ApplicationDbContext _context;
 
+    private readonly IScopedTemplateResolver _scopedTemplateResolver;
+
     public IReceptionRepository Receptions { get; }
 
     public INumberSequenceRepository NumberSequences { get; }
 
     public ICustomerRepository Customers { get; }
 
+    public IOrganizationTypeRepository OrganizationTypes { get; }
+
+    public ITestTariffRepository TestTariffs { get; }
+
     public ISampleRepository Samples { get; }
+
+    public ICustomFieldDefinitionRepository CustomFieldDefinitions { get; }
+
+    public ICustomFieldValueRepository CustomFieldValues { get; }
 
     public ISampleCategoryRepository SampleCategories { get; }
 
@@ -25,9 +39,21 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
     public IReferenceLimitRepository ReferenceLimits { get; }
 
+    public ILimitReferenceRepository LimitReferences { get; }
+
+    public ITestLimitRuleRepository TestLimitRules { get; }
+
+    public ITestMethodRepository TestMethods { get; }
+
+    public IInstrumentRepository Instruments { get; }
+
     public ITestPanelRepository TestPanels { get; }
 
+    public IStandardSampleRepository StandardSamples { get; }
+
     public ITestPanelItemRepository TestPanelItems { get; }
+
+    public ITestResultDefinitionRepository TestResultDefinitions { get; }
 
     public ICustomerTestPanelRepository CustomerTestPanels { get; }
 
@@ -43,9 +69,21 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
     public ITestAssignmentRepository TestAssignments { get; }
 
+    public ITestAssignmentResultValueRepository TestAssignmentResultValues { get; }
+
+    public ITestResultReviewRepository TestResultReviews { get; }
+
+    public ITestResultSetRepository TestResultSets { get; }
+
+    public ITestResultSetItemRepository TestResultSetItems { get; }
+
     public ITestLimitChangeRequestRepository TestLimitChangeRequests { get; }
 
+    public IReceptionCorrectionRequestRepository ReceptionCorrectionRequests { get; }
+
     public IEmployeeRepository Employees { get; }
+
+    public IUserAccountRepository UserAccounts { get; }
 
     public IEmployeeDepartmentRepository EmployeeDepartments { get; }
 
@@ -55,9 +93,25 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
     public ITechnicalManagerSectionHeadRepository TechnicalManagerSectionHeads { get; }
 
-    public ApplicationUnitOfWork(ApplicationDbContext context)
+    public ITechnicalManagerScopeRepository TechnicalManagerScopes { get; }
+
+    public IEmployeeTechnicalManagerScopeRepository EmployeeTechnicalManagerScopes { get; }
+
+    public ITechnicalManagerScopeDepartmentRepository TechnicalManagerScopeDepartments { get; }
+
+    public ITechnicalManagerRoutingRuleRepository TechnicalManagerRoutingRules { get; }
+
+    public IReportTemplateRepository ReportTemplates { get; }
+
+    public IIssuedReportRepository IssuedReports { get; }
+
+    public ApplicationUnitOfWork(
+                ApplicationDbContext context,
+                IScopedTemplateResolver scopedTemplateResolver)
     {
         _context = context;
+
+        _scopedTemplateResolver = scopedTemplateResolver;
 
         Receptions = new ReceptionRepository(context);
 
@@ -65,7 +119,17 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
         Customers = new CustomerRepository(context);
 
+        OrganizationTypes = new OrganizationTypeRepository(context);
+
+        TestTariffs = new TestTariffRepository(context);
+
         Samples = new SampleRepository(context);
+
+        CustomFieldDefinitions =
+    new CustomFieldDefinitionRepository(context);
+
+        CustomFieldValues =
+            new CustomFieldValueRepository(context);
 
         SampleCategories = new SampleCategoryRepository(context);
 
@@ -75,13 +139,28 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
         ReferenceLimits = new ReferenceLimitRepository(context);
 
+        LimitReferences = new LimitReferenceRepository(context);
+
+        TestLimitRules = new TestLimitRuleRepository(context);
+
+        TestMethods = new TestMethodRepository(context);
+
+        Instruments = new InstrumentRepository(context);
+
         TestPanels = new TestPanelRepository(context);
+
+        StandardSamples = new StandardSampleRepository(context);
 
         TestPanelItems = new TestPanelItemRepository(context);
 
+        TestResultDefinitions =
+    new TestResultDefinitionRepository(context);
+
         CustomerTestPanels = new CustomerTestPanelRepository(context);
 
-        DefaultTestSets = new DefaultTestSetRepository(context);
+        DefaultTestSets = new DefaultTestSetRepository(
+                _context,
+                _scopedTemplateResolver);
 
         Departments = new DepartmentRepository(context);
 
@@ -93,20 +172,55 @@ public class ApplicationUnitOfWork : IUnitOfWork
 
         Employees = new EmployeeRepository(context);
 
+        UserAccounts = new UserAccountRepository(context);
+
         EmployeeDepartments = new EmployeeDepartmentRepository(context);
 
         EmployeeRoles = new EmployeeRoleRepository(context);
 
         TestAssignments = new TestAssignmentRepository(context);
 
+        TestAssignmentResultValues =
+            new TestAssignmentResultValueRepository(context);
+
+        TestResultReviews = new TestResultReviewRepository(context);
+
+        TestResultSets = new TestResultSetRepository(
+                _context,
+                _scopedTemplateResolver);
+
+        TestResultSetItems =
+    new TestResultSetItemRepository(context);
+
         TestLimitChangeRequests =
-    new TestLimitChangeRequestRepository(context);
+              new TestLimitChangeRequestRepository(context);
+
+        ReceptionCorrectionRequests =
+            new ReceptionCorrectionRequestRepository(context);
 
         DepartmentResponsibilities =
             new DepartmentResponsibilityRepository(context);
 
         TechnicalManagerSectionHeads =
             new TechnicalManagerSectionHeadRepository(context);
+
+        TechnicalManagerScopes =
+            new TechnicalManagerScopeRepository(context);
+
+        EmployeeTechnicalManagerScopes =
+            new EmployeeTechnicalManagerScopeRepository(context);
+
+        TechnicalManagerScopeDepartments =
+              new TechnicalManagerScopeDepartmentRepository(context);
+
+        TechnicalManagerRoutingRules =
+               new TechnicalManagerRoutingRuleRepository(context);
+
+        ReportTemplates =
+    new ReportTemplateRepository(context);
+
+        IssuedReports =
+    new IssuedReportRepository(context);
     }
 
     public async Task<int> SaveChangesAsync(
@@ -115,3 +229,4 @@ public class ApplicationUnitOfWork : IUnitOfWork
         return await _context.SaveChangesAsync(cancellationToken);
     }
 }
+

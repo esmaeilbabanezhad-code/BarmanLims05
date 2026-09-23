@@ -6,10 +6,10 @@
 @inject Barman.Application.Interfaces.ICustomerService CustomerService
 @inject Barman.Application.Interfaces.IPermissionService PermissionService
 
-<PageTitle>Customers</PageTitle>
+<PageTitle>مشتریان</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
-    
+
     @if (!CanView)
     {
         <MudAlert Severity="Severity.Error" Class="mt-4">
@@ -18,199 +18,246 @@
     }
     else
     {
-    <MudPaper Class="pa-4">
-    
+        <MudPaper Class="pa-4">
 
-        <div class="d-flex justify-space-between">
+            <div class="d-flex justify-space-between">
 
-            <MudText Typo="Typo.h5">
-                Customers
-            </MudText>
+                <MudText Typo="Typo.h5">
+                    مشتریان
+                </MudText>
 
-            @if (CanCreate)
-            {
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           OnClick="NewCustomer">
-                    New
-                </MudButton>
-            }
+                @if (CanCreate)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="NewCustomer">
+                        مشتری جدید
+                    </MudButton>
+                }
 
-        </div>
+            </div>
 
-        <MudDivider Class="my-3" />
+            <MudDivider Class="my-3" />
 
-        <MudTable Items="CustomerList"
-                  Hover="true"
-                  Dense="true">
+            <BarmanDataGrid TItem="Customer"
+                            Items="CustomerList"
+                            Searchable="true"
+                            SearchLabel="جستجوی مشتری"
+                            SearchPlaceholder="کد، نام، شهر، تلفن یا ایمیل..."
+                            SearchFunc="SearchCustomer">
 
-            <HeaderContent>
+                <HeaderContent>
 
-                <MudTh>Code</MudTh>
-                <MudTh>Display Name</MudTh>
-                <MudTh>City</MudTh>
-                <MudTh>Phone</MudTh>
-                <MudTh>Mobile</MudTh>
-                <MudTh>Email</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh></MudTh>
+                    <MudTh>
+                        <MudTableSortLabel T="Customer"
+                                           SortBy="@(x => x.Code)">
+                            کد مشتری
+                        </MudTableSortLabel>
+                    </MudTh>
 
-            </HeaderContent>
+                    <MudTh>
+                        <MudTableSortLabel T="Customer"
+                                           SortBy="@(x => x.DisplayName)">
+                            نام مشتری
+                        </MudTableSortLabel>
+                    </MudTh>
 
-            <RowTemplate>
+                    <MudTh>
+                        <MudTableSortLabel T="Customer"
+                                           SortBy="@(x => x.City)">
+                            شهر
+                        </MudTableSortLabel>
+                    </MudTh>
 
-                <MudTd>@context.Code</MudTd>
+                    <MudTh>
+                        <MudTableSortLabel T="Customer"
+                                           SortBy="@(x => x.Phone)">
+                            تلفن
+                        </MudTableSortLabel>
+                    </MudTh>
 
-                <MudTd>@context.DisplayName</MudTd>
+                    <MudTh>
+                        <MudTableSortLabel T="Customer"
+                                           SortBy="@(x => x.Mobile)">
+                            موبایل
+                        </MudTableSortLabel>
+                    </MudTh>
 
-                <MudTd>@context.City</MudTd>
+                    <MudTh>
+                        <MudTableSortLabel T="Customer"
+                                           SortBy="@(x => x.Email)">
+                            ایمیل
+                        </MudTableSortLabel>
+                    </MudTh>
 
-                <MudTd>@context.Phone</MudTd>
+                    <MudTh>
+                        <MudTableSortLabel T="Customer"
+                                           SortBy="@(x => x.IsActive)">
+                            وضعیت
+                        </MudTableSortLabel>
+                    </MudTh>
 
-                <MudTd>@context.Mobile</MudTd>
+                    <MudTh>
+                    </MudTh>
 
-                <MudTd>@context.Email</MudTd>
+                </HeaderContent>
 
-                <MudTd>
+                <RowTemplate Context="context">
 
-                    @if (context.IsActive)
-                    {
-                        <MudChip T="string"
-                                 Color="Color.Success">
-                            Active
-                        </MudChip>
-                    }
-                    else
-                    {
-                        <MudChip T="string"
-                                 Color="Color.Error">
-                            Inactive
-                        </MudChip>
-                    }
+                    <MudTd>@context.Code</MudTd>
 
-                </MudTd>
+                    <MudTd>@context.DisplayName</MudTd>
 
-                <MudTd>
+                    <MudTd>@context.City</MudTd>
 
-                    @if (CanEdit)
-                    {
-                        <MudButton Size="Size.Small"
-                                   Variant="Variant.Outlined"
-                                   Color="Color.Primary"
-                                   OnClick="@(() => Edit(context))">
-                            Edit
-                        </MudButton>
-                    }
+                    <MudTd>@context.Phone</MudTd>
 
-                            @if (CanEdit)
+                    <MudTd>@context.Mobile</MudTd>
+
+                    <MudTd>@context.Email</MudTd>
+
+                    <MudTd>
+
+                        @if (context.IsActive)
+                        {
+                            <MudChip T="string"
+                                     Color="Color.Success">
+                                فعال
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string"
+                                     Color="Color.Error">
+                                غیرفعال
+                            </MudChip>
+                        }
+
+                    </MudTd>
+
+                    <MudTd>
+
+                        @if (CanEdit)
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => Edit(context))">
+                                ویرایش
+                            </MudButton>
+                        }
+
+                        @if (CanEdit)
+                        {
+                            @if (context.IsActive)
                             {
-                                @if (context.IsActive)
-                                {
-                                    <MudButton Size="Size.Small"
-                                               Variant="Variant.Text"
-                                               Color="Color.Warning"
-                                               OnClick="@(() => Deactivate(context.Id))">
-                                        Disable
-                                    </MudButton>
-                                }
-                                else
-                                {
-                                    <MudButton Size="Size.Small"
-                                               Variant="Variant.Text"
-                                               Color="Color.Success"
-                                               OnClick="@(() => Activate(context.Id))">
-                                        Activate
-                                    </MudButton>
-                                }
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Warning"
+                                           OnClick="@(() => Deactivate(context.Id))">
+                                    غیرفعال کردن
+                                </MudButton>
                             }
+                            else
+                            {
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Success"
+                                           OnClick="@(() => Activate(context.Id))">
+                                    فعال کردن
+                                </MudButton>
+                            }
+                        }
 
-                    @if (CanDelete)
-                    {
-                        <MudButton Size="Size.Small"
-                                   Variant="Variant.Text"
-                                   Color="Color.Error"
-                                   OnClick="@(() => Delete(context.Id))">
-                            Delete
-                        </MudButton>
-                    }
+                        @if (CanDelete)
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Error"
+                                       OnClick="@(() => Delete(context.Id))">
+                                حذف
+                            </MudButton>
+                        }
 
-                </MudTd>
+                    </MudTd>
 
-            </RowTemplate>
+                </RowTemplate>
 
-        </MudTable>
+            </BarmanDataGrid>
 
-        <MudDialog @bind-Visible="DialogVisible">
+            <MudDialog @bind-Visible="DialogVisible">
 
-            <DialogContent>
+                <DialogContent>
 
-                <MudTextField Label="Code"
-                              @bind-Value="CurrentCustomer.Code" />
+                    <MudTextField Label="کد مشتری"
+                                  @bind-Value="CurrentCustomer.Code"
+                                  ReadOnly="true" />
 
-                <MudTextField Label="Display Name"
-                              @bind-Value="CurrentCustomer.DisplayName" />
+                    <MudTextField Label="نام مشتری"
+                                  @bind-Value="CurrentCustomer.DisplayName" />
 
-                <MudTextField Label="Legal Name"
-                              @bind-Value="CurrentCustomer.LegalName" />
+                    <MudTextField Label="نام حقوقی"
+                                  @bind-Value="CurrentCustomer.LegalName" />
 
-                <MudTextField Label="National ID"
-                              @bind-Value="CurrentCustomer.NationalId" />
+                    <MudTextField Label="شناسه ملی"
+                                  @bind-Value="CurrentCustomer.NationalId" />
 
-                <MudTextField Label="Economic Code"
-                              @bind-Value="CurrentCustomer.EconomicCode" />
+                    <MudTextField Label="کد اقتصادی"
+                                  @bind-Value="CurrentCustomer.EconomicCode" />
 
-                <MudTextField Label="Registration No"
-                              @bind-Value="CurrentCustomer.RegistrationNo" />
+                    <MudTextField Label="شماره ثبت"
+                                  @bind-Value="CurrentCustomer.RegistrationNo" />
 
-                <MudTextField Label="Province"
-                              @bind-Value="CurrentCustomer.Province" />
+                    <MudTextField Label="استان"
+                                  @bind-Value="CurrentCustomer.Province" />
 
-                <MudTextField Label="City"
-                              @bind-Value="CurrentCustomer.City" />
+                    <MudTextField Label="شهر"
+                                  @bind-Value="CurrentCustomer.City" />
 
-                <MudTextField Label="Address"
-                              Lines="3"
-                              @bind-Value="CurrentCustomer.Address" />
+                    <MudTextField Label="نشانی"
+                                  Lines="3"
+                                  @bind-Value="CurrentCustomer.Address" />
 
-                <MudTextField Label="Postal Code"
-                              @bind-Value="CurrentCustomer.PostalCode" />
+                    <MudTextField Label="کد پستی"
+                                  @bind-Value="CurrentCustomer.PostalCode" />
 
-                <MudTextField Label="Phone"
-                              @bind-Value="CurrentCustomer.Phone" />
+                    <MudTextField Label="تلفن"
+                                  @bind-Value="CurrentCustomer.Phone" />
 
-                <MudTextField Label="Mobile"
-                              @bind-Value="CurrentCustomer.Mobile" />
+                    <MudTextField Label="موبایل"
+                                  @bind-Value="CurrentCustomer.Mobile" />
 
-                <MudTextField Label="Email"
-                              @bind-Value="CurrentCustomer.Email" />
+                    <MudTextField Label="ایمیل"
+                                  @bind-Value="CurrentCustomer.Email" />
 
-                <MudTextField Label="Website"
-                              @bind-Value="CurrentCustomer.Website" />
+                    <MudTextField Label="وب‌سایت"
+                                  @bind-Value="CurrentCustomer.Website" />
 
-                <MudTextField Label="Description"
-                              Lines="3"
-                              @bind-Value="CurrentCustomer.Description" />
+                    <MudTextField Label="توضیحات"
+                                  Lines="3"
+                                  @bind-Value="CurrentCustomer.Description" />
 
-            </DialogContent>
+                </DialogContent>
 
-            <DialogActions>
+                <DialogActions>
 
-                <MudButton Color="Color.Primary"
-                           OnClick="SaveCustomer">
-                    Save
-                </MudButton>
+                    <MudButton Color="Color.Primary"
+                               OnClick="SaveCustomer">
+                        ذخیره
+                    </MudButton>
 
-                <MudButton Color="Color.Secondary"
-                           OnClick="CloseDialog">
-                    Cancel
-                </MudButton>
+                    <MudButton Color="Color.Secondary"
+                               OnClick="CloseDialog">
+                        انصراف
+                    </MudButton>
 
-            </DialogActions>
+                </DialogActions>
 
-        </MudDialog>
+            </MudDialog>
 
-    </MudPaper>
-            }
+        </MudPaper>
+    }
+
 </MudContainer>
 
 @code {
@@ -226,6 +273,17 @@
     private bool CanCreate;
     private bool CanEdit;
     private bool CanDelete;
+
+    private string SearchCustomer(Customer customer)
+    {
+        return string.Join(" ",
+            customer.Code ?? "",
+            customer.DisplayName ?? "",
+            customer.City ?? "",
+            customer.Phone ?? "",
+            customer.Mobile ?? "",
+            customer.Email ?? "");
+    }
 
     protected override async Task OnInitializedAsync()
     {

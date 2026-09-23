@@ -1,0 +1,764 @@
+@page "/final-report-preview/{SampleId:guid}"
+
+@using Barman.Application.DTOs.Reporting
+@using Barman.Application.Interfaces.Services.Reporting
+@using Barman.Domain.Entities.Reporting
+@using Microsoft.JSInterop
+@inject IFinalReportDataService FinalReportDataService
+@inject IReportTemplateRenderer ReportTemplateRenderer
+@inject IReportTemplateService ReportTemplateService
+@inject IIssuedReportService IssuedReportService
+@inject NavigationManager NavigationManager
+@inject IReportExportService ReportExportService
+@inject IJSRuntime JS
+
+
+<PageTitle>پیش‌نمایش گزارش نهایی</PageTitle>
+
+<div class="container-fluid">
+
+    @if (IsLoading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border"></div>
+            <div class="mt-2">در حال آماده‌سازی گزارش...</div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            @ErrorMessage
+        </div>
+    }
+    else if (Model is not null)
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h3>پیش‌نمایش گزارش نهایی</h3>
+
+                <div class="text-muted">
+                    پذیرش: @Model.Data.ReceptionNumber
+                </div>
+
+                @if (ActiveTemplates.Count > 0)
+                {
+                    <div class="mt-2">
+                        <label class="form-label mb-1">
+                            قالب گزارش
+                        </label>
+
+                        <select class="form-select form-select-sm"
+                                style="min-width:320px;"
+                                value="@SelectedTemplateId"
+                                @onchange="OnTemplateChanged">
+
+                            @foreach (var template in ActiveTemplates)
+                            {
+                                <option value="@template.Id">
+                                    @template.Name - @template.Code - نسخه @(template.Version ?? "-")
+                                </option>
+                            }
+                        </select>
+                    </div>
+                }
+            </div>
+
+            <div class="d-flex gap-2">
+
+                <button class="btn btn-secondary"
+                        @onclick="GoBack">
+                    بازگشت
+                </button>
+                <button class="btn btn-outline-primary"
+                        @onclick="ExportWord"
+                        disabled="@IsExportingWord">
+
+                    @if (IsExportingWord)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                        <span>در حال تولید Word...</span>
+                    }
+                    else
+                    {
+                        <span>خروجی Word</span>
+                    }
+                </button>
+
+                <button class="btn btn-outline-danger"
+                        @onclick="ExportPdf"
+                        disabled="@IsExportingPdf">
+
+                    @if (IsExportingPdf)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                        <span>در حال تولید PDF...</span>
+                    }
+                    else
+                    {
+                        <span>خروجی PDF</span>
+                    }
+                </button>
+                <button class="btn btn-success"
+                        @onclick="IssueReport"
+                        disabled="@(IsIssuing || !CanIssueReport)">
+
+                    @if (IsIssuing)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                        <span>در حال صدور...</span>
+                    }
+                    else if (IssuedReportId.HasValue)
+                    {
+                        <span>گزارش صادر شد</span>
+                    }
+                    else
+                    {
+                        <span>صدور گزارش نهایی</span>
+                    }
+
+                </button>
+
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(SuccessMessage))
+        {
+            <div class="alert alert-success">
+                @SuccessMessage
+
+                @if (IssuedReportId.HasValue)
+                {
+                    <div class="small mt-1">
+                        شناسه گزارش صادرشده:
+                        @IssuedReportId
+                    </div>
+                }
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(IssueErrorMessage))
+        {
+            <div class="alert alert-danger">
+                @IssueErrorMessage
+            </div>
+        }
+        @if (!CanIssueReport && !IsIssuing)
+        {
+            <div class="alert alert-warning mt-2">
+                صدور گزارش تا زمان تکمیل تأیید نهایی همه آزمون‌های این نمونه امکان‌پذیر نیست.
+            </div>
+        }
+        <div class="card">
+            <div class="card-body">
+
+                @foreach (var reportSection in Model.Sections
+                            .Where(x => x.IsVisible)
+                            .OrderBy(x => x.DisplayOrder))
+                {
+                    <div class="mb-4">
+
+                        <h5 class="border-bottom pb-2">
+                            @reportSection.Name
+                        </h5>
+
+                        @if (reportSection.Fields.Count > 0)
+                        {
+                            <div class="row g-2">
+
+                                @foreach (var field in reportSection.Fields
+                                                    .Where(x => x.IsVisible)
+                                                    .OrderBy(x => x.DisplayOrder))
+                                {
+                                    <div class="@GetFieldColumnClass(reportSection.ColumnCount, field.Width)">
+
+                                        @if (!string.IsNullOrWhiteSpace(field.Caption))
+                                        {
+                                            <strong>@field.Caption:</strong>
+                                        }
+
+                                        <span>
+                                            @FormatValue(field.Value, field.Format)
+                                        </span>
+
+                                    </div>
+                                }
+
+                            </div>
+                        }
+
+                    </div>
+                }
+
+                @if (Model.Tests.Count > 0)
+                {
+                    <div class="mt-4">
+
+                        <h5 class="border-bottom pb-2">
+                            نتایج آزمون‌ها
+                        </h5>
+
+                        @{
+                            var allColumns = GetAllTestColumns(Model.Tests);
+                        }
+
+                        @if (allColumns.Count > 0)
+                        {
+                            <table class="table table-bordered table-sm">
+
+                                <thead>
+                                    <tr>
+                                        @foreach (var column in allColumns)
+                                        {
+                                            <th style="@GetWidthStyle(column.Width)">
+                                                @column.Caption
+                                            </th>
+                                        }
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+
+                                    @foreach (var test in Model.Tests)
+                                    {
+                                        if (test.Results.Count > 0)
+                                        {
+                                            @foreach (var result in test.Results
+                                                                    .OrderBy(x => x.DisplayOrder))
+                                            {
+                                                <tr>
+                                                    @foreach (var column in allColumns)
+                                                    {
+                                                        var value = GetColumnValue(
+                                                        column,
+                                                        test,
+                                                        result);
+
+                                                        <td style="@GetWidthStyle(column.Width)">
+                                                            @FormatValue(
+                                                            value.Value,
+                                                                value.Format)
+                            </td>
+                                                        }
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                @foreach (var column in allColumns)
+                                                {
+                                                    var value = GetColumnValue(
+                                                    column,
+                                                    test,
+                                                    null);
+
+                                                    <td style="@GetWidthStyle(column.Width)">
+                                                        @FormatValue(
+                                                        value.Value,
+                                                                value.Format)
+                            </td>
+                                                        }
+                                            </tr>
+                                        }
+                                    }
+
+                                </tbody>
+
+                            </table>
+                        }
+
+                    </div>
+                }
+
+                @if (Model.Data.Signatures is not null)
+                {
+                    <div class="mt-5 border-top pt-4">
+
+                        <h5 class="border-bottom pb-2">
+                            تأیید و مسئولین فنی
+                        </h5>
+
+                        <div class="row text-center mt-4">
+
+                            <div class="col-md-4">
+                                <strong>مسئول بخش</strong>
+
+                                <div class="mt-2">
+                                    @(Model.Data.Signatures.SectionHeadName ?? "-")
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <strong>مسئول فنی</strong>
+
+                                <div class="mt-2">
+                                    @(Model.Data.Signatures.TechnicalManagerName ?? "-")
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <strong>مدیر آزمایشگاه</strong>
+
+                                <div class="mt-2">
+                                    @(Model.Data.Signatures.DirectorName ?? "-")
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+
+    [Parameter]
+    public Guid SampleId { get; set; }
+
+    private ReportRenderingModel? Model;
+
+    private ReportTemplate? SelectedTemplate;
+    private List<ReportTemplate> ActiveTemplates = new();
+    private Guid? SelectedTemplateId;
+
+    private bool IsLoading;
+    private bool IsIssuing;
+    private bool CanIssueReport;
+    private bool IsExportingWord;
+    private bool IsExportingPdf;
+    private Guid? IssuedReportId;
+
+    private string? ErrorMessage;
+    private string? IssueErrorMessage;
+    private string? SuccessMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadReport();
+    }
+
+    private async Task LoadReport()
+    {
+        try
+        {
+            IsLoading = true;
+
+            ErrorMessage = null;
+            IssueErrorMessage = null;
+            SuccessMessage = null;
+
+            Model = null;
+            SelectedTemplate = null;
+            ActiveTemplates = new();
+            SelectedTemplateId = null;
+            IssuedReportId = null;
+
+            var data =
+                await FinalReportDataService
+                    .GetBySampleIdAsync(SampleId);
+
+            CanIssueReport =
+    await IssuedReportService
+        .CanIssueAsync(SampleId);
+
+            if (data is null)
+            {
+                ErrorMessage =
+                    "اطلاعات گزارش برای این نمونه پیدا نشد.";
+
+                return;
+            }
+
+            var templates =
+    await ReportTemplateService.GetAllAsync();
+
+            ActiveTemplates = templates
+                .Where(x => x.IsActive)
+                .OrderByDescending(x => x.IsSystemDefault)
+                .ThenBy(x => x.Name)
+                .ToList();
+
+            SelectedTemplate = ActiveTemplates.FirstOrDefault();
+
+            if (SelectedTemplate is null)
+            {
+                ErrorMessage =
+                    "قالب فعال گزارش پیدا نشد.";
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    SelectedTemplate.Code))
+            {
+                ErrorMessage =
+                    "کد قالب گزارش مشخص نشده است.";
+
+                return;
+            }
+            SelectedTemplateId = SelectedTemplate.Id;
+
+            if (string.IsNullOrWhiteSpace(
+                    SelectedTemplate.Version))
+            {
+                ErrorMessage =
+                    "نسخه قالب گزارش مشخص نشده است.";
+
+                return;
+            }
+
+            Model =
+                await ReportTemplateRenderer
+                    .RenderAsync(
+                        SelectedTemplate,
+                        data);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    private async Task OnTemplateChanged(ChangeEventArgs e)
+    {
+        if (!Guid.TryParse(
+                e.Value?.ToString(),
+                out var templateId))
+        {
+            return;
+        }
+
+        var template =
+            ActiveTemplates.FirstOrDefault(
+                x => x.Id == templateId);
+
+        if (template is null)
+        {
+            return;
+        }
+
+        SelectedTemplate = template;
+        SelectedTemplateId = template.Id;
+
+        ErrorMessage = null;
+        IssueErrorMessage = null;
+
+        var data =
+            await FinalReportDataService
+                .GetBySampleIdAsync(SampleId);
+
+        if (data is null)
+        {
+            ErrorMessage =
+                "اطلاعات گزارش برای این نمونه پیدا نشد.";
+
+            return;
+        }
+
+        Model =
+            await ReportTemplateRenderer
+                .RenderAsync(
+                    SelectedTemplate,
+                    data);
+    }
+    private async Task ExportWord()
+    {
+        if (IsExportingWord)
+            return;
+
+        if (SelectedTemplate is null)
+        {
+            ErrorMessage = "قالب گزارش انتخاب نشده است.";
+            return;
+        }
+
+        try
+        {
+            IsExportingWord = true;
+            ErrorMessage = null;
+
+            var bytes = await ReportExportService.ExportWordAsync(
+                SampleId,
+                SelectedTemplate.Id);
+
+            if (bytes is null || bytes.Length == 0)
+            {
+                ErrorMessage = "فایل Word تولید نشد.";
+                return;
+            }
+
+            var fileName =
+                $"FinalReport_{Model?.Data.ReportNumber ?? SampleId.ToString()}.docx";
+
+            await DownloadFile(
+                fileName,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                bytes);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"خطا در تولید فایل Word: {ex.Message}";
+        }
+        finally
+        {
+            IsExportingWord = false;
+        }
+    }
+
+    private async Task ExportPdf()
+    {
+        if (IsExportingPdf)
+            return;
+
+        if (SelectedTemplate is null)
+        {
+            ErrorMessage = "قالب گزارش انتخاب نشده است.";
+            return;
+        }
+
+        try
+        {
+            IsExportingPdf = true;
+            ErrorMessage = null;
+
+            var bytes = await ReportExportService.ExportPdfAsync(
+                SampleId,
+                SelectedTemplate.Id);
+
+            if (bytes is null || bytes.Length == 0)
+            {
+                ErrorMessage = "فایل PDF تولید نشد.";
+                return;
+            }
+
+            var fileName =
+                $"FinalReport_{Model?.Data.ReportNumber ?? SampleId.ToString()}.pdf";
+
+            await DownloadFile(
+                fileName,
+                "application/pdf",
+                bytes);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"خطا در تولید فایل PDF: {ex.Message}";
+        }
+        finally
+        {
+            IsExportingPdf = false;
+        }
+    }
+
+    private async Task DownloadFile(
+    string fileName,
+    string contentType,
+    byte[] bytes)
+    {
+        await JS.InvokeVoidAsync(
+            "BlazorDownloadFile",
+            fileName,
+            contentType,
+            bytes);
+    }
+
+    private async Task IssueReport()
+    {
+        if (IsIssuing)
+            return;
+
+        if (!CanIssueReport)
+        {
+            IssueErrorMessage =
+                "این نمونه هنوز تأیید نهایی نشده است.";
+
+            return;
+        }
+
+        if (SelectedTemplate is null)
+        {
+            IssueErrorMessage =
+                "قالب گزارش انتخاب نشده است.";
+
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                SelectedTemplate.Code))
+        {
+            IssueErrorMessage =
+                "کد قالب گزارش مشخص نشده است.";
+
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                SelectedTemplate.Version))
+        {
+            IssueErrorMessage =
+                "نسخه قالب گزارش مشخص نشده است.";
+
+            return;
+        }
+
+        try
+        {
+            IsIssuing = true;
+
+            IssueErrorMessage = null;
+            SuccessMessage = null;
+
+            var issuedReportId =
+                await IssuedReportService.IssueAsync(
+                    SampleId,
+                    SelectedTemplate.Id,
+                    SelectedTemplate.Code,
+                    SelectedTemplate.Version);
+
+            if (!issuedReportId.HasValue)
+            {
+                IssueErrorMessage =
+                    "صدور گزارش انجام نشد.";
+
+                return;
+            }
+
+            IssuedReportId = issuedReportId;
+
+            SuccessMessage =
+                "گزارش نهایی با موفقیت صادر شد.";
+        }
+        catch (Exception ex)
+        {
+            IssueErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsIssuing = false;
+        }
+    }
+
+    private static List<RenderedReportField> GetAllTestColumns(
+        IEnumerable<RenderedReportTest> tests)
+    {
+        return tests
+            .SelectMany(x => x.Columns)
+            .Where(x => x.IsVisible)
+            .GroupBy(x => new
+            {
+                x.Source,
+                x.FieldCode
+            })
+            .Select(x => x.First())
+            .OrderBy(x => x.DisplayOrder)
+            .ToList();
+    }
+
+    private static (object? Value, string? Format) GetColumnValue(
+        RenderedReportField column,
+        RenderedReportTest test,
+        RenderedReportResult? result)
+    {
+        if (column.Source.Equals(
+                "Test",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            var testField = test.Fields
+                .FirstOrDefault(x =>
+                    x.IsVisible &&
+                    x.FieldCode.Equals(
+                        column.FieldCode,
+                        StringComparison.OrdinalIgnoreCase));
+
+            if (testField is not null)
+            {
+                return (
+                    testField.Value,
+                    testField.Format);
+            }
+        }
+
+        if (column.Source.Equals(
+                "Result",
+                StringComparison.OrdinalIgnoreCase) &&
+            result is not null)
+        {
+            var resultField = result.Fields
+                .FirstOrDefault(x =>
+                    x.IsVisible &&
+                    x.FieldCode.Equals(
+                        column.FieldCode,
+                        StringComparison.OrdinalIgnoreCase));
+
+            if (resultField is not null)
+            {
+                return (
+                    resultField.Value,
+                    resultField.Format);
+            }
+        }
+
+        return (null, column.Format);
+    }
+
+    private static string GetFieldColumnClass(
+    int columnCount,
+    string? width)
+    {
+        return columnCount switch
+        {
+            4 => "col-md-3",
+            3 => "col-md-4",
+            2 => "col-md-6",
+            1 => "col-12",
+            _ => "col-md-3"
+        };
+    }
+
+    private static string GetWidthStyle(string? width)
+    {
+        if (string.IsNullOrWhiteSpace(width))
+            return "";
+
+        return $"width:{width};";
+    }
+
+    private static string FormatValue(
+        object? value,
+        string? format)
+    {
+        if (value is null)
+            return "";
+
+        if (value is DateTime dateTime &&
+            !string.IsNullOrWhiteSpace(format))
+        {
+            return dateTime.ToString(format);
+        }
+
+        if (value is DateOnly dateOnly &&
+            !string.IsNullOrWhiteSpace(format))
+        {
+            return dateOnly.ToString(format);
+        }
+
+        if (value is IFormattable formattable &&
+            !string.IsNullOrWhiteSpace(format))
+        {
+            return formattable.ToString(format, null) ?? "";
+        }
+
+        return value.ToString() ?? "";
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/report-templates");
+    }
+}

@@ -26,10 +26,11 @@ public class TestPanelItemService : ITestPanelItemService
     }
 
     public async Task<TestPanelItem> AddAsync(
-        Guid testPanelId,
-        Guid testId,
-        int sortOrder,
-        CancellationToken cancellationToken = default)
+    Guid testPanelId,
+    Guid testId,
+    int sortOrder,
+    Guid? defaultAnalystId = null,
+    CancellationToken cancellationToken = default)
     {
         if (testPanelId == Guid.Empty)
             throw new ArgumentException(
@@ -76,7 +77,8 @@ public class TestPanelItemService : ITestPanelItemService
             Id = Guid.NewGuid(),
             TestPanelId = testPanelId,
             TestId = testId,
-            SortOrder = sortOrder
+            SortOrder = sortOrder,
+            DefaultAnalystId = defaultAnalystId
         };
 
         await _unitOfWork.TestPanelItems
@@ -140,6 +142,32 @@ public class TestPanelItemService : ITestPanelItemService
 
         return true;
     }
+
+    public async Task<bool> UpdateDefaultAnalystAsync(
+    Guid id,
+    Guid? defaultAnalystId,
+    CancellationToken cancellationToken = default)
+    {
+        if (id == Guid.Empty)
+            return false;
+
+        var item = await FindItemAsync(
+            id,
+            cancellationToken);
+
+        if (item == null)
+            return false;
+
+        item.DefaultAnalystId = defaultAnalystId;
+
+        _unitOfWork.TestPanelItems.Update(item);
+
+        await _unitOfWork.SaveChangesAsync(
+            cancellationToken);
+
+        return true;
+    }
+
 
     private async Task<TestPanelItem?> FindItemAsync(
         Guid id,

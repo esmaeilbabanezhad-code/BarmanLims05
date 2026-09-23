@@ -11,8 +11,10 @@
 @inject Barman.Application.Interfaces.ICustomerService CustomerService
 @inject Barman.Application.Interfaces.ISampleCategoryService SampleCategoryService
 @inject Barman.Application.Interfaces.IMatrixService MatrixService
+@inject Barman.Application.Interfaces.IStandardSampleService StandardSampleService
 @inject Barman.Application.Interfaces.ITestService TestService
 @inject Barman.Application.Interfaces.ITestPanelService TestPanelService
+@inject Barman.Application.Interfaces.INumberSequenceService NumberSequenceService
 @inject ICurrentUserService CurrentUserService
 <p>CurrentUser InstanceId: @CurrentUserService.InstanceId</p>
 
@@ -96,6 +98,7 @@
                     <MudTh>مشتری</MudTh>
                     <MudTh>دسته‌بندی نمونه</MudTh>
                     <MudTh>ماتریس</MudTh>
+                    <MudTh>Standard Sample</MudTh>
                     <MudTh>تعداد آیتم</MudTh>
                     <MudTh>اولویت</MudTh>
                     <MudTh>عملیات</MudTh>
@@ -115,17 +118,22 @@
                     <MudTd>
                         @(Customers.FirstOrDefault(x =>
                                             x.Id == context.CustomerId)?.DisplayName ?? "-")
-                                                                                        </MudTd>
+                     </MudTd>
 
                     <MudTd>
                         @(SampleCategories.FirstOrDefault(x =>
                                             x.Id == context.SampleCategoryId)?.Name ?? "-")
-                                                                                       </MudTd>
+                     </MudTd>
 
                     <MudTd>
                         @(Matrices.FirstOrDefault(x =>
                                             x.Id == context.MatrixId)?.Name ?? "-")
-                </MudTd>
+                    </MudTd>
+
+                    <MudTd>
+                        @(StandardSamples.FirstOrDefault(x =>
+                                            x.Id == context.StandardSampleId)?.Name ?? "-")
+                    </MudTd>
 
                     <MudTd>
                         @context.Items.Count
@@ -200,6 +208,7 @@
                     <MudTextField Label="کد"
                                   Variant="Variant.Outlined"
                                   Required="true"
+                                  ReadOnly="true"
                                   @bind-Value="EditingSet.Code" />
 
                 </MudItem>
@@ -282,7 +291,22 @@
 
                 </MudItem>
 
+                <MudItem xs="12" md="6">
 
+                    <MudAutocomplete T="StandardSample"
+                                     Label="Standard Sample"
+                                     Variant="Variant.Outlined"
+                                     Clearable="true"
+                                     Dense="true"
+                                     SearchFunc="SearchStandardSamples"
+                                     ToStringFunc="@(x => x == null ? "" : $"{x.Code} - {x.Name}")"
+                                     Value="SelectedStandardSample"
+                                     ValueChanged="OnStandardSampleSelected"
+                                     ResetValueOnEmptyText="true"
+                                     CoerceText="true"
+                                     CoerceValue="true" />
+
+                </MudItem>
                 <MudItem xs="12" md="6">
 
                     <MudNumericField T="int"
@@ -585,6 +609,8 @@
 
     private List<Matrix> Matrices = new();
 
+    private List<StandardSample> StandardSamples = new();
+
     private List<TestLookupDto> Tests = new();
 
     private List<TestPanel> TestPanels = new();
@@ -615,6 +641,7 @@
     private CustomerLookupDto? SelectedCustomer;
     private SampleCategoryLookupDto? SelectedSampleCategory;
     private Matrix? SelectedMatrix;
+    private StandardSample? SelectedStandardSample;
 
     private Task<IEnumerable<CustomerLookupDto>> SearchCustomers(
     string? value,
@@ -669,24 +696,87 @@
     }
 
     private Task<IEnumerable<Matrix>> SearchMatrices(
-        string value,
-        CancellationToken cancellationToken)
+    string value,
+    CancellationToken cancellationToken)
     {
         IEnumerable<Matrix> result =
             Matrices;
 
+        // فقط Matrixهای مربوط به Sample Category انتخاب‌شده
+        if (EditingSet.SampleCategoryId.HasValue &&
+            EditingSet.SampleCategoryId.Value != Guid.Empty)
+        {
+            result = result.Where(x =>
+                x.SampleCategoryId ==
+                EditingSet.SampleCategoryId.Value);
+        }
+
+        // جستجو بر اساس نام Matrix
         if (!string.IsNullOrWhiteSpace(value))
         {
-            result = Matrices.Where(x =>
+            var search = value.Trim();
+
+            result = result.Where(x =>
                 (x.Name ?? "")
                     .Contains(
-                        value.Trim(),
+                        search,
                         StringComparison.OrdinalIgnoreCase));
         }
 
+        return Task.FromResult(
+            result
+                .OrderBy(x => x.Name)
+                .Take(50)
+                .AsEnumerable());
+    }
+    private Task<IEnumerable<StandardSample>> SearchStandardSamples(
+    string value,
+    CancellationToken cancellationToken)
+    {
+        IEnumerable<StandardSample> result =
+            StandardSamples;
+
+        // فیلتر بر اساس Sample Category
+        if (EditingSet.SampleCategoryId.HasValue &&
+            EditingSet.SampleCategoryId.Value != Guid.Empty)
+        {
+            result = result.Where(x =>
+                x.SampleCategoryId ==
+                EditingSet.SampleCategoryId.Value);
+        }
+
+        // فیلتر بر اساس Matrix
+        if (EditingSet.MatrixId.HasValue &&
+            EditingSet.MatrixId.Value != Guid.Empty)
+        {
+            result = result.Where(x =>
+                x.MatrixId ==
+                EditingSet.MatrixId.Value);
+        }
+
+        // جستجو با Code یا Name
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            var search = value.Trim();
+
+            result = result.Where(x =>
+                (x.Code ?? "")
+                    .Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.Name ?? "")
+                    .Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase));
+        }
+
+        result = result
+            .OrderBy(x => x.Name)
+            .Take(50);
+
         return Task.FromResult(result);
     }
-
     private Task OnSampleCategorySelected(
     SampleCategoryLookupDto? category)
     {
@@ -695,16 +785,59 @@
         EditingSet.SampleCategoryId =
             category?.Id;
 
+        // اگر Matrix فعلی با Category جدید سازگار نیست، پاک شود
+        if (SelectedMatrix != null &&
+            category != null &&
+            SelectedMatrix.SampleCategoryId != category.Id)
+        {
+            SelectedMatrix = null;
+            EditingSet.MatrixId = null;
+        }
+
+        // اگر Category پاک شد، Matrix و Standard Sample هم پاک شوند
+        if (category == null)
+        {
+            SelectedMatrix = null;
+            EditingSet.MatrixId = null;
+
+            SelectedStandardSample = null;
+            EditingSet.StandardSampleId = null;
+        }
+        // اگر Matrix قبلی پاک نشده ولی Standard Sample
+        // با Category جدید ناسازگار است
+        else if (SelectedStandardSample != null &&
+                 SelectedStandardSample.SampleCategoryId != category.Id)
+        {
+            SelectedStandardSample = null;
+            EditingSet.StandardSampleId = null;
+        }
+
         return Task.CompletedTask;
     }
 
     private Task OnMatrixSelected(
-        Matrix? matrix)
+    Matrix? matrix)
     {
         SelectedMatrix = matrix;
 
         EditingSet.MatrixId =
             matrix?.Id;
+
+        // اگر Standard Sample قبلی با Matrix جدید سازگار نیست، پاک شود
+        if (SelectedStandardSample != null &&
+            matrix != null &&
+            SelectedStandardSample.MatrixId != matrix.Id)
+        {
+            SelectedStandardSample = null;
+            EditingSet.StandardSampleId = null;
+        }
+
+        // اگر Matrix پاک شد، Standard Sample هم پاک شود
+        if (matrix == null)
+        {
+            SelectedStandardSample = null;
+            EditingSet.StandardSampleId = null;
+        }
 
         return Task.CompletedTask;
     }
@@ -715,6 +848,41 @@
 
         EditingSet.CustomerId =
             customer?.Id;
+    }
+
+    private Task OnStandardSampleSelected(
+    StandardSample? standardSample)
+    {
+        SelectedStandardSample = standardSample;
+
+        if (standardSample == null)
+        {
+            EditingSet.StandardSampleId = null;
+            return Task.CompletedTask;
+        }
+
+        // Standard Sample انتخاب‌شده
+        EditingSet.StandardSampleId =
+            standardSample.Id;
+
+        // تعیین خودکار Sample Category
+        EditingSet.SampleCategoryId =
+            standardSample.SampleCategoryId;
+
+        // تعیین خودکار Matrix
+        EditingSet.MatrixId =
+            standardSample.MatrixId;
+
+        // به‌روزرسانی انتخاب‌های نمایشی
+        SelectedSampleCategory =
+            SampleCategories.FirstOrDefault(
+                x => x.Id == standardSample.SampleCategoryId);
+
+        SelectedMatrix =
+            Matrices.FirstOrDefault(
+                x => x.Id == standardSample.MatrixId);
+
+        return Task.CompletedTask;
     }
 
     private DefaultTestSetDto? SelectedSet;
@@ -847,6 +1015,17 @@
             {
                 Matrices = new();
             }
+
+            // Standard Samples
+            try
+            {
+                StandardSamples =
+                    await StandardSampleService.GetAllAsync();
+            }
+            catch
+            {
+                StandardSamples = new();
+            }
         }
         catch (Exception ex)
         {
@@ -866,22 +1045,39 @@
     // New
     // =========================================================
 
-    private void NewSet()
+    private async Task NewSet()
     {
-        ErrorMessage = "";
-
-        SuccessMessage = "";
-
-        EditingSet = new DefaultTestSetDto
+        try
         {
-            Priority = 100
-        };
+            ErrorMessage = "";
+            SuccessMessage = "";
 
-        TestSearchText = "";
+            var code =
+                await NumberSequenceService
+                    .GetNextCodeAsync("DefaultTestSet");
 
-        PanelSearchText = "";
+            EditingSet = new DefaultTestSetDto
+            {
+                Code = code,
+                Priority = 100,
+                StandardSampleId = null
+            };
 
-        DialogVisible = true;
+            SelectedStandardSample = null;
+            SelectedCustomer = null;
+            SelectedSampleCategory = null;
+            SelectedMatrix = null;
+
+            TestSearchText = "";
+            PanelSearchText = "";
+
+            DialogVisible = true;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در تولید کد Default Test Set: {ex.Message}";
+        }
     }
 
 
@@ -910,6 +1106,9 @@
 
             SampleCategoryId =
                 set.SampleCategoryId,
+
+            StandardSampleId =
+                set.StandardSampleId,
 
             MatrixId =
                 set.MatrixId,
@@ -951,6 +1150,12 @@
         
         SelectedCustomer = Customers
           .FirstOrDefault(x => x.Id == EditingSet.CustomerId);
+
+        SelectedStandardSample =
+           StandardSamples.FirstOrDefault(
+              x => x.Id == EditingSet.StandardSampleId);
+
+        
 
         TestSearchText = "";
 

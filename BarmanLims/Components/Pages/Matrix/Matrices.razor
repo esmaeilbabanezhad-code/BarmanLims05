@@ -7,6 +7,7 @@
 
 @inject IMatrixService MatrixService
 @inject ISampleCategoryService SampleCategoryService
+@inject INumberSequenceService NumberSequenceService
 
 <MudPaper Class="pa-4">
 
@@ -34,21 +35,64 @@
     </div>
 
     <MudDivider Class="my-3" />
-
+    <MudTextField T="string"
+                  @bind-Value="MatrixSearchText"
+                  Label="جستجوی ماتریس"
+                  Placeholder="کد، نام، دسته‌بندی نمونه یا توضیحات..."
+                  Variant="Variant.Outlined"
+                  Clearable="true"
+                  Immediate="true"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Class="mb-3" />
     @if (!ShowDeletedItems)
     {
-        <MudTable Items="MatrixList"
+     <MudTable Items="FilteredMatrices"
                   Hover="true"
                   Dense="true">
 
             <HeaderContent>
-                <MudTh>Code</MudTh>
-                <MudTh>Name</MudTh>
-                <MudTh>Sample Category</MudTh>
-                <MudTh>Description</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Action</MudTh>
-            </HeaderContent>
+
+    <MudTh>
+        <MudTableSortLabel T="Matrix"
+                           SortBy="@(x => x.Code)">
+            Code
+        </MudTableSortLabel>
+    </MudTh>
+
+    <MudTh>
+        <MudTableSortLabel T="Matrix"
+                           SortBy="@(x => x.Name)">
+            Name
+        </MudTableSortLabel>
+    </MudTh>
+
+    <MudTh>
+        <MudTableSortLabel T="Matrix"
+                           SortBy="@(x => x.SampleCategory!.Name)">
+            Sample Category
+        </MudTableSortLabel>
+    </MudTh>
+
+    <MudTh>
+        <MudTableSortLabel T="Matrix"
+                           SortBy="@(x => x.Description)">
+            Description
+        </MudTableSortLabel>
+    </MudTh>
+
+    <MudTh>
+        <MudTableSortLabel T="Matrix"
+                           SortBy="@(x => x.IsActive)">
+            Status
+        </MudTableSortLabel>
+    </MudTh>
+
+    <MudTh>
+        Action
+    </MudTh>
+
+</HeaderContent>
 
             <RowTemplate>
 
@@ -123,7 +167,7 @@
 
             </RowTemplate>
 
-        </MudTable>
+      </MudTable>
     }
     else
     {
@@ -146,11 +190,39 @@
                   Dense="true">
 
             <HeaderContent>
-                <MudTh>Code</MudTh>
-                <MudTh>Name</MudTh>
-                <MudTh>Sample Category</MudTh>
-                <MudTh>Description</MudTh>
-                <MudTh>Action</MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Matrix"
+                                       SortBy="@(x => x.Code)">
+                        Code
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Matrix"
+                                       SortBy="@(x => x.Name)">
+                        Name
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Matrix"
+                                       SortBy="@(x => x.SampleCategory!.Name)">
+                        Sample Category
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Matrix"
+                                       SortBy="@(x => x.Description)">
+                        Description
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    Action
+                </MudTh>
+
             </HeaderContent>
 
             <RowTemplate>
@@ -188,7 +260,8 @@
         <DialogContent>
 
             <MudTextField Label="Code"
-                          @bind-Value="CurrentMatrix.Code" />
+                          @bind-Value="CurrentMatrix.Code"
+                          ReadOnly="true" />
 
             <MudTextField Label="Name"
                           @bind-Value="CurrentMatrix.Name" />
@@ -284,20 +357,33 @@
     }
 
 
-    private void NewMatrix()
+    private async Task NewMatrix()
     {
-        CurrentMatrix = new Matrix
+        try
         {
-            IsActive = true,
-            IsDeleted = false,
-            SampleCategoryId =
-                Categories.FirstOrDefault()?.Id
-                ?? Guid.Empty
-        };
+            var code =
+                await NumberSequenceService
+                    .GetNextCodeAsync("Matrix");
 
-        IsEdit = false;
+            CurrentMatrix = new Matrix
+            {
+                Code = code,
+                IsActive = true,
+                IsDeleted = false,
+                SampleCategoryId =
+                    Categories.FirstOrDefault()?.Id
+                    ?? Guid.Empty
+            };
 
-        DialogVisible = true;
+            IsEdit = false;
+
+            DialogVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(
+                $"خطا در تولید کد Matrix: {ex.Message}");
+        }
     }
 
 
@@ -392,4 +478,13 @@
     {
         DialogVisible = false;
     }
+    private string MatrixSearchText = "";
+    private IEnumerable<Matrix> FilteredMatrices =>
+    string.IsNullOrWhiteSpace(MatrixSearchText)
+        ? MatrixList
+        : MatrixList.Where(x =>
+            (x.Code ?? "").Contains(MatrixSearchText.Trim(), StringComparison.OrdinalIgnoreCase) ||
+            (x.Name ?? "").Contains(MatrixSearchText.Trim(), StringComparison.OrdinalIgnoreCase) ||
+            (x.SampleCategory?.Name ?? "").Contains(MatrixSearchText.Trim(), StringComparison.OrdinalIgnoreCase) ||
+            (x.Description ?? "").Contains(MatrixSearchText.Trim(), StringComparison.OrdinalIgnoreCase));
 }

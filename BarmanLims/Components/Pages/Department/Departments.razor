@@ -37,20 +37,53 @@
         </div>
 
         <MudDivider Class="my-3"/>
+            <MudTextField T="string"
+                          @bind-Value="DepartmentSearchText"
+                          Label="جستجوی بخش"
+                          Placeholder="کد، نام یا توضیحات..."
+                          Variant="Variant.Outlined"
+                          Clearable="true"
+                          Immediate="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Class="mb-3" />
+        <MudTable Items="FilteredDepartments"
+          Hover="true"
+          Dense="true">
 
-        <MudTable Items="DepartmentList"
-                  Hover="true"
-                  Dense="true">
+                <HeaderContent>
 
-            <HeaderContent>
+                    <MudTh>
+                        <MudTableSortLabel T="Department"
+                                           SortBy="@(x => x.Code)">
+                            Code
+                        </MudTableSortLabel>
+                    </MudTh>
 
-                <MudTh>Code</MudTh>
-                <MudTh>Name</MudTh>
-                <MudTh>Description</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh></MudTh>
+                    <MudTh>
+                        <MudTableSortLabel T="Department"
+                                           SortBy="@(x => x.Name)">
+                            Name
+                        </MudTableSortLabel>
+                    </MudTh>
 
-            </HeaderContent>
+                    <MudTh>
+                        <MudTableSortLabel T="Department"
+                                           SortBy="@(x => x.Description)">
+                            Description
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="Department"
+                                           SortBy="@(x => x.IsActive)">
+                            Status
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh></MudTh>
+
+                </HeaderContent>
 
             <RowTemplate>
 
@@ -272,4 +305,19 @@
 
     private bool IsEdit;
 
+    private string DepartmentSearchText = "";
+
+    private IEnumerable<Department> FilteredDepartments =>
+        string.IsNullOrWhiteSpace(DepartmentSearchText)
+            ? DepartmentList
+            : DepartmentList.Where(x =>
+                (x.Code ?? "").Contains(
+                    DepartmentSearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase) ||
+                (x.Name ?? "").Contains(
+                    DepartmentSearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase) ||
+                (x.Description ?? "").Contains(
+                    DepartmentSearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase));
 }

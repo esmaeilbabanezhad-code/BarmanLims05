@@ -1,5 +1,7 @@
-﻿using Barman.Application.Interfaces.Repositories;
+﻿using Barman.Application.DTOs.Reception;
+using Barman.Application.Interfaces.Repositories;
 using Barman.Domain.Entities;
+using Barman.Domain.Enums;
 using Barman.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,26 +34,196 @@ public class TestAssignmentRepository : ITestAssignmentRepository
         return await _context.TestAssignments
             .Where(x => x.SampleId == sampleId)
             .Include(x => x.Test)
+                .ThenInclude(x => x.ReferenceLimits)
+            .Include(x => x.Test)
+                .ThenInclude(x => x.TestMethod)
+            .Include(x => x.Test)
+                .ThenInclude(x => x.Instrument)
+            .Include(x => x.Department)
             .OrderBy(x => x.Test.Code)
             .ToListAsync();
     }
+    public async Task<List<TestAssignment>> GetBySampleIdAndTestPanelIdAsync(
+    Guid sampleId,
+    Guid testPanelId)
+    {
+        if (sampleId == Guid.Empty ||
+            testPanelId == Guid.Empty)
+            return new List<TestAssignment>();
 
+        return await _context.TestAssignments
+            .Where(x =>
+                x.SampleId == sampleId &&
+                x.TestPanelId == testPanelId)
+            .Include(x => x.Sample)
+            .Include(x => x.Test)
+            .Include(x => x.TestPanel)
+            .Include(x => x.Department)
+            .OrderBy(x => x.Test.Code)
+            .ToListAsync();
+    }
     public async Task<List<TestAssignment>> GetByReceptionIdAsync(Guid receptionId)
     {
         return await _context.TestAssignments
             .Where(x => x.Sample.ReceptionId == receptionId)
             .Include(x => x.Sample)
             .Include(x => x.Test)
+            .Include(x => x.Department)
             .OrderBy(x => x.Sample.SampleCode)
             .ThenBy(x => x.Test.Code)
             .ToListAsync();
     }
-    public async Task<List<TestAssignment>> GetPendingForTechnicalManagerAsync()
+
+    public async Task<List<TestAssignment>> GetForFinalReportByReceptionIdAsync(
+    Guid receptionId)
+    {
+        if (receptionId == Guid.Empty)
+            return new List<TestAssignment>();
+
+        return await _context.TestAssignments
+            .Where(x => x.Sample.ReceptionId == receptionId)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.Reception)
+                    .ThenInclude(x => x.Customer)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.SampleCategory)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.Matrix)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.StandardSample)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.CustomFieldValues)
+                    .ThenInclude(x => x.CustomFieldDefinition)
+
+            .Include(x => x.Test)
+
+            .Include(x => x.Test)
+                .ThenInclude(x => x.TestMethod)
+
+            .Include(x => x.Test)
+                .ThenInclude(x => x.Instrument)
+
+            .Include(x => x.Test)
+                .ThenInclude(x => x.ReferenceLimits)
+
+            .Include(x => x.TestResultSet)
+                .ThenInclude(x => x.Items)
+                    .ThenInclude(x => x.TestResultDefinition)
+
+            .Include(x => x.ResultValues)
+                .ThenInclude(x => x.TestResultSetItem)
+                    .ThenInclude(x => x.TestResultDefinition)
+
+            .Include(x => x.SelectedLimitRule)
+
+            .Include(x => x.Department)
+
+            .OrderBy(x => x.Sample.SampleCode)
+            .ThenBy(x => x.Test.Code)
+
+            .ToListAsync();
+    }
+
+    public async Task<List<TestAssignment>> GetForFinalReportBySampleIdAsync(
+    Guid sampleId)
+    {
+        if (sampleId == Guid.Empty)
+            return new List<TestAssignment>();
+
+        return await _context.TestAssignments
+            .Where(x => x.SampleId == sampleId)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.Reception)
+                    .ThenInclude(x => x.Customer)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.SampleCategory)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.Matrix)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.StandardSample)
+
+            .Include(x => x.Sample)
+                .ThenInclude(x => x.CustomFieldValues)
+                    .ThenInclude(x => x.CustomFieldDefinition)
+
+            .Include(x => x.Test)
+
+            .Include(x => x.Test)
+                .ThenInclude(x => x.TestMethod)
+
+            .Include(x => x.Test)
+                .ThenInclude(x => x.Instrument)
+
+            .Include(x => x.Test)
+                .ThenInclude(x => x.ReferenceLimits)
+
+            .Include(x => x.TestResultSet)
+                .ThenInclude(x => x.Items)
+                    .ThenInclude(x => x.TestResultDefinition)
+
+            .Include(x => x.ResultValues)
+                .ThenInclude(x => x.TestResultSetItem)
+                    .ThenInclude(x => x.TestResultDefinition)
+
+            .Include(x => x.SelectedLimitRule)
+
+            .Include(x => x.Department)
+
+            .Include(x => x.TechnicalManager)
+
+            .OrderBy(x => x.TestPanelId)
+            .ThenBy(x => x.Test.Code)
+
+            .ToListAsync();
+    }
+
+    public async Task<List<ReceptionTestStatusDto>> GetReceptionTestStatusesAsync(
+    Guid receptionId)
     {
         return await _context.TestAssignments
-            .Where(x => !x.IsApprovedByTechManager)
+            .Where(x => x.Sample.ReceptionId == receptionId)
+            .Select(x => new ReceptionTestStatusDto
+            {
+                AssignmentId = x.Id,
+                SampleId = x.SampleId,
+                TestCode = x.Test.Code,
+                TestName = x.Test.Name,
+                DepartmentName = x.Department != null
+                    ? x.Department.Name
+                    : null,
+                Unit = x.Unit ?? x.Test.Unit,
+                IsQuantitative = x.Test.IsQuantitative,
+                HasResult = !string.IsNullOrWhiteSpace(x.Result),
+                WorkflowStage = (int)x.WorkflowStage
+            })
+            .OrderBy(x => x.SampleId)
+            .ThenBy(x => x.TestCode)
+            .ToListAsync();
+    }
+
+    public async Task<List<TestAssignment>> GetPendingForTechnicalManagerAsync(
+    Guid technicalManagerId)
+    {
+        if (technicalManagerId == Guid.Empty)
+            return new List<TestAssignment>();
+
+        return await _context.TestAssignments
+            .Where(x =>
+                x.TechnicalManagerId == technicalManagerId &&
+                x.WorkflowStage ==
+                    TestAssignmentWorkflowStage.TechnicalManagerAssignment)
             .Include(x => x.Sample)
             .Include(x => x.Test)
+            .Include(x => x.TestPanel)
             .Include(x => x.Department)
             .OrderBy(x => x.Sample.SampleCode)
             .ThenBy(x => x.Test.Code)
@@ -66,11 +238,13 @@ public class TestAssignmentRepository : ITestAssignmentRepository
         return await _context.TestAssignments
             .Where(x =>
                 x.DepartmentId == departmentId &&
-                !x.IsApprovedBySection &&
-                x.AnalystId == null)
+                x.WorkflowStage ==
+                    TestAssignmentWorkflowStage.SectionAssignment)
             .Include(x => x.Sample)
             .Include(x => x.Test)
+            .Include(x => x.TestPanel)
             .Include(x => x.Department)
+            .Include(x => x.TechnicalManager)
             .OrderBy(x => x.Sample.SampleCode)
             .ThenBy(x => x.Test.Code)
             .ToListAsync();
@@ -84,27 +258,40 @@ public class TestAssignmentRepository : ITestAssignmentRepository
         return await _context.TestAssignments
             .Where(x =>
                 x.DepartmentId == departmentId &&
-                x.AnalystId != null &&
-                !string.IsNullOrWhiteSpace(x.Result) &&
-                !x.IsApprovedBySection)
+                x.WorkflowStage ==
+                    TestAssignmentWorkflowStage.SectionResultApproval)
+
             .Include(x => x.Sample)
+
+            .Include(x => x.TestPanel)
+
             .Include(x => x.Test)
                 .ThenInclude(x => x.ReferenceLimits)
+
+            .Include(x => x.TestResultSet)
+                .ThenInclude(x => x.Items)
+                    .ThenInclude(x => x.TestResultDefinition)
+
             .Include(x => x.Department)
+
             .OrderBy(x => x.Sample.SampleCode)
             .ThenBy(x => x.Test.Code)
+
             .ToListAsync();
     }
-    public async Task<List<TestAssignment>> GetPendingResultApprovalForTechnicalManagerAsync()
+    public async Task<List<TestAssignment>>
+    GetPendingResultApprovalForTechnicalManagerAsync()
     {
         return await _context.TestAssignments
             .Where(x =>
-                   x.IsApprovedBySection &&
-                   !string.IsNullOrWhiteSpace(x.Result) &&
-                   !x.IsApprovedByTechManager)
+                x.WorkflowStage ==
+                    TestAssignmentWorkflowStage.TechnicalManagerResultApproval)
             .Include(x => x.Sample)
             .Include(x => x.Test)
                 .ThenInclude(x => x.ReferenceLimits)
+            .Include(x => x.TestResultSet)
+                .ThenInclude(x => x.Items)
+                    .ThenInclude(x => x.TestResultDefinition)
             .Include(x => x.Department)
             .OrderBy(x => x.Sample.SampleCode)
             .ThenBy(x => x.Test.Code)
@@ -114,61 +301,87 @@ public class TestAssignmentRepository : ITestAssignmentRepository
     {
         return await _context.TestAssignments
             .Where(x =>
-                x.IsApprovedBySection &&
-                x.IsApprovedByTechManager &&
-                !string.IsNullOrWhiteSpace(x.Result) &&
-                !x.IsApprovedByDirector)
+                x.WorkflowStage ==
+                    TestAssignmentWorkflowStage.DirectorResultApproval)
+
             .Include(x => x.Sample)
+                  .ThenInclude(x => x.Reception)
+                  .ThenInclude(x => x.Customer)
+
+            .Include(x => x.Sample)
+                  .ThenInclude(x => x.SampleCategory)
+
+            .Include(x => x.Sample)
+                  .ThenInclude(x => x.Matrix)
+
             .Include(x => x.Test)
-                .ThenInclude(x => x.ReferenceLimits)
+                  .ThenInclude(x => x.ReferenceLimits)
+
+            .Include(x => x.TestResultSet)
+                  .ThenInclude(x => x.Items)
+                      .ThenInclude(x => x.TestResultDefinition)
+
+            .Include(x => x.Test)
+                  .ThenInclude(x => x.TestMethod)
+
+            .Include(x => x.Test)
+                  .ThenInclude(x => x.Instrument)
+
             .Include(x => x.Department)
             .OrderBy(x => x.Sample.SampleCode)
             .ThenBy(x => x.Test.Code)
             .ToListAsync();
     }
     public async Task<List<TestAssignment>> GetPendingForAnalystAsync(
-     Guid analystId)
+    Guid analystId)
     {
         if (analystId == Guid.Empty)
             return new List<TestAssignment>();
 
         return await _context.TestAssignments
             .Where(x =>
-                x.AnalystId == analystId &&
-                string.IsNullOrWhiteSpace(x.Result))
+                  x.AnalystId == analystId &&
+                  x.WorkflowStage ==
+                 TestAssignmentWorkflowStage.AnalystWork)
             .Include(x => x.Sample)
             .Include(x => x.Test)
-             .ThenInclude(x => x.ReferenceLimits)
+                .ThenInclude(x => x.ReferenceLimits)
+            .Include(x => x.TestResultSet)
+                    .ThenInclude(x => x.Items)
+                        .ThenInclude(x => x.TestResultDefinition)
+            .Include(x => x.SelectedLimitRule)
             .Include(x => x.Department)
+            .Include(x => x.TestPanel)
             .OrderBy(x => x.Sample.SampleCode)
             .ThenBy(x => x.Test.Code)
             .ToListAsync();
     }
-    public async Task AssignToAnalystAsync(
-    List<Guid> assignmentIds,
-    Guid analystId)
+
+    public async Task<List<TestAssignment>> GetPendingForAnalystBySampleAsync(
+     Guid analystId,
+     Guid sampleId)
     {
-        if (assignmentIds == null || assignmentIds.Count == 0)
-            return;
+        if (analystId == Guid.Empty || sampleId == Guid.Empty)
+            return new List<TestAssignment>();
 
-        if (analystId == Guid.Empty)
-            throw new InvalidOperationException(
-                "کارشناس مشخص نشده است.");
-
-        var assignments =
-            await _context.TestAssignments
-                .Where(x =>
-                    assignmentIds.Contains(x.Id) &&
-                    x.AnalystId == null)
-                .ToListAsync();
-
-        foreach (var assignment in assignments)
-        {
-            assignment.AnalystId = analystId;
-        }
-
-        await _context.SaveChangesAsync();
+        return await _context.TestAssignments
+            .Where(x =>
+                x.AnalystId == analystId &&
+                x.SampleId == sampleId &&
+                x.WorkflowStage ==
+                    TestAssignmentWorkflowStage.AnalystWork)
+            .Include(x => x.Sample)
+            .Include(x => x.Test)
+                .ThenInclude(x => x.ReferenceLimits)
+            .Include(x => x.TestResultSet)
+                .ThenInclude(x => x.Items)
+                    .ThenInclude(x => x.TestResultDefinition)
+            .Include(x => x.SelectedLimitRule)
+            .Include(x => x.Department)
+            .OrderBy(x => x.Test.Code)
+            .ToListAsync();
     }
+    
     public void Update(TestAssignment assignment)
     {
         _context.TestAssignments.Update(assignment);

@@ -32,6 +32,7 @@ public static class PermissionSeeder
             new() { Code = "Reception.View", Name = "مشاهده پذیرش" },
             new() { Code = "Reception.Create", Name = "ثبت پذیرش" },
             new() { Code = "Reception.Edit", Name = "ویرایش پذیرش" },
+            new() { Code = "Reception.Correction", Name = "اصلاح پذیرش" },
             new() { Code = "Reception.Delete", Name = "حذف پذیرش" },
 
             // Sample
@@ -63,6 +64,13 @@ public static class PermissionSeeder
             new() { Code = "TestPanel.Edit", Name = "ویرایش پانل آزمون" },
             new() { Code = "TestPanel.Delete", Name = "حذف پانل آزمون" },
 
+            // Limit Reference
+            new() { Code = "LimitReference.View", Name = "مشاهده مرجع حدود" },
+            new() { Code = "LimitReference.Create", Name = "ایجاد مرجع حدود" },
+            new() { Code = "LimitReference.Edit", Name = "ویرایش مرجع حدود" },
+            new() { Code = "LimitReference.Delete", Name = "حذف مرجع حدود" },
+
+
             // Workflow
             new() { Code = "Workflow.Assign", Name = "ارجاع آزمون" },
             new() { Code = "Workflow.Inbox.View", Name = "مشاهده کارتابل" },
@@ -83,6 +91,11 @@ public static class PermissionSeeder
 
             // Dashboard
             new() { Code = "Dashboard.View", Name = "مشاهده داشبورد" },
+
+            // Master Data
+            new() { Code = "MasterData.View", Name = "مشاهده مستر دیتا" },
+            new() { Code = "MasterData.Import", Name = "ورود مستر دیتا" },
+            new() { Code = "MasterData.Export", Name = "خروجی مستر دیتا" },
 
             // System
             new() { Code = "Admin", Name = "دسترسی کامل" }

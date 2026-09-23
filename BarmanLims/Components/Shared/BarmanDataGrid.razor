@@ -1,0 +1,96 @@
+﻿@typeparam TItem
+
+<MudTable T="TItem"
+          Items="FilteredItems"
+          Hover="true"
+          Dense="true"
+          Striped="true"
+          Bordered="true"
+          RowsPerPage="@RowsPerPage">
+
+    <ToolBarContent>
+
+        @if (Searchable)
+        {
+            <MudTextField T="string"
+                          @bind-Value="SearchText"
+                          Label="@SearchLabel"
+                          Placeholder="@SearchPlaceholder"
+                          Variant="Variant.Outlined"
+                          Clearable="true"
+                          Immediate="true"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Class="mb-2" />
+        }
+
+    </ToolBarContent>
+
+    <HeaderContent>
+
+        @HeaderContent
+
+    </HeaderContent>
+
+    <RowTemplate Context="item">
+
+        @RowTemplate(item)
+
+    </RowTemplate>
+
+    <PagerContent>
+
+        @if (Pageable)
+        {
+            <MudTablePager RowsPerPageString="تعداد در صفحه"
+                           PageSizeOptions="@PageSizeOptions" />
+        }
+
+    </PagerContent>
+
+</MudTable>
+
+@code {
+
+    [Parameter]
+    public IEnumerable<TItem> Items { get; set; }
+        = Enumerable.Empty<TItem>();
+
+    [Parameter]
+    public Func<TItem, string>? SearchFunc { get; set; }
+
+    [Parameter]
+    public RenderFragment? HeaderContent { get; set; }
+
+    [Parameter]
+    public RenderFragment<TItem>? RowTemplate { get; set; }
+
+    [Parameter]
+    public bool Searchable { get; set; } = true;
+
+    [Parameter]
+    public string SearchLabel { get; set; } = "جستجو";
+
+    [Parameter]
+    public string SearchPlaceholder { get; set; } = "جستجو...";
+
+    [Parameter]
+    public bool Pageable { get; set; } = true;
+
+    [Parameter]
+    public int RowsPerPage { get; set; } = 25;
+
+    [Parameter]
+    public int[] PageSizeOptions { get; set; }
+        = new[] { 10, 25, 50, 100 };
+
+    private string SearchText { get; set; } = "";
+
+    private IEnumerable<TItem> FilteredItems =>
+    string.IsNullOrWhiteSpace(SearchText) || SearchFunc is null
+        ? Items
+        : Items.Where(x =>
+            SearchFunc(x)
+                .Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase));
+
+}

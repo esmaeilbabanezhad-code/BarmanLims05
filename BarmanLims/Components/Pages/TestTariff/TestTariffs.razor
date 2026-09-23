@@ -1,0 +1,1214 @@
+@page "/test-tariffs"
+
+@using MudBlazor
+@using Barman.Application.Interfaces
+@using Barman.Domain.Entities
+@using Barman.Application.DTOs.Test
+
+@inject IOrganizationTypeService OrganizationTypeService
+@inject ITestTariffService TestTariffService
+@inject ITestService TestService
+@inject ITestPanelService TestPanelService
+@inject ICustomerService CustomerService
+@inject IPermissionService PermissionService
+@inject ISampleCategoryService SampleCategoryService
+@inject IMatrixService MatrixService
+@inject IStandardSampleService StandardSampleService
+
+<PageTitle>تعرفه آزمون‌ها</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+    @if (!CanView)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">
+            شما مجوز مشاهده تعرفه‌ها را ندارید.
+        </MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4">
+
+            <div class="d-flex justify-space-between align-center">
+
+                <MudText Typo="Typo.h5">
+                    تعرفه آزمون‌ها
+                </MudText>
+
+                @if (CanCreate)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="NewTariff">
+                        تعرفه جدید
+                    </MudButton>
+                }
+
+            </div>
+
+            <MudDivider Class="my-3" />
+
+            <!-- فیلترهای تعرفه -->
+            <MudPaper Class="pa-3 mb-4" Outlined="true">
+
+                <div class="d-flex justify-space-between align-center mb-3">
+
+                    <MudText Typo="Typo.subtitle1">
+                        فیلتر تعرفه‌ها
+                    </MudText>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               Size="Size.Small"
+                               OnClick="ClearTariffFilters">
+                        حذف همه فیلترها
+                    </MudButton>
+
+                </div>
+
+                <div class="d-flex flex-wrap gap-3">
+
+                    <MudSelect T="Guid?"
+                               Label="نوع سازمان"
+                               @bind-Value="FilterOrganizationTypeId"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               Dense="true"
+                               Style="min-width:220px;">
+
+                        @foreach (var item in FilterOrganizationTypes)
+                        {
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)item.Id)">
+                                @item.Name
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+
+
+                    <MudSelect T="string"
+                               Label="نوع هدف"
+                               @bind-Value="FilterTargetType"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               Dense="true"
+                               Style="min-width:180px;">
+
+                        <MudSelectItem T="string"
+                                       Value="@("Test")">
+                            آزمون
+                        </MudSelectItem>
+
+                        <MudSelectItem T="string"
+                                       Value="@("Panel")">
+                            Panel
+                        </MudSelectItem>
+
+                    </MudSelect>
+
+
+                    <MudSelect T="Guid?"
+                               Label="مشتری"
+                               @bind-Value="FilterCustomerId"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               Dense="true"
+                               Style="min-width:280px;">
+
+                        @foreach (var item in FilterCustomers)
+                        {
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)item.Id)">
+                                @item.Code - @item.DisplayName
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+
+
+                    <MudSelect T="Guid?"
+                               Label="دسته‌بندی نمونه"
+                               Value="@FilterSampleCategoryId"
+                               ValueChanged="OnFilterSampleCategoryChanged"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               Dense="true"
+                               Style="min-width:240px;">
+
+                        @foreach (var item in FilterSampleCategories)
+                        {
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)item.Id)">
+                                @item.Code - @item.Name
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+
+
+                    <MudSelect T="Guid?"
+                               Label="ماتریس"
+                               Value="@FilterMatrixId"
+                               ValueChanged="OnFilterMatrixChanged"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               Dense="true"
+                               Style="min-width:240px;">
+
+                        @foreach (var item in FilterMatrices)
+                        {
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)item.Id)">
+                                @item.Code - @item.Name
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+
+
+                    <MudSelect T="Guid?"
+                               Label="نمونه استاندارد"
+                               @bind-Value="FilterStandardSampleId"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               Dense="true"
+                               Style="min-width:260px;">
+
+                        @foreach (var item in FilterStandardSamples)
+                        {
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)item.Id)">
+                                @item.Code - @item.Name
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+
+
+                    <MudSelect T="bool?"
+                               Label="وضعیت"
+                               @bind-Value="FilterIsActive"
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               Dense="true"
+                               Style="min-width:180px;">
+
+                        <MudSelectItem T="bool?"
+                                       Value="@((bool?)true)">
+                            فعال
+                        </MudSelectItem>
+
+                        <MudSelectItem T="bool?"
+                                       Value="@((bool?)false)">
+                            غیرفعال
+                        </MudSelectItem>
+
+                    </MudSelect>
+
+                </div>
+
+            </MudPaper>
+
+
+            <BarmanDataGrid TItem="TestTariff"
+                            Items="FilteredTariffs"
+                            Searchable="true"
+                            SearchLabel="جستجوی تعرفه"
+                            SearchPlaceholder="کد، نام، نوع سازمان یا مشتری..."
+                            SearchFunc="SearchTariff">
+
+                <HeaderContent>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestTariff"
+                                           SortBy="@(x => x.OrganizationType.Name)">
+                            نوع سازمان
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>نوع هدف</MudTh>
+
+                    <MudTh>کد</MudTh>
+
+                    <MudTh>نام</MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestTariff"
+                                           SortBy="@(x => x.Customer != null ? x.Customer.DisplayName : "")">
+                            مشتری
+                        </MudTableSortLabel>
+                    </MudTh>
+                    <MudTh>
+                        <MudTableSortLabel T="TestTariff"
+                                           SortBy="@(x => x.SampleCategory != null ? x.SampleCategory.Name : "")">
+                            دسته‌بندی نمونه
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestTariff"
+                                           SortBy="@(x => x.Matrix != null ? x.Matrix.Name : "")">
+                            ماتریس
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestTariff"
+                                           SortBy="@(x => x.StandardSample != null ? x.StandardSample.Name : "")">
+                            نمونه استاندارد
+                        </MudTableSortLabel>
+                    </MudTh>
+                    <MudTh>
+                        <MudTableSortLabel T="TestTariff"
+                                           SortBy="@(x => x.Price)">
+                            مبلغ
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>ارز</MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestTariff"
+                                           SortBy="@(x => x.ValidFrom)">
+                            شروع اعتبار
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>پایان اعتبار</MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestTariff"
+                                           SortBy="@(x => x.Priority)">
+                            اولویت
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>
+                        <MudTableSortLabel T="TestTariff"
+                                           SortBy="@(x => x.IsActive)">
+                            وضعیت
+                        </MudTableSortLabel>
+                    </MudTh>
+
+                    <MudTh>
+                        عملیات
+                    </MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate Context="context">
+
+                    <MudTd>
+                        @context.OrganizationType?.Name
+                    </MudTd>
+
+                    <MudTd>
+                        @if (context.TestId.HasValue)
+                        {
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="Color.Info">
+                                Test
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="Color.Secondary">
+                                Panel
+                            </MudChip>
+                        }
+                    </MudTd>
+
+                    <MudTd>
+                        @GetTargetCode(context)
+                    </MudTd>
+
+                    <MudTd>
+                        @GetTargetName(context)
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.Customer?.DisplayName ?? "عمومی")
+                    </MudTd>
+                <MudTd>
+                    @(context.SampleCategory?.Name ?? "عمومی")
+                </MudTd>
+
+                <MudTd>
+                    @(context.Matrix?.Name ?? "—")
+                </MudTd>
+
+                <MudTd>
+                    @(context.StandardSample?.Name ?? "—")
+                </MudTd>
+                    <MudTd>
+                        @context.Price.ToString("N0")
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Currency
+                    </MudTd>
+
+                <MudTd>
+                    @FormatPersianDate(context.ValidFrom)
+                </MudTd>
+
+                <MudTd>
+                    @(context.ValidTo.HasValue
+                                        ? FormatPersianDate(context.ValidTo.Value)
+                                        : "—")
+                </MudTd>
+
+                    <MudTd>
+                        @context.Priority
+                    </MudTd>
+
+                    <MudTd>
+
+                        @if (context.IsActive)
+                        {
+                            <MudChip T="string"
+                                     Color="Color.Success"
+                                     Size="Size.Small">
+                                فعال
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string"
+                                     Color="Color.Error"
+                                     Size="Size.Small">
+                                غیرفعال
+                            </MudChip>
+                        }
+
+                    </MudTd>
+
+                    <MudTd>
+
+                        @if (CanEdit)
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       OnClick="@(() => Edit(context))">
+                                ویرایش
+                            </MudButton>
+
+                            @if (context.IsActive)
+                            {
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Warning"
+                                           Class="ms-1"
+                                           OnClick="@(() => Deactivate(context.Id))">
+                                    غیرفعال
+                                </MudButton>
+                            }
+                            else
+                            {
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Success"
+                                           Class="ms-1"
+                                           OnClick="@(() => Activate(context.Id))">
+                                    فعال
+                                </MudButton>
+                            }
+                        }
+
+                        @if (CanDelete)
+                        {
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Text"
+                                       Color="Color.Error"
+                                       Class="ms-1"
+                                       OnClick="@(() => Delete(context.Id))">
+                                حذف
+                            </MudButton>
+                        }
+
+                    </MudTd>
+
+                </RowTemplate>
+
+            </BarmanDataGrid>
+
+
+            <MudDialog @bind-Visible="DialogVisible">
+
+                <DialogContent>
+
+                    <MudSelect T="Guid"
+                               Label="نوع سازمان"
+                               @bind-Value="CurrentTariff.OrganizationTypeId"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               Class="mb-3">
+
+                        @foreach (var organizationType in OrganizationTypes)
+                        {
+                            <MudSelectItem T="Guid"
+                                           Value="@organizationType.Id">
+                                @organizationType.Name
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+
+
+                    <MudSelect T="string"
+                               Label="نوع تعرفه"
+                               @bind-Value="TargetType"
+                               Variant="Variant.Outlined"
+                               Required="true"
+                               Class="mb-3">
+
+                        <MudSelectItem T="string" Value="@("Test")">
+                            آزمون
+                        </MudSelectItem>
+
+                        <MudSelectItem T="string" Value="@("Panel")">
+                            Panel
+                        </MudSelectItem>
+
+                    </MudSelect>
+
+
+                    @if (TargetType == "Test")
+                    {
+                        <MudSelect T="Guid?"
+                                   Label="آزمون"
+                                   @bind-Value="CurrentTariff.TestId"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   Class="mb-3">
+
+                            @foreach (var test in Tests)
+                            {
+                                <MudSelectItem T="Guid?"
+                                               Value="@((Guid?)test.Id)">
+                                    @test.Code - @test.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                    }
+                    else
+                    {
+                        <MudSelect T="Guid?"
+                                   Label="Panel"
+                                   @bind-Value="CurrentTariff.TestPanelId"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   Class="mb-3">
+
+                            @foreach (var panel in TestPanels)
+                            {
+                                <MudSelectItem T="Guid?"
+                                               Value="@((Guid?)panel.Id)">
+                                    @panel.Code - @panel.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                    }
+
+
+                    <MudSelect T="Guid?"
+                               Label="مشتری"
+                               @bind-Value="CurrentTariff.CustomerId"
+                               Variant="Variant.Outlined"
+                               Class="mb-3">
+
+                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+                            عمومی
+                        </MudSelectItem>
+
+                        @foreach (var customer in Customers)
+                        {
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)customer.Id)">
+                                @customer.Code - @customer.DisplayName
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+                    <MudSelect T="Guid?"
+                               Label="دسته‌بندی نمونه"
+                               Value="@CurrentTariff.SampleCategoryId"
+                               ValueChanged="OnSampleCategoryChanged"
+                               Variant="Variant.Outlined"
+                               Class="mb-3">
+
+                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+                            عمومی
+                        </MudSelectItem>
+
+                        @foreach (var category in SampleCategories)
+                        {
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)category.Id)">
+                                @category.Code - @category.Name
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+
+
+                    <MudSelect T="Guid?"
+                               Label="ماتریس"
+                               Value="@CurrentTariff.MatrixId"
+                               ValueChanged="OnMatrixChanged"
+                               Variant="Variant.Outlined"
+                               Class="mb-3">
+
+                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+                            عمومی
+                        </MudSelectItem>
+
+                        @foreach (var matrix in FilteredMatrices)
+                        {
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)matrix.Id)">
+                                @matrix.Code - @matrix.Name
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+
+
+                    <MudSelect T="Guid?"
+                               Label="نمونه استاندارد"
+                               @bind-Value="CurrentTariff.StandardSampleId"
+                               Variant="Variant.Outlined"
+                               Class="mb-3">
+
+                        <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+                            عمومی
+                        </MudSelectItem>
+
+                        @foreach (var standardSample in FilteredStandardSamples)
+                        {
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)standardSample.Id)">
+                                @standardSample.Code - @standardSample.Name
+                            </MudSelectItem>
+                        }
+
+                    </MudSelect>
+
+                    <MudNumericField T="decimal"
+                                     Label="مبلغ"
+                                     @bind-Value="CurrentTariff.Price"
+                                     Variant="Variant.Outlined"
+                                     Min="0"
+                                     Required="true"
+                                     Class="mb-3" />
+
+
+                    <MudTextField T="string"
+                                  Label="ارز"
+                                  @bind-Value="CurrentTariff.Currency"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  Class="mb-3" />
+
+
+                    <BarmanDateInput Label="شروع اعتبار"
+                                     Value="@ValidFromDate"
+                                     ValueChanged="@((DateTime? value) => ValidFromDate = value)"
+                                     Disabled="false" />
+
+                    <BarmanDateInput Label="پایان اعتبار"
+                                     Value="@ValidToDate"
+                                     ValueChanged="@((DateTime? value) => ValidToDate = value)"
+                                     Disabled="false" />
+
+                    <MudNumericField T="int"
+                                     Label="اولویت"
+                                     @bind-Value="CurrentTariff.Priority"
+                                     Variant="Variant.Outlined"
+                                     Min="0"
+                                     Class="mb-3" />
+
+
+                    <MudTextField T="string"
+                                  Label="توضیحات"
+                                  Lines="3"
+                                  @bind-Value="CurrentTariff.Description"
+                                  Variant="Variant.Outlined" />
+
+                </DialogContent>
+
+
+                <DialogActions>
+
+                    <MudButton Color="Color.Primary"
+                               OnClick="SaveTariff">
+                        ذخیره
+                    </MudButton>
+
+                    <MudButton Color="Color.Secondary"
+                               OnClick="CloseDialog">
+                        انصراف
+                    </MudButton>
+
+                </DialogActions>
+
+            </MudDialog>
+
+        </MudPaper>
+    }
+
+</MudContainer>
+
+
+@code {
+
+    private static string FormatPersianDate(DateTime date)
+    {
+        var calendar = new System.Globalization.PersianCalendar();
+
+        var year = calendar.GetYear(date);
+        var month = calendar.GetMonth(date);
+        var day = calendar.GetDayOfMonth(date);
+
+        return $"{year:0000}/{month:00}/{day:00}";
+    }
+    private List<TestTariff> TariffList = new();
+
+    private List<OrganizationType> OrganizationTypes = new();
+
+    private List<TestLookupDto> Tests = new();
+
+    private List<TestPanel> TestPanels = new();
+
+    private List<Customer> Customers = new();
+
+    private List<SampleCategory> SampleCategories = new();
+
+    private List<Matrix> Matrices = new();
+
+    private List<StandardSample> StandardSamples = new();
+
+    private TestTariff CurrentTariff = new();
+
+    private bool DialogVisible;
+
+    private bool IsEdit;
+
+    private string TargetType = "Test";
+
+    private DateTime? ValidFromDate;
+
+    private DateTime? ValidToDate;
+
+    private bool CanView;
+
+    private bool CanCreate;
+
+    private bool CanEdit;
+
+    private bool CanDelete;
+
+    private Guid? FilterOrganizationTypeId;
+    private string? FilterTargetType;
+    private Guid? FilterCustomerId;
+    private Guid? FilterSampleCategoryId;
+    private Guid? FilterMatrixId;
+    private Guid? FilterStandardSampleId;
+    private bool? FilterIsActive;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CanView =
+            await PermissionService.HasPermissionAsync(
+                "Tariff.View");
+
+        CanCreate =
+            await PermissionService.HasPermissionAsync(
+                "Tariff.Create");
+
+        CanEdit =
+            await PermissionService.HasPermissionAsync(
+                "Tariff.Edit");
+
+        CanDelete =
+            await PermissionService.HasPermissionAsync(
+                "Tariff.Delete");
+
+        if (CanView)
+        {
+            await Load();
+        }
+    }
+
+
+    private async Task Load()
+    {
+        TariffList =
+            await TestTariffService.GetAllAsync();
+
+        OrganizationTypes =
+            await OrganizationTypeService.GetAllAsync();
+
+        Tests =
+            await TestService.GetAllAsync();
+
+        TestPanels =
+            await TestPanelService.GetAllAsync();
+
+        Customers =
+            await CustomerService.GetAllAsync();
+
+        var allSampleCategories =
+    await SampleCategoryService.GetAllAsync();
+
+        SampleCategories =
+            allSampleCategories
+                .Where(x => x.IsActive && !x.IsDeleted)
+                .OrderBy(x => x.Name)
+                .ToList();
+
+
+        var allMatrices =
+            await MatrixService.GetAllAsync();
+
+        Matrices =
+            allMatrices
+                .Where(x => x.IsActive && !x.IsDeleted)
+                .OrderBy(x => x.Name)
+                .ToList();
+
+
+        var allStandardSamples =
+            await StandardSampleService.GetAllAsync();
+
+        StandardSamples =
+            allStandardSamples
+                .Where(x => x.IsActive && !x.IsDeleted)
+                .OrderBy(x => x.Name)
+                .ToList();
+    }
+    private IEnumerable<Matrix> FilteredMatrices
+    {
+        get
+        {
+            if (CurrentTariff.SampleCategoryId == Guid.Empty)
+                return Matrices;
+
+            return Matrices.Where(x =>
+                x.SampleCategoryId == CurrentTariff.SampleCategoryId);
+        }
+    }
+
+
+    private IEnumerable<StandardSample> FilteredStandardSamples
+    {
+        get
+        {
+            IEnumerable<StandardSample> query = StandardSamples;
+
+            if (CurrentTariff.MatrixId != Guid.Empty)
+            {
+                query = query.Where(x =>
+                    x.MatrixId == CurrentTariff.MatrixId);
+            }
+            else if (CurrentTariff.SampleCategoryId != Guid.Empty)
+            {
+                var categoryMatrixIds = Matrices
+                    .Where(x =>
+                        x.SampleCategoryId ==
+                        CurrentTariff.SampleCategoryId)
+                    .Select(x => x.Id)
+                    .ToHashSet();
+
+                query = query.Where(x =>
+                    categoryMatrixIds.Contains(x.MatrixId));
+            }
+
+            return query;
+        }
+    }
+
+
+    private void OnSampleCategoryChanged(Guid? value)
+    {
+        CurrentTariff.SampleCategoryId = value;
+
+        CurrentTariff.MatrixId = Guid.Empty;
+
+        CurrentTariff.StandardSampleId = null;
+    }
+
+
+    private void OnMatrixChanged(Guid? value)
+    {
+        CurrentTariff.MatrixId = value ?? Guid.Empty;
+
+        CurrentTariff.StandardSampleId = null;
+    }
+
+    private void OnFilterSampleCategoryChanged(Guid? value)
+    {
+        FilterSampleCategoryId = value;
+
+        FilterMatrixId = null;
+        FilterStandardSampleId = null;
+    }
+
+    private void OnFilterMatrixChanged(Guid? value)
+    {
+        FilterMatrixId = value;
+
+        FilterStandardSampleId = null;
+    }
+    private void ClearTariffFilters()
+    {
+        FilterOrganizationTypeId = null;
+        FilterTargetType = null;
+        FilterCustomerId = null;
+        FilterSampleCategoryId = null;
+        FilterMatrixId = null;
+        FilterStandardSampleId = null;
+        FilterIsActive = null;
+    }
+
+    private IEnumerable<OrganizationType> FilterOrganizationTypes =>
+    OrganizationTypes
+        .Where(x =>
+            TariffList.Any(t =>
+                !t.IsDeleted &&
+                t.OrganizationTypeId == x.Id))
+        .OrderBy(x => x.Name);
+
+    private IEnumerable<Customer> FilterCustomers =>
+        Customers
+            .Where(x =>
+                TariffList.Any(t =>
+                    !t.IsDeleted &&
+                    t.CustomerId == x.Id))
+            .OrderBy(x => x.DisplayName);
+
+    private IEnumerable<SampleCategory> FilterSampleCategories =>
+        SampleCategories
+            .Where(x =>
+                TariffList.Any(t =>
+                    !t.IsDeleted &&
+                    t.SampleCategoryId == x.Id))
+            .OrderBy(x => x.Name);
+
+    private IEnumerable<Matrix> FilterMatrices =>
+        Matrices
+            .Where(x =>
+                TariffList.Any(t =>
+                    !t.IsDeleted &&
+                    t.MatrixId == x.Id &&
+                    (!FilterSampleCategoryId.HasValue ||
+                     t.SampleCategoryId == FilterSampleCategoryId)))
+            .OrderBy(x => x.Name);
+
+    private IEnumerable<StandardSample> FilterStandardSamples =>
+        StandardSamples
+            .Where(x =>
+                TariffList.Any(t =>
+                    !t.IsDeleted &&
+                    t.StandardSampleId == x.Id &&
+                    (!FilterMatrixId.HasValue ||
+                     t.MatrixId == FilterMatrixId) &&
+                    (!FilterSampleCategoryId.HasValue ||
+                     t.SampleCategoryId == FilterSampleCategoryId)))
+            .OrderBy(x => x.Name);
+
+
+    private IEnumerable<TestTariff> FilteredTariffs
+    {
+        get
+        {
+            IEnumerable<TestTariff> query =
+                TariffList.Where(x => !x.IsDeleted);
+
+            if (FilterOrganizationTypeId.HasValue)
+            {
+                query = query.Where(x =>
+                    x.OrganizationTypeId ==
+                    FilterOrganizationTypeId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(FilterTargetType))
+            {
+                query = FilterTargetType == "Test"
+                    ? query.Where(x => x.TestId.HasValue)
+                    : query.Where(x => x.TestPanelId.HasValue);
+            }
+
+            if (FilterCustomerId.HasValue)
+            {
+                query = query.Where(x =>
+                    x.CustomerId == FilterCustomerId.Value);
+            }
+
+            if (FilterSampleCategoryId.HasValue)
+            {
+                query = query.Where(x =>
+                    x.SampleCategoryId ==
+                    FilterSampleCategoryId.Value);
+            }
+
+            if (FilterMatrixId.HasValue)
+            {
+                query = query.Where(x =>
+                    x.MatrixId ==
+                    FilterMatrixId.Value);
+            }
+
+            if (FilterStandardSampleId.HasValue)
+            {
+                query = query.Where(x =>
+                    x.StandardSampleId ==
+                    FilterStandardSampleId.Value);
+            }
+
+            if (FilterIsActive.HasValue)
+            {
+                query = query.Where(x =>
+                    x.IsActive == FilterIsActive.Value);
+            }
+
+            return query;
+        }
+    }
+
+
+    private string SearchTariff(TestTariff tariff)
+    {
+        return string.Join(" ",
+            tariff.Code ?? "",
+            tariff.Name ?? "",
+            tariff.OrganizationType?.Code ?? "",
+            tariff.OrganizationType?.Name ?? "",
+            tariff.Test?.Code ?? "",
+            tariff.Test?.Name ?? "",
+            tariff.TestPanel?.Code ?? "",
+            tariff.TestPanel?.Name ?? "",
+            tariff.Customer?.Code ?? "",
+            tariff.Customer?.DisplayName ?? "",
+            tariff.SampleCategory?.Code ?? "",
+            tariff.SampleCategory?.Name ?? "",
+            tariff.Matrix?.Code ?? "",
+            tariff.Matrix?.Name ?? "",
+            tariff.StandardSample?.Code ?? "",
+            tariff.StandardSample?.Name ?? "");
+    }
+
+
+    private string GetTargetCode(TestTariff tariff)
+    {
+        if (tariff.TestId.HasValue)
+            return tariff.Test?.Code ?? "";
+
+        return tariff.TestPanel?.Code ?? "";
+    }
+
+
+    private string GetTargetName(TestTariff tariff)
+    {
+        if (tariff.TestId.HasValue)
+            return tariff.Test?.Name ?? "";
+
+        return tariff.TestPanel?.Name ?? "";
+    }
+
+
+    private void NewTariff()
+    {
+        CurrentTariff = new TestTariff
+        {
+            IsActive = true,
+            IsDeleted = false,
+            Currency = "ریال",
+            Priority = 100,
+            ValidFrom = DateTime.SpecifyKind(
+                DateTime.Today,
+                DateTimeKind.Unspecified)
+        };
+
+        TargetType = "Test";
+
+        ValidFromDate = DateTime.SpecifyKind(
+                DateTime.Today,
+                DateTimeKind.Unspecified);
+
+        ValidToDate = null;
+
+        IsEdit = false;
+
+        DialogVisible = true;
+    }
+
+
+    private void Edit(TestTariff tariff)
+    {
+        CurrentTariff = new TestTariff
+        {
+            Id = tariff.Id,
+            Code = tariff.Code,
+            Name = tariff.Name,
+            TestId = tariff.TestId,
+            TestPanelId = tariff.TestPanelId,
+            OrganizationTypeId = tariff.OrganizationTypeId,
+            CustomerId = tariff.CustomerId,
+            SampleCategoryId = tariff.SampleCategoryId,
+            MatrixId = tariff.MatrixId,
+            StandardSampleId = tariff.StandardSampleId,
+            Price = tariff.Price,
+            Currency = tariff.Currency,
+            ValidFrom = tariff.ValidFrom,
+            ValidTo = tariff.ValidTo,
+            Priority = tariff.Priority,
+            Description = tariff.Description,
+            IsActive = tariff.IsActive,
+            IsDeleted = tariff.IsDeleted
+        };
+
+        TargetType =
+            tariff.TestId.HasValue
+                ? "Test"
+                : "Panel";
+
+        ValidFromDate = tariff.ValidFrom;
+
+        ValidToDate = tariff.ValidTo;
+
+        IsEdit = true;
+
+        DialogVisible = true;
+    }
+
+
+    private async Task SaveTariff()
+    {
+        if (CurrentTariff.OrganizationTypeId == Guid.Empty)
+            return;
+
+        if (TargetType == "Test")
+        {
+            if (!CurrentTariff.TestId.HasValue ||
+                CurrentTariff.TestId.Value == Guid.Empty)
+                return;
+
+            CurrentTariff.TestPanelId = null;
+        }
+        else
+        {
+            if (!CurrentTariff.TestPanelId.HasValue ||
+                CurrentTariff.TestPanelId.Value == Guid.Empty)
+                return;
+
+            CurrentTariff.TestId = null;
+        }
+
+        if (CurrentTariff.Price < 0)
+            return;
+
+        if (!ValidFromDate.HasValue)
+            return;
+
+        if (ValidToDate.HasValue &&
+            ValidToDate.Value.Date < ValidFromDate.Value.Date)
+            return;
+
+        CurrentTariff.ValidFrom =
+            ValidFromDate.Value.Date;
+
+        CurrentTariff.ValidTo =
+            ValidToDate?.Date;
+
+        if (string.IsNullOrWhiteSpace(CurrentTariff.Code))
+        {
+            CurrentTariff.Code =
+                TargetType == "Test"
+                    ? $"TEST-{CurrentTariff.TestId}"
+                    : $"PANEL-{CurrentTariff.TestPanelId}";
+        }
+
+        if (string.IsNullOrWhiteSpace(CurrentTariff.Name))
+        {
+            CurrentTariff.Name =
+                TargetType == "Test"
+                    ? "تعرفه آزمون"
+                    : "تعرفه Panel";
+        }
+
+        if (IsEdit)
+        {
+            await TestTariffService.UpdateAsync(
+                CurrentTariff.Id,
+                CurrentTariff);
+        }
+        else
+        {
+            await TestTariffService.CreateAsync(
+                CurrentTariff);
+        }
+
+        DialogVisible = false;
+
+        await Load();
+    }
+
+
+    private void CloseDialog()
+    {
+        DialogVisible = false;
+    }
+
+
+    private async Task Activate(Guid id)
+    {
+        var tariff = TariffList
+            .FirstOrDefault(x => x.Id == id);
+
+        if (tariff == null)
+            return;
+
+        tariff.IsActive = true;
+
+        await TestTariffService.UpdateAsync(
+            id,
+            tariff);
+
+        await Load();
+    }
+
+
+    private async Task Deactivate(Guid id)
+    {
+        var tariff = TariffList
+            .FirstOrDefault(x => x.Id == id);
+
+        if (tariff == null)
+            return;
+
+        tariff.IsActive = false;
+
+        await TestTariffService.UpdateAsync(
+            id,
+            tariff);
+
+        await Load();
+    }
+
+
+    private async Task Delete(Guid id)
+    {
+        await TestTariffService.DeleteAsync(id);
+
+        await Load();
+    }
+
+}

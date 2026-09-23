@@ -19,6 +19,7 @@ public interface IDefaultTestSetService
         Guid? customerId,
         Guid? sampleCategoryId,
         Guid? matrixId,
+        Guid? standardSampleId,
         CancellationToken cancellationToken = default);
 
     Task<DefaultTestSetDto> CreateAsync(

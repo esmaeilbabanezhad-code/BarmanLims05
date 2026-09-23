@@ -39,6 +39,14 @@ public class DefaultTestSet : BaseEntity
     public Matrix? Matrix { get; set; }
 
     // =========================
+    // Optional Standard Sample
+    // =========================
+
+    public Guid? StandardSampleId { get; set; }
+
+    public StandardSample? StandardSample { get; set; }
+
+    // =========================
     // Items
     // =========================
 

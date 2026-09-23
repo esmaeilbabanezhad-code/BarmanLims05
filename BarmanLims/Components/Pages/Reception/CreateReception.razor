@@ -7,6 +7,9 @@
 @using Barman.Domain.Entities
 @using Barman.Application.DTOs.Test
 @using Barman.Application.Interfaces
+@using Barman.Application.DTOs.CustomField
+@using BarmanLims.Components.Authorization
+@attribute [RequirePermission("Reception.View")]
 
 @inject Barman.Application.Interfaces.ITestPanelService TestPanelService
 @inject Barman.Application.Interfaces.IReceptionService ReceptionService
@@ -15,6 +18,8 @@
 @inject Barman.Application.Interfaces.ISampleCategoryService SampleCategoryService
 @inject Barman.Application.Interfaces.ITestService TestService
 @inject Barman.Application.Interfaces.IStandardSampleService StandardSampleService
+@inject Barman.Application.Interfaces.IDefaultTestSetService DefaultTestSetService
+@inject Barman.Application.Interfaces.ICustomFieldService CustomFieldService
 @inject NavigationManager NavigationManager
 @inject ITestPanelService TestPanelService
 
@@ -35,21 +40,137 @@
         @* Customer                       *@
         @* ============================= *@
 
-        <MudSelect T="Guid"
-                   Label="مشتری"
-                   Variant="Variant.Outlined"
-                   @bind-Value="SelectedCustomerId"
-                   @bind-Value:after="OnCustomerChanged"
+        <MudAutocomplete T="CustomerLookupDto"
+                         Label="مشتری"
+                         Variant="Variant.Outlined"
+                         Dense="true"
+                         Clearable="true"
+                         SearchFunc="SearchCustomers"
+                         ToStringFunc="@(x => x?.DisplayName ?? "")"
+                         Value="SelectedCustomer"
+                         ValueChanged="OnCustomerSelected"
+                         ResetValueOnEmptyText="true"
+                         CoerceText="true"
+                         CoerceValue="true"
+                         Disabled="@IsSaving" />
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                   OnClick="OpenQuickCustomerDialog"
                    Disabled="@IsSaving">
 
-            @foreach (var customer in Customers)
-            {
-                <MudSelectItem T="Guid" Value="@customer.Id">
-                    @customer.DisplayName
-                </MudSelectItem>
-            }
+            مشتری جدید
 
-        </MudSelect>
+        </MudButton>
+        @if (SelectedCustomerId != Guid.Empty)
+        {
+            <MudAutocomplete T="ReceptionHistoryLookupDto"
+                             Label="استفاده از پذیرش قبلی"
+                             Variant="Variant.Outlined"
+                             Dense="true"
+                             Clearable="true"
+                             SearchFunc="SearchPreviousReceptions"
+                             ToStringFunc="@(x => x == null
+                                                      ? ""
+                                                      : $"{x.ReceptionNumber} - {x.ReceptionDate:yyyy/MM/dd}")"
+                         Value="SelectedPreviousReception"
+                         ValueChanged="OnPreviousReceptionSelected"
+                         ResetValueOnEmptyText="true"
+                         CoerceText="true"
+                         CoerceValue="true"
+                         Disabled="@IsSaving"
+                         Class="mt-3" />
+                }
+        @if (SelectedPreviousReception != null)
+        {
+            <MudPaper Class="pa-4 mt-3" Outlined="true">
+
+                <MudText Typo="Typo.subtitle1" Class="mb-3">
+                    نمونه‌های پذیرش @SelectedPreviousReception.ReceptionNumber
+                </MudText>
+
+                <MudSelect T="ReceptionHistorySampleDto"
+                           Label="انتخاب نمونه"
+                           Variant="Variant.Outlined"
+                           Dense="true"
+                           Clearable="true"
+                           Value="SelectedPreviousSample"
+                           ValueChanged="OnPreviousSampleSelected"
+                           Disabled="@IsSaving">
+
+                @foreach (var previousSample in SelectedPreviousReception.Samples)
+                    {
+                        <MudSelectItem T="ReceptionHistorySampleDto"
+                                       Value="previousSample">
+                            @previousSample.SampleName
+                            (@previousSample.SampleCode)
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+
+            </MudPaper>
+        }
+        @if (SelectedPreviousSample != null)
+        {
+            <MudPaper Class="pa-4 mt-3" Outlined="true">
+
+                <MudText Typo="Typo.subtitle1" Class="mb-3">
+                    آزمون‌های نمونه قبلی
+                </MudText>
+
+                @foreach (var panelGroup in SelectedPreviousSample.Tests
+                            .Where(x => x.TestPanelId.HasValue)
+                            .GroupBy(x => x.TestPanelId))
+                {
+                    var panel = panelGroup.First();
+
+                    <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">
+                        Panel: @panel.TestPanelName
+                        (@panel.TestPanelCode)
+                    </MudText>
+
+                    @foreach (var test in panelGroup)
+                    {
+                        <MudCheckBox T="bool"
+                                     Label="@($"{test.TestName} ({test.TestCode})")"
+                                     Value="@SelectedPreviousTestIds.Contains(test.TestId)"
+                                     ValueChanged="@(checkedValue =>
+                                                                  {
+                                                                      if (checkedValue)
+                                                                          SelectedPreviousTestIds.Add(test.TestId);
+                                                                      else
+                                                                          SelectedPreviousTestIds.Remove(test.TestId);
+                                                                  })"
+                         Disabled="@IsSaving" />
+                        }
+                }
+
+                @* آزمون‌های مستقل *@
+
+                @foreach (var test in SelectedPreviousSample.Tests
+                            .Where(x => !x.TestPanelId.HasValue))
+                {
+                    <MudCheckBox T="bool"
+                                 Label="@($"آزمون مستقل: {test.TestName} ({test.TestCode})")"
+                                 Value="@SelectedPreviousTestIds.Contains(test.TestId)"
+                                 ValueChanged="@(checkedValue =>
+                                                          {
+                                                              if (checkedValue)
+                                                                  SelectedPreviousTestIds.Add(test.TestId);
+                                                              else
+                                                                  SelectedPreviousTestIds.Remove(test.TestId);
+                                                          })"
+                         Disabled="@IsSaving" />
+                        }
+
+            </MudPaper>
+        }
+        <MudDatePicker Label="تاریخ پذیرش"
+                       Variant="Variant.Outlined"
+                       @bind-Date="ReceptionDate"
+                       Disabled="@IsSaving"
+                       Class="mt-3" />
 
         <MudCheckBox @bind-Value="IsUrgent"
                      Label="فوری"
@@ -137,6 +258,67 @@
                                           Disabled="@IsSaving" />
 
                         </MudItem>
+
+                        @* ============================= *@
+                        @* Sample Product Information    *@
+                        @* ============================= *@
+
+                        <MudItem xs="12">
+
+                            <MudTextField T="string"
+                                          Label="نام نمونه از دید مشتری"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="sample.CustomerSampleName"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+
+                            <BarmanDateInput Label="تاریخ تولید"
+                                             @bind-Value="sample.ProductionDate"
+                                             Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+
+                            <BarmanDateInput Label="تاریخ انقضا"
+                                             @bind-Value="sample.ExpiryDate"
+                                             Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudTextField T="string"
+                                          Label="شماره Batch / Lot"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="sample.BatchLotNumber"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudTextField T="string"
+                                          Label="شماره کوتاژ"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="sample.QuotaNumber"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudTextField T="string"
+                                          Label="شماره محموله"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="sample.ShipmentNumber"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
                         @* ============================= *@
                         @* Sample Category               *@
                         @* ============================= *@
@@ -161,6 +343,171 @@
                             </MudSelect>
 
                         </MudItem>
+
+
+                        @* ============================= *@
+                        @* Matrix                         *@
+                        @* ============================= *@
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudSelect T="Guid?"
+                                       Label="ماتریس"
+                                       Variant="Variant.Outlined"
+                                       @bind-Value="sample.MatrixId"
+                                       @bind-Value:after="@(() => OnMatrixChanged(sample))"
+                                       Disabled="@IsSaving">
+
+                                @foreach (var matrix in SampleMatrices[sample])
+                                {
+                                    <MudSelectItem T="Guid?" Value="@matrix.Id">
+                                        @matrix.Name
+                                    </MudSelectItem>
+                                }
+
+                            </MudSelect>
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Standard Sample                *@
+                        @* ============================= *@
+
+                        <MudItem xs="12" sm="6">
+
+                            <MudAutocomplete T="StandardSample"
+                                             Label="Standard Sample"
+                                             Variant="Variant.Outlined"
+                                             Value="@(StandardSamples.FirstOrDefault(x => x.Id == sample.StandardSampleId))"
+                                             ValueChanged="@((StandardSample? value) => OnStandardSampleSelected(sample, value))"
+                                             SearchFunc="@((string value, CancellationToken token) => SearchStandardSamples(value, token))"
+                                             ToStringFunc="@(x => x == null ? "" : $"{x.Code} - {x.Name}")"
+                                             Clearable="true"
+                                             Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Sample Quantity Information   *@
+                        @* ============================= *@
+
+                        <MudItem xs="12" sm="4">
+
+                            <MudTextField T="decimal?"
+                                          Label="مقدار"
+                                          Variant="Variant.Outlined"
+                                          InputType="InputType.Number"
+                                          @bind-Value="sample.Quantity"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        <MudItem xs="12" sm="4">
+
+                            <MudTextField T="string"
+                                          Label="واحد"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="sample.Unit"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        <MudItem xs="12" sm="4">
+
+                            <MudTextField T="string"
+                                          Label="نوع ظرف"
+                                          Variant="Variant.Outlined"
+                                          @bind-Value="sample.ContainerType"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Sample Description             *@
+                        @* ============================= *@
+
+                        <MudItem xs="12">
+
+                            <MudTextField T="string"
+                                          Label="توضیحات نمونه"
+                                          Variant="Variant.Outlined"
+                                          Lines="2"
+                                          @bind-Value="sample.Description"
+                                          Disabled="@IsSaving" />
+
+                        </MudItem>
+
+                        @* ============================= *@
+                        @* Custom Fields                 *@
+                        @* ============================= *@
+
+                        @if (SampleCustomFields.TryGetValue(sample, out var customFields))
+                        {
+                            @if (customFields.Count > 0)
+                            {
+                                <MudGrid>
+                                    @foreach (var field in customFields)
+                                    {
+                                        <MudItem xs="12" sm="6">
+                                            @if (field.IsAdHoc)
+                                            {
+                                                <MudTextField T="string"
+                                                              Label="عنوان فیلد"
+                                                              Variant="Variant.Outlined"
+                                                              @bind-Value="field.Title"
+                                                              Immediate="true"
+                                                              Disabled="@IsSaving"
+                                                              FullWidth="true" />
+                                            }
+                                            else
+                                            {
+                                                <MudTextField T="string"
+                                                              Label="@field.Title"
+                                                              Variant="Variant.Outlined"
+                                                              @bind-Value="field.Value"
+                                                              Required="@field.IsRequired"
+                                                              Disabled="@IsSaving"
+                                                              Immediate="true"
+                                                              FullWidth="true" />
+                                            }
+                                        </MudItem>
+
+                                        @if (field.IsAdHoc)
+                                        {
+                                            <MudItem xs="12" sm="6">
+                                                <MudStack Row="true"
+                                                          AlignItems="AlignItems.Center"
+                                                          Spacing="1">
+
+                                                    <MudTextField T="string"
+                                                                  Label="مقدار"
+                                                                  Variant="Variant.Outlined"
+                                                                  @bind-Value="field.Value"
+                                                                  Immediate="true"
+                                                                  Disabled="@IsSaving"
+                                                                  FullWidth="true" />
+
+                                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                                   Color="Color.Error"
+                                                                   Disabled="@IsSaving"
+                                                                   OnClick="@(() => RemoveAdHocCustomField(sample, field))" />
+                                                </MudStack>
+                                            </MudItem>
+                                        }
+                                    }
+                                </MudGrid>
+                            }
+                        }
+                        
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   Class="mt-3"
+                                   Disabled="@IsSaving"
+                                   OnClick="@(() => AddAdHocCustomField(sample))">
+                            افزودن فیلد سفارشی
+                        </MudButton>
+                        }
                         @* ============================= *@
                         @* Tests                         *@
                         @* ============================= *@
@@ -226,6 +573,23 @@
 
                                 </MudButton>
 
+                                @* ========================================================= *@
+                                @* افزودن آزمون از پذیرش قبلی                               *@
+                                @* ========================================================= *@
+
+                                @if (SelectedPreviousSample != null)
+                                {
+                                    <MudButton Variant="Variant.Outlined"
+                                               Color="Color.Secondary"
+                                               Class="mt-2"
+                                               Disabled="@(SelectedPreviousTestIds.Count == 0 || IsSaving)"
+                                               OnClick="@(() => AddSelectedPreviousTests(sample))">
+
+                                        افزودن آزمون‌های انتخاب‌شده از پذیرش قبلی
+                                        (@SelectedPreviousTestIds.Count)
+
+                                    </MudButton>
+                                }
                                 <!-- آزمون‌های موجود -->
                                 <MudText Typo="Typo.subtitle1" Class="mb-2">
                                     آزمون‌ها
@@ -275,110 +639,6 @@
 
                         </MudItem>
 
-                        @* ============================= *@
-                        @* Matrix                         *@
-                        @* ============================= *@
-
-                        <MudItem xs="12" sm="6">
-
-                            <MudSelect T="Guid?"
-                                       Label="ماتریس"
-                                       Variant="Variant.Outlined"
-                                       @bind-Value="sample.MatrixId"
-                                       Disabled="@IsSaving">
-
-                                @foreach (var matrix in SampleMatrices[sample])
-                                {
-                                    <MudSelectItem T="Guid?" Value="@matrix.Id">
-                                        @matrix.Name
-                                    </MudSelectItem>
-                                }
-
-                            </MudSelect>
-
-                        </MudItem>
-
-                        @* ============================= *@
-                        @* Standard Sample                *@
-                        @* ============================= *@
-
-                        <MudItem xs="12" sm="6">
-
-                            <MudSelect T="Guid?"
-                                       Label="Standard Sample"
-                                       Variant="Variant.Outlined"
-                                       @bind-Value="sample.StandardSampleId"
-                                       Disabled="@IsSaving">
-
-                                @foreach (var standardSample in GetStandardSamples(sample))
-                                {
-                                    <MudSelectItem T="Guid?"
-                                                   Value="@standardSample.Id">
-                                        @standardSample.Code - @standardSample.Name
-                                    </MudSelectItem>
-                                }
-
-                            </MudSelect>
-
-                        </MudItem>
-
-                        @* ============================= *@
-                        @* Quantity                       *@
-                        @* ============================= *@
-
-                        <MudItem xs="12" sm="6">
-
-                            <MudTextField T="decimal?"
-                                          Label="مقدار"
-                                          Variant="Variant.Outlined"
-                                          InputType="InputType.Number"
-                                          @bind-Value="sample.Quantity"
-                                          Disabled="@IsSaving" />
-
-                        </MudItem>
-
-                        @* ============================= *@
-                        @* Unit                           *@
-                        @* ============================= *@
-
-                        <MudItem xs="12" sm="6">
-
-                            <MudTextField T="string"
-                                          Label="واحد"
-                                          Variant="Variant.Outlined"
-                                          @bind-Value="sample.Unit"
-                                          Disabled="@IsSaving" />
-
-                        </MudItem>
-
-                        @* ============================= *@
-                        @* Container                      *@
-                        @* ============================= *@
-
-                        <MudItem xs="12" sm="6">
-
-                            <MudTextField T="string"
-                                          Label="نوع ظرف"
-                                          Variant="Variant.Outlined"
-                                          @bind-Value="sample.ContainerType"
-                                          Disabled="@IsSaving" />
-
-                        </MudItem>
-
-                        @* ============================= *@
-                        @* Description                    *@
-                        @* ============================= *@
-
-                        <MudItem xs="12">
-
-                            <MudTextField T="string"
-                                          Label="توضیحات نمونه"
-                                          Variant="Variant.Outlined"
-                                          Lines="2"
-                                          @bind-Value="sample.Description"
-                                          Disabled="@IsSaving" />
-
-                        </MudItem>
 
                     </MudGrid>
 
@@ -431,7 +691,164 @@
 
 </MudContainer>
 
+@* ========================================================= *@
+@* Quick Create Customer Dialog                           *@
+@* ========================================================= *@
 
+<MudDialog @bind-Visible="QuickCustomerDialogVisible"
+           Options="new DialogOptions
+           {
+               MaxWidth = MaxWidth.Medium,
+               FullWidth = true,
+               CloseOnEscapeKey = true
+           }">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6"
+                 Class="mb-4">
+
+            ایجاد سریع مشتری
+
+        </MudText>
+
+        <MudGrid Spacing="2">
+
+            @* نام مشتری *@
+
+            <MudItem xs="12" sm="6">
+
+                <MudTextField T="string"
+                              Label="نام مشتری"
+                              Variant="Variant.Outlined"
+                              @bind-Value="QuickCustomer.DisplayName"
+                              Required="true"
+                              Immediate="true" />
+
+            </MudItem>
+
+
+            @* کد مشتری *@
+
+            <MudItem xs="12" sm="6">
+
+                <MudTextField T="string"
+                              Label="کد مشتری"
+                              Variant="Variant.Outlined"
+                              @bind-Value="QuickCustomer.Code" />
+
+            </MudItem>
+
+
+            @* نام حقوقی *@
+
+            <MudItem xs="12" sm="6">
+
+                <MudTextField T="string"
+                              Label="نام حقوقی"
+                              Variant="Variant.Outlined"
+                              @bind-Value="QuickCustomer.LegalName" />
+
+            </MudItem>
+
+
+            @* شناسه ملی *@
+
+            <MudItem xs="12" sm="6">
+
+                <MudTextField T="string"
+                              Label="شناسه ملی"
+                              Variant="Variant.Outlined"
+                              @bind-Value="QuickCustomer.NationalId" />
+
+            </MudItem>
+
+
+            @* کد اقتصادی *@
+
+            <MudItem xs="12" sm="6">
+
+                <MudTextField T="string"
+                              Label="کد اقتصادی"
+                              Variant="Variant.Outlined"
+                              @bind-Value="QuickCustomer.EconomicCode" />
+
+            </MudItem>
+
+
+            @* تلفن *@
+
+            <MudItem xs="12" sm="6">
+
+                <MudTextField T="string"
+                              Label="تلفن"
+                              Variant="Variant.Outlined"
+                              @bind-Value="QuickCustomer.Phone" />
+
+            </MudItem>
+
+
+            @* موبایل *@
+
+            <MudItem xs="12" sm="6">
+
+                <MudTextField T="string"
+                              Label="موبایل"
+                              Variant="Variant.Outlined"
+                              @bind-Value="QuickCustomer.Mobile" />
+
+            </MudItem>
+
+
+            @* شهر *@
+
+            <MudItem xs="12" sm="6">
+
+                <MudTextField T="string"
+                              Label="شهر"
+                              Variant="Variant.Outlined"
+                              @bind-Value="QuickCustomer.City" />
+
+            </MudItem>
+
+
+            @* توضیحات *@
+
+            <MudItem xs="12">
+
+                <MudTextField T="string"
+                              Label="توضیحات"
+                              Variant="Variant.Outlined"
+                              Lines="2"
+                              @bind-Value="QuickCustomer.Description" />
+
+            </MudItem>
+
+        </MudGrid>
+
+    </DialogContent>
+
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="CloseQuickCustomerDialog">
+
+            انصراف
+
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveQuickCustomer">
+
+            ذخیره و انتخاب مشتری
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
 @code
 {
     // =========================================================
@@ -440,17 +857,77 @@
 
     private Guid SelectedCustomerId;
 
+    private CustomerLookupDto? SelectedCustomer;
+
     private bool IsUrgent;
+
+    private bool QuickCustomerDialogVisible;
+
+    private Customer QuickCustomer = new();
 
     private string? Description;
 
+    private void OpenQuickCustomerDialog()
+    {
+        QuickCustomer = new Customer();
 
+        QuickCustomerDialogVisible = true;
+    }
+
+    private void CloseQuickCustomerDialog()
+    {
+        QuickCustomerDialogVisible = false;
+    }
+
+    private async Task SaveQuickCustomer()
+    {
+        if (string.IsNullOrWhiteSpace(QuickCustomer.DisplayName))
+        {
+            return;
+        }
+
+        await CustomerService.CreateAsync(QuickCustomer);
+
+        QuickCustomerDialogVisible = false;
+
+        Customers =
+            await CustomerService.GetLookupWithDefaultPanelAsync();
+
+        var createdCustomer =
+            Customers.FirstOrDefault(x =>
+                x.DisplayName == QuickCustomer.DisplayName);
+
+        if (createdCustomer != null)
+        {
+            SelectedCustomer = createdCustomer;
+
+            SelectedCustomerId =
+                createdCustomer.Id;
+
+            await OnCustomerChanged();
+        }
+    }
+
+    
     // =========================================================
     // State
     // =========================================================
 
     private bool IsSaving;
 
+    private DateTime? ReceptionDate = DateTime.Now;
+
+    // =========================================================
+    // Previous Reception History
+    // =========================================================
+
+    private List<ReceptionHistoryLookupDto> PreviousReceptions = new();
+
+    private ReceptionHistoryLookupDto? SelectedPreviousReception;
+
+    private ReceptionHistorySampleDto? SelectedPreviousSample;
+
+    private HashSet<Guid> SelectedPreviousTestIds = new();
 
     // =========================================================
     // Result
@@ -499,9 +976,17 @@
 
     private List<CreateReceptionSampleDto> Samples = new();
 
+    private Dictionary<CreateReceptionSampleDto, List<CustomFieldValueDto>> SampleCustomFields
+    = new();
+
     private Dictionary<CreateReceptionSampleDto, HashSet<Guid>> SelectedTests
         = new();
 
+    private Dictionary<CreateReceptionSampleDto, HashSet<Guid>> DefaultSelectedTests
+    = new();
+
+    private Dictionary<CreateReceptionSampleDto, Dictionary<Guid, Guid>>
+    SelectedTestPanels = new();
 
     // =========================================================
     // Initialization
@@ -609,8 +1094,16 @@
 
         Samples.Add(sample);
 
+        SampleCustomFields[sample] = new List<CustomFieldValueDto>();
+
         SelectedTests[sample] =
             new HashSet<Guid>();
+
+        DefaultSelectedTests[sample] =
+            new HashSet<Guid>();
+
+        SelectedTestPanels[sample] =
+            new Dictionary<Guid, Guid>();
 
         SampleMatrices[sample] =
             new List<Matrix>();
@@ -619,6 +1112,73 @@
 
         Result = "";
     }
+    private void AddAdHocCustomField(
+    CreateReceptionSampleDto sample)
+    {
+        if (!SampleCustomFields.ContainsKey(sample))
+        {
+            SampleCustomFields[sample] =
+                new List<CustomFieldValueDto>();
+        }
+
+        SampleCustomFields[sample].Add(
+            new CustomFieldValueDto
+            {
+                Id = null,
+                DefinitionId = null,
+                Title = "",
+                DataType = "Text",
+                IsRequired = false,
+                Value = "",
+                IsAdHoc = true,
+                DisplayOrder =
+                    SampleCustomFields[sample].Count
+            });
+    }
+    private void RemoveAdHocCustomField(
+    CreateReceptionSampleDto sample,
+    CustomFieldValueDto field)
+    {
+        if (!SampleCustomFields.TryGetValue(sample, out var fields))
+            return;
+
+        fields.Remove(field);
+    }
+
+    private async Task LoadCustomFieldsAsync(
+    CreateReceptionSampleDto sample)
+    {
+        if (sample == null)
+            return;
+
+        var definitions =
+            await CustomFieldService.GetDefinitionsAsync(
+                SelectedCustomerId == Guid.Empty
+                    ? null
+                    : SelectedCustomerId,
+                sample.SampleCategoryId,
+                sample.MatrixId);
+
+        var fields = definitions
+            .Where(x => x.IsActive && !x.IsDeleted)
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.Title)
+            .Select(x => new CustomFieldValueDto
+            {
+                Id = null,
+                DefinitionId = x.Id,
+                Title = x.Title,
+                DataType = x.DataType,
+                IsRequired = x.IsRequired,
+                Value = null,
+                IsAdHoc = false,
+                DisplayOrder = x.DisplayOrder
+            })
+            .ToList();
+
+        SampleCustomFields[sample] = fields;
+    }
+
     private IEnumerable<StandardSample> GetStandardSamples(
     CreateReceptionSampleDto sample)
     {
@@ -629,14 +1189,163 @@
             .Where(x => x.MatrixId == sample.MatrixId)
             .OrderBy(x => x.Name);
     }
+    private Task<IEnumerable<CustomerLookupDto>> SearchCustomers(
+    string? value,
+    CancellationToken cancellationToken)
+    {
+        IEnumerable<CustomerLookupDto> result = Customers;
+
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            var search = value.Trim();
+
+            result = Customers
+                .Where(x =>
+                    (x.DisplayName ?? "")
+                        .Contains(
+                            search,
+                            StringComparison.OrdinalIgnoreCase))
+                .Take(50);
+        }
+        else
+        {
+            result = Customers.Take(50);
+        }
+
+        return Task.FromResult(result);
+    }
     private async Task OnCustomerChanged()
     {
         foreach (var sample in Samples)
         {
             await ApplyDefaultTestPanel(sample);
+            await LoadCustomFieldsAsync(sample);
         }
 
         StateHasChanged();
+    }
+
+    private async Task OnCustomerSelected(
+    CustomerLookupDto? customer)
+    {
+        SelectedCustomer = customer;
+
+        SelectedCustomerId =
+            customer?.Id ?? Guid.Empty;
+
+        await OnCustomerChanged();
+        await LoadPreviousReceptionsAsync();
+    }
+
+    private async Task LoadPreviousReceptionsAsync()
+    {
+        PreviousReceptions.Clear();
+
+        SelectedPreviousReception = null;
+        SelectedPreviousSample = null;
+
+        if (SelectedCustomerId == Guid.Empty)
+            return;
+
+        PreviousReceptions =
+            await ReceptionService.GetHistoryByCustomerIdAsync(
+                SelectedCustomerId);
+    }
+    private Task<IEnumerable<ReceptionHistoryLookupDto>> SearchPreviousReceptions(
+    string? value,
+    CancellationToken cancellationToken)
+    {
+        IEnumerable<ReceptionHistoryLookupDto> result =
+            PreviousReceptions;
+
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            var search = value.Trim();
+
+            result = PreviousReceptions
+                .Where(x =>
+                    x.ReceptionNumber.Contains(
+                        search,
+                        StringComparison.OrdinalIgnoreCase)
+                    ||
+                    x.Samples.Any(s =>
+                        (!string.IsNullOrWhiteSpace(s.SampleName) &&
+                         s.SampleName.Contains(
+                             search,
+                             StringComparison.OrdinalIgnoreCase))
+                        ||
+                        (!string.IsNullOrWhiteSpace(s.SampleCode) &&
+                         s.SampleCode.Contains(
+                             search,
+                             StringComparison.OrdinalIgnoreCase))
+                    ));
+        }
+
+        return Task.FromResult(
+            result.Take(50));
+    }
+    private async Task OnPreviousReceptionSelected(
+    ReceptionHistoryLookupDto? reception)
+    {
+        SelectedPreviousReception = reception;
+
+        SelectedPreviousSample = null;
+
+        SelectedPreviousTestIds.Clear();
+
+        await InvokeAsync(StateHasChanged);
+    }
+    private async Task OnPreviousSampleSelected(
+    ReceptionHistorySampleDto? sample)
+    {
+        SelectedPreviousSample = sample;
+
+        SelectedPreviousTestIds.Clear();
+
+        if (sample != null)
+        {
+            foreach (var test in sample.Tests)
+            {
+                if (test.TestId != Guid.Empty)
+                {
+                    SelectedPreviousTestIds.Add(test.TestId);
+                }
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+    private async Task AddSelectedPreviousTests(
+    CreateReceptionSampleDto sample)
+    {
+        if (SelectedPreviousSample == null)
+            return;
+
+        if (!SelectedTests.ContainsKey(sample))
+            SelectedTests[sample] = new HashSet<Guid>();
+
+        if (!SelectedTestPanels.ContainsKey(sample))
+            SelectedTestPanels[sample] = new Dictionary<Guid, Guid>();
+
+        foreach (var previousTest in SelectedPreviousSample.Tests)
+        {
+            if (!SelectedPreviousTestIds.Contains(previousTest.TestId))
+                continue;
+
+            if (previousTest.TestId == Guid.Empty)
+                continue;
+
+            SelectedTests[sample].Add(previousTest.TestId);
+
+            if (previousTest.TestPanelId.HasValue &&
+                previousTest.TestPanelId.Value != Guid.Empty)
+            {
+                SelectedTestPanels[sample][previousTest.TestId] =
+                    previousTest.TestPanelId.Value;
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
     private async Task OnSampleCategoryChanged(
     CreateReceptionSampleDto sample)
@@ -649,6 +1358,8 @@
             sample.SampleCategoryId.Value == Guid.Empty)
         {
             SampleMatrices[sample] = new List<Matrix>();
+            SampleCustomFields[sample] =
+               new List<CustomFieldValueDto>();
             return;
         }
 
@@ -662,30 +1373,86 @@
             .OrderBy(x => x.Name)
             .ToList();
 
+        await LoadCustomFieldsAsync(sample);
+
         await InvokeAsync(StateHasChanged);
     }
     private async Task ApplyDefaultTestPanel(
     CreateReceptionSampleDto sample)
     {
+        if (!SelectedTests.ContainsKey(sample))
+        {
+            SelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        if (!DefaultSelectedTests.ContainsKey(sample))
+        {
+            DefaultSelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        // =========================================================
+        // حذف فقط Defaultهای قبلی
+        // انتخاب‌های دستی کاربر باقی می‌مانند
+        // =========================================================
+
+        foreach (var testId in DefaultSelectedTests[sample])
+        {
+            SelectedTests[sample].Remove(testId);
+        }
+
+        DefaultSelectedTests[sample].Clear();
+
+        // =========================================================
+        // پیدا کردن مشتری
+        // =========================================================
+
         var customer = Customers
-            .FirstOrDefault(x => x.Id == SelectedCustomerId);
+            .FirstOrDefault(x =>
+                x.Id == SelectedCustomerId);
 
         if (customer?.DefaultTestPanelId == null)
             return;
 
-        var panel = await TestPanelService.GetByIdAsync(
-            customer.DefaultTestPanelId.Value);
+        // =========================================================
+        // دریافت Default Test Panel مشتری
+        // =========================================================
+
+        var panel =
+            await TestPanelService.GetByIdAsync(
+                customer.DefaultTestPanelId.Value);
 
         if (panel == null)
             return;
 
-        var testIds = panel.Items
-            .Where(x => x.IsActive && !x.IsDeleted)
-            .Select(x => x.TestId)
-            .Distinct()
-            .ToHashSet();
+        // =========================================================
+        // آزمون‌های Panel
+        // =========================================================
 
-        SelectedTests[sample] = testIds;
+        var testIds =
+            panel.Items
+                .Where(x =>
+                    x.IsActive &&
+                    !x.IsDeleted)
+                .Select(x => x.TestId)
+                .Where(x => x != Guid.Empty)
+                .Distinct();
+
+        // =========================================================
+        // اعمال Defaultهای جدید
+        // =========================================================
+
+        foreach (var testId in testIds)
+        {
+            if (testId == Guid.Empty)
+                continue;
+
+            SelectedTests[sample].Add(testId);
+
+            SelectedTestPanels[sample][testId] =
+                 customer.DefaultTestPanelId.Value;
+        }
     }
     private async Task SelectTestPanelAsync(
     Guid? panelId,
@@ -712,7 +1479,13 @@
 
         foreach (var testId in testIds)
         {
+            if (testId == Guid.Empty)
+                continue;
+
             SelectedTests[sample].Add(testId);
+
+            SelectedTestPanels[sample][testId] =
+                panelId.Value;
         }
 
         SelectedTestPanelId = null;
@@ -728,7 +1501,11 @@
     {
         Samples.Remove(sample);
 
+        SampleCustomFields.Remove(sample);
+
         SelectedTests.Remove(sample);
+
+        DefaultSelectedTests.Remove(sample);
 
         Result = "";
     }
@@ -869,9 +1646,54 @@
                     sample.TestIds =
                         new List<Guid>();
                 }
+                if (SelectedTestPanels.TryGetValue(
+               sample,
+               out var selectedTestPanels))
+                {
+                    sample.TestPanelIds =
+                        selectedTestPanels
+                            .Where(x =>
+                                x.Key != Guid.Empty &&
+                                x.Value != Guid.Empty)
+                            .ToDictionary(
+                                x => x.Key,
+                                x => x.Value);
+                }
+                else
+                {
+                    sample.TestPanelIds =
+                        new Dictionary<Guid, Guid>();
+                }
+                if (SampleCustomFields.TryGetValue(
+                    sample,
+                    out var customFields))
+                {
+                    sample.CustomFields = customFields;
+                }
+                else
+                {
+                    sample.CustomFields =
+                        new List<CustomFieldValueDto>();
+                }
             }
 
+            foreach (var sample in validSamples)
+            {
+                Console.WriteLine(
+                    $"[SAVE PANEL DEBUG] Sample = {sample.SampleName}");
 
+                Console.WriteLine(
+                    $"[SAVE PANEL DEBUG] TestIds = {sample.TestIds.Count}");
+
+                Console.WriteLine(
+                    $"[SAVE PANEL DEBUG] TestPanelIds = {sample.TestPanelIds.Count}");
+
+                foreach (var mapping in sample.TestPanelIds)
+                {
+                    Console.WriteLine(
+                        $"[SAVE PANEL DEBUG] TestId = {mapping.Key}, PanelId = {mapping.Value}");
+                }
+            }
             // =================================================
             // Create Reception DTO
             // =================================================
@@ -881,7 +1703,9 @@
                 {
                     CustomerId =
                         SelectedCustomerId,
-
+                    
+                    ReceptionDate =
+                         ReceptionDate ?? DateTime.Now,
                     IsUrgent =
                         IsUrgent,
 
@@ -939,7 +1763,8 @@
         catch (Exception ex)
         {
             Result =
-                $"خطا در ثبت پذیرش: {ex.Message}";
+                $"خطا در ثبت پذیرش: {ex.Message} " +
+                $"جزئیات: {ex.InnerException?.Message}";
 
             ResultSeverity =
                 Severity.Error;
@@ -975,16 +1800,29 @@
     {
         if (!SelectedTests.ContainsKey(sample))
         {
-            SelectedTests[sample] = new HashSet<Guid>();
+            SelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        if (!DefaultSelectedTests.ContainsKey(sample))
+        {
+            DefaultSelectedTests[sample] =
+                new HashSet<Guid>();
         }
 
         if (selected)
         {
+            // انتخاب دستی کاربر
             SelectedTests[sample].Add(testId);
         }
         else
         {
+            // حذف از انتخاب فعلی
             SelectedTests[sample].Remove(testId);
+
+            // نکته:
+            // DefaultSelectedTests را حذف نمی‌کنیم.
+            // این مجموعه منشأ Default آزمون را نگه می‌دارد.
         }
     }
     private IEnumerable<TestPanel> GetFilteredTestPanels()
@@ -1020,14 +1858,21 @@
     }
 
     private async Task AddSelectedPanelTests(
-        CreateReceptionSampleDto sample)
+    CreateReceptionSampleDto sample)
     {
         if (SelectedTestPanelIds.Count == 0)
             return;
 
         if (!SelectedTests.ContainsKey(sample))
         {
-            SelectedTests[sample] = new HashSet<Guid>();
+            SelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        if (!SelectedTestPanels.ContainsKey(sample))
+        {
+            SelectedTestPanels[sample] =
+                new Dictionary<Guid, Guid>();
         }
 
         foreach (var panelId in SelectedTestPanelIds)
@@ -1046,11 +1891,469 @@
             foreach (var testId in testIds)
             {
                 SelectedTests[sample].Add(testId);
+
+                SelectedTestPanels[sample][testId] =
+                    panelId;
             }
         }
 
         SelectedTestPanelIds.Clear();
         TestPanelSearchText = "";
+
+        await InvokeAsync(StateHasChanged);
+    }
+    private async Task OnMatrixChanged(
+    CreateReceptionSampleDto sample)
+    {
+        if (!SelectedTests.ContainsKey(sample))
+        {
+            SelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        if (!DefaultSelectedTests.ContainsKey(sample))
+        {
+            DefaultSelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        // =========================================================
+        // حذف فقط آزمون‌های Default قبلی
+        // آزمون‌های دستی کاربر باقی می‌مانند
+        // =========================================================
+
+        foreach (var testId in DefaultSelectedTests[sample])
+        {
+            SelectedTests[sample].Remove(testId);
+        }
+
+        DefaultSelectedTests[sample].Clear();
+
+        // =========================================================
+        // اگر Matrix خالی شد، فقط Defaultهای قبلی حذف شده‌اند
+        // =========================================================
+
+        if (!sample.MatrixId.HasValue ||
+            sample.MatrixId.Value == Guid.Empty)
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        // =========================================================
+        // Resolve Default Test Set جدید
+        // =========================================================
+
+        var defaultTestSet =
+            await DefaultTestSetService.ResolveAsync(
+                SelectedCustomerId,
+                sample.SampleCategoryId,
+                sample.MatrixId,
+                sample.StandardSampleId);
+
+        if (defaultTestSet == null)
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        // =========================================================
+        // اعمال Default Test Set جدید
+        // =========================================================
+
+        foreach (var item in defaultTestSet.Items)
+        {
+            // -----------------------------------------------------
+            // آزمون مستقل
+            // -----------------------------------------------------
+
+            if (!item.IsPanel &&
+                item.TestId.HasValue &&
+                item.TestId.Value != Guid.Empty)
+            {
+                var testId = item.TestId.Value;
+
+                SelectedTests[sample].Add(testId);
+
+                DefaultSelectedTests[sample].Add(testId);
+            }
+
+            // -----------------------------------------------------
+            // Test Panel
+            // -----------------------------------------------------
+
+            if (item.IsPanel &&
+                item.TestPanelId.HasValue &&
+                item.TestPanelId.Value != Guid.Empty)
+            {
+                var panel =
+                    await TestPanelService.GetByIdAsync(
+                        item.TestPanelId.Value);
+
+                if (panel == null)
+                    continue;
+
+                var panelTestIds =
+                    panel.Items
+                        .Where(x =>
+                            x.IsActive &&
+                            !x.IsDeleted)
+                        .Select(x => x.TestId)
+                        .Distinct();
+
+                if (!SelectedTestPanels.ContainsKey(sample))
+                {
+                    SelectedTestPanels[sample] =
+                        new Dictionary<Guid, Guid>();
+                }
+
+                foreach (var testId in panelTestIds)
+                {
+                    if (testId == Guid.Empty)
+                        continue;
+
+                    SelectedTests[sample].Add(testId);
+
+                    DefaultSelectedTests[sample].Add(testId);
+
+                    SelectedTestPanels[sample][testId] =
+                        item.TestPanelId.Value;
+                }
+            }
+        }
+        await LoadCustomFieldsAsync(sample);
+        await InvokeAsync(StateHasChanged);
+    }
+    private async Task OnStandardSampleChanged(
+    CreateReceptionSampleDto sample)
+    {
+        if (!SelectedTests.ContainsKey(sample))
+        {
+            SelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        if (!DefaultSelectedTests.ContainsKey(sample))
+        {
+            DefaultSelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        // =========================================================
+        // حذف فقط آزمون‌های Default قبلی
+        // آزمون‌های دستی کاربر باقی می‌مانند
+        // =========================================================
+
+        foreach (var testId in DefaultSelectedTests[sample])
+        {
+            SelectedTests[sample].Remove(testId);
+        }
+
+        DefaultSelectedTests[sample].Clear();
+
+        // =========================================================
+        // اگر Standard Sample پاک شد
+        // =========================================================
+
+        if (!sample.StandardSampleId.HasValue ||
+            sample.StandardSampleId.Value == Guid.Empty)
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        // =========================================================
+        // پیدا کردن Standard Sample
+        // =========================================================
+
+        var standardSample =
+            StandardSamples.FirstOrDefault(
+                x => x.Id == sample.StandardSampleId.Value);
+
+        if (standardSample == null)
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        // =========================================================
+        // Resolve Default Test Set
+        // =========================================================
+
+        var defaultTestSet =
+            await DefaultTestSetService.ResolveAsync(
+                SelectedCustomerId,
+                standardSample.SampleCategoryId,
+                standardSample.MatrixId,
+                standardSample.Id);
+
+        if (defaultTestSet == null)
+        {
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        // =========================================================
+        // اعمال آزمون‌های Default جدید
+        // =========================================================
+
+        foreach (var item in defaultTestSet.Items)
+        {
+            // -----------------------------------------------------
+            // آزمون مستقل
+            // -----------------------------------------------------
+
+            if (!item.IsPanel &&
+                item.TestId.HasValue &&
+                item.TestId.Value != Guid.Empty)
+            {
+                var testId = item.TestId.Value;
+
+                SelectedTests[sample].Add(testId);
+
+                DefaultSelectedTests[sample].Add(testId);
+            }
+
+            // -----------------------------------------------------
+            // Test Panel
+            // -----------------------------------------------------
+
+            if (item.IsPanel &&
+                item.TestPanelId.HasValue &&
+                item.TestPanelId.Value != Guid.Empty)
+            {
+                var panel =
+                    await TestPanelService.GetByIdAsync(
+                        item.TestPanelId.Value);
+
+                if (panel == null)
+                    continue;
+
+                var panelTestIds =
+                    panel.Items
+                        .Where(x =>
+                            x.IsActive &&
+                            !x.IsDeleted)
+                        .Select(x => x.TestId)
+                        .Distinct();
+
+                if (!SelectedTestPanels.ContainsKey(sample))
+                {
+                    SelectedTestPanels[sample] =
+                        new Dictionary<Guid, Guid>();
+                }
+
+                foreach (var testId in panelTestIds)
+                {
+                    if (testId == Guid.Empty)
+                        continue;
+
+                    SelectedTests[sample].Add(testId);
+
+                    DefaultSelectedTests[sample].Add(testId);
+
+                    SelectedTestPanels[sample][testId] =
+                        item.TestPanelId.Value;
+                }
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+    private async Task ApplyDefaultTestSetFromStandardSample(
+    CreateReceptionSampleDto sample)
+    {
+        if (!SelectedTests.ContainsKey(sample))
+        {
+            SelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        if (!DefaultSelectedTests.ContainsKey(sample))
+        {
+            DefaultSelectedTests[sample] =
+                new HashSet<Guid>();
+        }
+
+        // =========================================================
+        // حذف فقط Defaultهای قبلی
+        // انتخاب‌های دستی کاربر باقی می‌مانند
+        // =========================================================
+
+        foreach (var testId in DefaultSelectedTests[sample])
+        {
+            SelectedTests[sample].Remove(testId);
+        }
+
+        DefaultSelectedTests[sample].Clear();
+
+        // =========================================================
+        // بررسی Standard Sample
+        // =========================================================
+
+        if (!sample.StandardSampleId.HasValue ||
+            sample.StandardSampleId.Value == Guid.Empty)
+        {
+            return;
+        }
+
+        var standardSample =
+            StandardSamples.FirstOrDefault(
+                x => x.Id == sample.StandardSampleId.Value);
+
+        if (standardSample == null)
+        {
+            return;
+        }
+
+        // =========================================================
+        // Resolve Default Test Set
+        // =========================================================
+
+        var defaultTestSet =
+            await DefaultTestSetService.ResolveAsync(
+                SelectedCustomerId,
+                standardSample.SampleCategoryId,
+                standardSample.MatrixId,
+                standardSample.Id);
+
+        if (defaultTestSet == null)
+        {
+            return;
+        }
+
+        // =========================================================
+        // اعمال Default جدید
+        // =========================================================
+
+        foreach (var item in defaultTestSet.Items)
+        {
+            // -----------------------------------------------------
+            // آزمون مستقل
+            // -----------------------------------------------------
+
+            if (!item.IsPanel &&
+                item.TestId.HasValue &&
+                item.TestId.Value != Guid.Empty)
+            {
+                var testId = item.TestId.Value;
+
+                SelectedTests[sample].Add(testId);
+
+                DefaultSelectedTests[sample].Add(testId);
+            }
+
+            // -----------------------------------------------------
+            // Test Panel
+            // -----------------------------------------------------
+
+            if (item.IsPanel &&
+                item.TestPanelId.HasValue &&
+                item.TestPanelId.Value != Guid.Empty)
+            {
+                var panel =
+                    await TestPanelService.GetByIdAsync(
+                        item.TestPanelId.Value);
+
+                if (panel == null)
+                    continue;
+
+                var panelTestIds =
+                    panel.Items
+                        .Where(x =>
+                            x.IsActive &&
+                            !x.IsDeleted)
+                        .Select(x => x.TestId)
+                        .Distinct();
+
+                foreach (var testId in panelTestIds)
+                {
+                    if (testId == Guid.Empty)
+                        continue;
+
+                    SelectedTests[sample].Add(testId);
+
+                    DefaultSelectedTests[sample].Add(testId);
+                }
+            }
+        }
+    }
+    private Task<IEnumerable<StandardSample>> SearchStandardSamples(
+    string? value,
+    CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return Task.FromResult(
+                StandardSamples
+                    .OrderBy(x => x.Name)
+                    .AsEnumerable());
+        }
+
+        var search = value.Trim();
+
+        var result = StandardSamples
+            .Where(x =>
+                x.Code.Contains(
+                    search,
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                x.Name.Contains(
+                    search,
+                    StringComparison.OrdinalIgnoreCase))
+            .OrderBy(x =>
+                !x.Code.StartsWith(
+                    search,
+                    StringComparison.OrdinalIgnoreCase))
+            .ThenBy(x =>
+                !x.Name.StartsWith(
+                    search,
+                    StringComparison.OrdinalIgnoreCase))
+            .ThenBy(x => x.Name)
+            .Take(50);
+
+        return Task.FromResult(result);
+    }
+
+    private async Task OnStandardSampleSelected(
+        CreateReceptionSampleDto sample,
+        StandardSample? standardSample)
+    {
+        if (standardSample == null)
+        {
+            sample.StandardSampleId = null;
+            return;
+        }
+
+        sample.StandardSampleId = standardSample.Id;
+
+        // تعیین خودکار دسته‌بندی
+        sample.SampleCategoryId =
+            standardSample.SampleCategoryId;
+
+        // تعیین خودکار Matrix
+        sample.MatrixId =
+            standardSample.MatrixId;
+
+        // اطمینان از وجود Matrix در لیست مربوط به نمونه
+        if (sample.SampleCategoryId.HasValue &&
+            sample.SampleCategoryId.Value != Guid.Empty)
+        {
+            var matrices =
+                await MatrixService.GetBySampleCategoryIdAsync(
+                    sample.SampleCategoryId.Value);
+
+            SampleMatrices[sample] =
+                matrices
+                    .Where(x =>
+                        x.IsActive &&
+                        !x.IsDeleted)
+                    .OrderBy(x => x.Name)
+                    .ToList();
+        }
+
+        // انتخاب آزمون‌های Default Test Set
+        await ApplyDefaultTestSetFromStandardSample(sample);
 
         await InvokeAsync(StateHasChanged);
     }

@@ -1,0 +1,296 @@
+﻿@page "/issued-report-versions/{SampleId:guid}"
+
+@using Barman.Application.Interfaces.Services.Reporting
+
+@inject IIssuedReportService IssuedReportService
+@inject NavigationManager NavigationManager
+
+<PageTitle>نسخه‌های گزارش نهایی</PageTitle>
+
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <div>
+            <h3>نسخه‌های گزارش نهایی</h3>
+
+            <div class="text-muted">
+                Sample ID: @SampleId
+            </div>
+        </div>
+
+        <button class="btn btn-secondary"
+                @onclick="GoBack">
+            بازگشت
+        </button>
+
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border"></div>
+            <div class="mt-2">
+                در حال بارگذاری نسخه‌های گزارش...
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            @ErrorMessage
+        </div>
+    }
+    else if (Versions.Count == 0)
+    {
+        <div class="alert alert-info">
+            تاکنون گزارشی برای این نمونه صادر نشده است.
+        </div>
+    }
+    else
+    {
+        <div class="card">
+
+            <div class="card-body">
+
+                <table class="table table-bordered table-hover">
+
+                    <thead>
+                        <tr>
+                            <th>نسخه</th>
+                            <th>شماره گزارش</th>
+                            <th>تاریخ صدور</th>
+                            <th>وضعیت</th>
+                            <th style="width:160px;">
+                                عملیات
+                            </th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        @foreach (var version in Versions)
+                        {
+                            <tr>
+
+                                <td>
+                                    @version.Version
+                                </td>
+
+                                <td>
+                                    @version.ReportNumber
+                                </td>
+
+                                <td>
+                                    @version.IssuedAt.ToLocalTime()
+                                </td>
+
+                                <td>
+
+                                    @if (version.IsCancelled)
+                                    {
+                                        <span class="badge bg-danger">
+                                            لغو شده
+                                        </span>
+                                    }
+                                    else if (version.IsCurrent)
+                                    {
+                                        <span class="badge bg-success">
+                                            نسخه جاری
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+                                            نسخه قبلی
+                                        </span>
+                                    }
+
+                                </td>
+
+                                <td>
+
+                                    <button class="btn btn-sm btn-primary"
+                                            @onclick="() => ViewSnapshot(version.Id)">
+                                        مشاهده
+                                    </button>
+                                    @if (version.IsCurrent && !version.IsCancelled)
+                                    {
+                                        <button class="btn btn-sm btn-danger ms-2"
+                                                @onclick="() => StartCancel(version.Id)">
+                                            لغو گزارش
+                                        </button>
+                                    }
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+                @if (CancellingReportId.HasValue)
+                {
+                    <div class="card border-danger mt-3">
+                        <div class="card-header bg-danger text-white">
+                            لغو گزارش
+                        </div>
+
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    دلیل لغو
+                                </label>
+
+                                <textarea class="form-control"
+                                          rows="3"
+                                          @bind="CancellationReason">
+                        </textarea>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(CancelErrorMessage))
+                            {
+                                <div class="alert alert-danger">
+                                    @CancelErrorMessage
+                                </div>
+                            }
+
+                            <button class="btn btn-danger"
+                                    disabled="@IsCancelling"
+                                    @onclick="() => CancelReport(CancellingReportId.Value)">
+                                تأیید لغو
+                            </button>
+
+                            <button class="btn btn-secondary ms-2"
+                                    disabled="@IsCancelling"
+                                    @onclick="CloseCancel">
+                                انصراف
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+        </div>
+    }
+
+</div>
+
+@code {
+
+
+    private bool IsCancelling;
+    private Guid? CancellingReportId;
+    private string CancellationReason = "";
+    private string? CancelErrorMessage;
+
+    private void StartCancel(Guid reportId)
+    {
+        CancellingReportId = reportId;
+        CancellationReason = "";
+        CancelErrorMessage = null;
+    }
+
+    private void CloseCancel()
+    {
+        CancellingReportId = null;
+        CancellationReason = "";
+        CancelErrorMessage = null;
+    }
+
+    private async Task CancelReport(Guid reportId)
+    {
+        if (IsCancelling)
+            return;
+
+        if (string.IsNullOrWhiteSpace(CancellationReason))
+        {
+            CancelErrorMessage = "دلیل لغو گزارش را وارد کنید.";
+            return;
+        }
+
+        IsCancelling = true;
+        CancelErrorMessage = null;
+
+        try
+        {
+            var result =
+                await IssuedReportService.CancelAsync(
+                    reportId,
+                    CancellationReason);
+
+            if (!result)
+            {
+                CancelErrorMessage =
+                    "لغو گزارش انجام نشد. ممکن است گزارش قبلاً لغو شده باشد.";
+
+                return;
+            }
+
+            CancellingReportId = null;
+            CancellationReason = "";
+
+            Versions =
+                await IssuedReportService
+                    .GetVersionsAsync(SampleId);
+        }
+        finally
+        {
+            IsCancelling = false;
+        }
+    }
+
+    [Parameter]
+    public Guid SampleId { get; set; }
+
+    private bool IsLoading;
+    private string? ErrorMessage;
+
+    private List<
+        (Guid Id,
+         int Version,
+         string ReportNumber,
+         DateTime IssuedAt,
+         bool IsCurrent,
+         bool IsCancelled)>
+        Versions = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadVersions();
+    }
+
+    private async Task LoadVersions()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            Versions =
+                await IssuedReportService
+                    .GetVersionsAsync(SampleId);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void ViewSnapshot(Guid issuedReportId)
+    {
+        NavigationManager.NavigateTo(
+            $"/issued-report/{issuedReportId}");
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo(
+            $"/final-report-preview/{SampleId}");
+    }
+}

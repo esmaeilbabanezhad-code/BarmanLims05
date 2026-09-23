@@ -60,12 +60,31 @@ public class Test : BaseEntity
 
     public Instrument? Instrument { get; set; }
 
+
+
+    // =========================
+    // Default Analyst
+    // =========================
+
+    public Guid? DefaultAnalystId { get; set; }
+
+    public Employee? DefaultAnalyst { get; set; }
+
+
+
+
     // =========================
     // Relations
     // =========================
 
     public ICollection<TestAssignment> Assignments { get; set; }
         = new List<TestAssignment>();
+
+    public ICollection<TestResultDefinition> ResultDefinitions { get; set; }
+    = new List<TestResultDefinition>();
+
+    public ICollection<TestResultSet> ResultSets { get; set; }
+    = new List<TestResultSet>();
 
     public ICollection<TestPanelItem> PanelItems { get; set; }
         = new List<TestPanelItem>();

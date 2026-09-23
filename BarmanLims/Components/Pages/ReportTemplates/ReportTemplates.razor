@@ -1,0 +1,1433 @@
+﻿@page "/report-templates"
+@using BarmanLims.Components.Authorization
+@attribute [RequirePermission("Admin")]
+@using Barman.Domain.Entities.Reporting
+@using Barman.Application.Interfaces.Services.Reporting
+@using Barman.Application.Reporting
+
+
+@inject IReportTemplateService ReportTemplateService
+@inject IReportTemplateSectionService ReportTemplateSectionService
+@inject IReportTemplateFieldService ReportTemplateFieldService
+
+<PageTitle>قالب‌های گزارش</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h3>قالب‌های گزارش</h3>
+            <p class="text-muted mb-0">
+                مدیریت قالب‌های گزارش نهایی آزمایشگاه
+            </p>
+        </div>
+
+        <button class="btn btn-primary"
+                @onclick="OpenCreateDialog">
+            <span class="oi oi-plus"></span>
+            قالب جدید
+        </button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            @ErrorMessage
+        </div>
+    }
+
+    @if (IsLoading)
+    {
+        <div class="text-center p-4">
+            در حال بارگذاری...
+        </div>
+    }
+    else if (Templates.Count == 0)
+    {
+        <div class="alert alert-info">
+            هنوز قالب گزارشی ثبت نشده است.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>کد</th>
+                        <th>نام</th>
+                        <th>نوع گزارش</th>
+                        <th>مرجع / سازمان</th>
+                        <th>نسخه</th>
+                        <th>وضعیت</th>
+                        <th style="width:180px;">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var template in Templates)
+                    {
+                        <tr>
+                            <td>@template.Code</td>
+                            <td>@template.Name</td>
+                            <td>@template.ReportType</td>
+                            <td>@template.Authority</td>
+                            <td>@template.Version</td>
+                            <td>
+                                @if (template.IsActive)
+                                {
+                                    <span class="badge bg-success">فعال</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">غیرفعال</span>
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary me-1"
+                                        @onclick="() => OpenEditDialog(template)">
+                                    ویرایش
+                                </button>
+
+                                <button class="btn btn-sm btn-outline-danger"
+                                        @onclick="() => DeleteTemplate(template)">
+                                    حذف
+                                </button>
+                                <button class="btn btn-sm btn-outline-success me-1"
+                                        @onclick="() => OpenSections(template)">
+                                    بخش‌ها
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary"
+                                        @onclick="() => OpenCloneTemplate(template)">
+                                    کپی قالب
+                                </button>
+                               
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (ShowDialog)
+{
+    <div class="modal fade show d-block"
+         tabindex="-1"
+         style="background-color: rgba(0,0,0,.5);">
+
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        @(IsEditMode ? "ویرایش قالب گزارش" : "قالب گزارش جدید")
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            @onclick="CloseDialog">
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    @if (!string.IsNullOrWhiteSpace(DialogError))
+                    {
+                        <div class="alert alert-danger">
+                            @DialogError
+                        </div>
+                    }
+
+                    <div class="row g-3">
+
+                        <div class="col-md-4">
+                            <label class="form-label">کد قالب</label>
+                            <input class="form-control"
+                                   @bind="EditModel.Code"
+                                   disabled="@IsEditMode" />
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label">نام قالب</label>
+                            <input class="form-control"
+                                   @bind="EditModel.Name" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">نوع گزارش</label>
+                            <input class="form-control"
+                                   @bind="EditModel.ReportType" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">مرجع / سازمان</label>
+                            <input class="form-control"
+                                   @bind="EditModel.Authority" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">نسخه</label>
+                            <input class="form-control"
+                                   @bind="EditModel.Version" />
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label">توضیحات</label>
+                            <textarea class="form-control"
+                                      rows="3"
+                                      @bind="EditModel.Description"></textarea>
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       @bind="EditModel.IsActive" />
+                                <label class="form-check-label">
+                                    قالب فعال است
+                                </label>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary"
+                            @onclick="CloseDialog">
+                        انصراف
+                    </button>
+
+                    <button class="btn btn-primary"
+                            @onclick="SaveTemplate">
+                        ذخیره
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowSectionsDialog && SelectedTemplate is not null)
+{
+    <div class="modal fade show d-block"
+         tabindex="-1"
+         style="background-color: rgba(0,0,0,.5);">
+
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        بخش‌های قالب:
+                        @SelectedTemplate.Name
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            @onclick="CloseSections">
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    @if (!string.IsNullOrWhiteSpace(SectionError))
+                    {
+                        <div class="alert alert-danger">
+                            @SectionError
+                        </div>
+                    }
+
+                    <div class="row g-3 mb-4">
+
+                        <div class="col-md-3">
+                            <label class="form-label">کد بخش</label>
+                            <input class="form-control"
+                               value="@SectionModel.Code"
+                               readonly />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">نام بخش</label>
+                            <input class="form-control"
+                                   @bind="SectionModel.Name" />
+                        </div>
+
+
+                        <div class="col-md-4">
+    <label class="form-label">نوع بخش</label>
+
+    <select class="form-select"
+            @bind="SectionModel.SectionType">
+        <option value="Standard">بخش معمولی</option>
+        <option value="Results">نتایج آزمون</option>
+        <option value="Text">متن</option>
+        <option value="Signature">امضاها</option>
+        <option value="Custom">بخش سفارشی</option>
+    </select>
+</div>
+
+<div class="col-md-4">
+    <label class="form-label">محل قرارگیری</label>
+
+    <select class="form-select"
+            @bind="SectionModel.Position">
+        <option value="Header">سربرگ</option>
+        <option value="Body">بدنه گزارش</option>
+        <option value="Footer">پاورقی</option>
+    </select>
+</div>
+
+<div class="col-md-4">
+    <label class="form-label">نوع چیدمان</label>
+
+    <select class="form-select"
+            @bind="SectionModel.Layout">
+        <option value="Stack">عمودی</option>
+        <option value="Grid">شبکه‌ای</option>
+        <option value="Table">جدولی</option>
+    </select>
+</div>
+
+
+
+
+                        <div class="col-md-2">
+                            <label class="form-label">ترتیب</label>
+                            <input type="number"
+                                   class="form-control"
+                                   @bind="SectionModel.DisplayOrder" />
+                        </div>
+
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       @bind="SectionModel.IsVisible" />
+
+                                <label class="form-check-label">
+                                    قابل نمایش
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button class="btn btn-primary"
+                                    @onclick="SaveSection">
+                                ذخیره
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>کد</th>
+                                <th>نام</th>
+                                <th>ترتیب</th>
+                                <th>نمایش</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            
+                            @foreach (var templateSection in Sections)
+{
+    <tr>
+        <td>@templateSection.Code</td>
+        <td>@templateSection.Name</td>
+        <td>@templateSection.DisplayOrder</td>
+
+        <td>
+            @if (templateSection.IsVisible)
+            {
+                <span class="badge bg-success">
+                    بله
+                </span>
+            }
+            else
+            {
+                <span class="badge bg-secondary">
+                    خیر
+                </span>
+            }
+        </td>
+
+        <td>
+            <button class="btn btn-sm btn-outline-primary me-1"
+                    @onclick="() => OpenEditSection(templateSection)">
+                ویرایش
+            </button>
+
+            <button class="btn btn-sm btn-outline-danger me-1"
+                    @onclick="() => DeleteSection(templateSection)">
+                حذف
+            </button>
+
+            <button class="btn btn-sm btn-outline-success"
+                    @onclick="() => OpenFields(templateSection)">
+                فیلدها
+            </button>
+        </td>
+    </tr>
+}
+
+                        </tbody>
+                    </table>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary"
+                            @onclick="CloseSections">
+                        بستن
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowCloneDialog)
+{
+    <div class="modal fade show d-block"
+         tabindex="-1"
+         style="background-color: rgba(0,0,0,.5);">
+
+        <div class="modal-dialog">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        کپی قالب گزارش
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            @onclick="CloseCloneDialog">
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    @if (CloneSource is not null)
+                    {
+                        <div class="alert alert-info">
+                            قالب مبنا:
+                            <strong>
+                                @CloneSource.Name
+                            </strong>
+                        </div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            کد قالب جدید
+                        </label>
+
+                        <input class="form-control"
+                               @bind="CloneCode" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">
+                            نام قالب جدید
+                        </label>
+
+                        <input class="form-control"
+                               @bind="CloneName" />
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(CloneError))
+                    {
+                        <div class="alert alert-danger">
+                            @CloneError
+                        </div>
+                    }
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            @onclick="CloseCloneDialog">
+                        انصراف
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-primary"
+                            @onclick="CloneTemplate">
+                        ایجاد کپی
+                    </button>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowFieldDialog)
+{
+    <div class="modal fade show d-block"
+         tabindex="-1"
+         style="background-color: rgba(0,0,0,.5);">
+
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+
+                <div class="modal-header">
+    <h5 class="modal-title">
+        فیلدهای بخش گزارش: @SelectedSection?.Name
+    </h5>
+
+    <div class="d-flex align-items-center gap-2">
+        <button type="button"
+                class="btn btn-primary"
+                @onclick="OpenFieldPicker">
+            انتخاب فیلدها
+        </button>
+
+        <button type="button"
+                class="btn-close"
+                @onclick="CloseFields">
+        </button>
+    </div>
+</div>
+
+                <div class="modal-body">
+
+                    @if (!string.IsNullOrWhiteSpace(FieldError))
+                    {
+                        <div class="alert alert-danger">
+                            @FieldError
+                        </div>
+                    }
+
+                    <div class="row g-3 mb-4">
+
+                        <div class="col-md-3">
+                            <label class="form-label">
+                                کد فیلد
+                            </label>
+
+                            <select class="form-select"
+                                    @bind="FieldModel.FieldCode">
+                                <option value="">-- انتخاب فیلد --</option>
+
+                                @foreach (var field in GetAvailableReportFields())
+                                {
+                                    <option value="@field.Code">
+                                        @field.Code - @field.Caption
+                                    </option>
+                                }
+                            </select>
+
+                        </div>
+
+                        <div class="col-md-3">
+    <label class="form-label">منبع اطلاعات</label>
+
+    <select class="form-select"
+            @bind="FieldModel.Source">
+        <option value="">-- انتخاب منبع --</option>
+        <option value="Report">گزارش</option>
+        <option value="Laboratory">آزمایشگاه</option>
+        <option value="Reception">پذیرش</option>
+        <option value="Customer">مشتری</option>
+        <option value="Sample">نمونه</option>
+        <option value="Test">آزمون</option>
+        <option value="Result">نتیجه</option>
+        <option value="Limit">حد مجاز</option>
+        <option value="Signature">امضا</option>
+        <option value="CustomField">فیلد سفارشی</option>
+    </select>
+</div>
+
+<div class="col-md-3">
+    <label class="form-label">نوع نمایش</label>
+
+    <select class="form-select"
+            @bind="FieldModel.FieldType">
+        <option value="Value">مقدار</option>
+        <option value="TableColumn">ستون جدول</option>
+        <option value="Text">متن</option>
+        <option value="Image">تصویر</option>
+        <option value="Signature">امضا</option>
+        <option value="PageNumber">شماره صفحه</option>
+    </select>
+</div>
+
+<div class="col-md-3">
+    <label class="form-label">تراز</label>
+
+    <select class="form-select"
+            @bind="FieldModel.Alignment">
+        <option value="">پیش‌فرض</option>
+        <option value="Right">راست</option>
+        <option value="Center">وسط</option>
+        <option value="Left">چپ</option>
+    </select>
+</div>
+
+
+                        <div class="col-md-3">
+                            <label class="form-label">
+                                عنوان
+                            </label>
+
+                            <input class="form-control"
+                                   @bind="FieldModel.Caption" />
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">
+                                ترتیب
+                            </label>
+
+                            <input type="number"
+                                   class="form-control"
+                                   @bind="FieldModel.DisplayOrder" />
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">
+                                Width
+                            </label>
+
+                            <input class="form-control"
+                                   @bind="FieldModel.Width" />
+                        </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label">
+                                Format
+                            </label>
+
+                            <input class="form-control"
+                                   @bind="FieldModel.Format" />
+                        </div>
+
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       @bind="FieldModel.IsVisible" />
+
+                                <label class="form-check-label">
+                                    قابل نمایش
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label">
+                                توضیحات
+                            </label>
+
+                            <textarea class="form-control"
+                                      rows="2"
+                                      @bind="FieldModel.Description">
+                            </textarea>
+                        </div>
+
+                        <div class="col-md-12">
+                            <button class="btn btn-primary"
+                                    @onclick="SaveField">
+                                ذخیره فیلد
+                            </button>
+
+                            @if (IsFieldEditMode)
+                            {
+                            <button class="btn btn-secondary ms-2"
+                                    @onclick="CancelFieldEdit">
+                                انصراف از ویرایش
+                            </button>
+                            }
+                        </div>
+
+                    </div>
+
+                    <table class="table table-bordered table-hover">
+
+                        <thead>
+                            <tr>
+                                <th>کد</th>
+                                <th>عنوان</th>
+                                <th>ترتیب</th>
+                                <th>Format</th>
+                                <th>Width</th>
+                                <th>نمایش</th>
+                                <th>عملیات</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var field in Fields)
+                            {
+                                <tr>
+                                    <td>@field.FieldCode</td>
+                                    <td>@field.Caption</td>
+                                    <td>@field.DisplayOrder</td>
+                                    <td>@field.Format</td>
+                                    <td>@field.Width</td>
+
+                                    <td>
+                                        @if (field.IsVisible)
+                                        {
+                                            <span class="badge bg-success">
+                                                بله
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">
+                                                خیر
+                                            </span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary me-1"
+                                                @onclick="() =>
+                                                    OpenEditField(field)">
+                                            ویرایش
+                                        </button>
+
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() =>
+                                                    DeleteField(field)">
+                                            حذف
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button class="btn btn-secondary"
+                            @onclick="CloseFields">
+                        بستن
+                    </button>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowFieldPicker && FieldPickerSectionId != Guid.Empty)
+{
+    <ReportFieldPicker
+        SectionId="FieldPickerSectionId"
+        OnSaved="SaveFieldPicker"
+        OnCancelled="CloseFieldPicker" />
+}
+
+@code {
+
+    private ReportTemplate? SelectedTemplate;
+
+private List<ReportTemplateSection> Sections = new();
+
+private ReportTemplateSection? SelectedSection;
+
+private ReportTemplateSection SectionModel = new();
+
+private List<ReportTemplateField> Fields = new();
+
+private ReportTemplateField FieldModel = new();
+
+private bool ShowSectionsDialog;
+private bool ShowFieldDialog;
+
+private bool IsSectionEditMode;
+private bool IsFieldEditMode;
+
+private string? SectionError;
+private string? FieldError;
+
+    private List<ReportTemplate> Templates = new();
+
+    private ReportTemplate EditModel = new();
+
+    private bool IsLoading;
+    private bool ShowDialog;
+    private bool IsEditMode;
+
+    private string? ErrorMessage;
+    private string? DialogError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTemplates();
+    }
+
+    private async Task LoadTemplates()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            Templates = await ReportTemplateService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void OpenCreateDialog()
+    {
+        DialogError = null;
+        IsEditMode = false;
+
+        EditModel = new ReportTemplate
+        {
+            Code = "",
+            Name = "",
+            ReportType = "",
+            Authority = "",
+            Version = "1.0",
+            IsActive = true
+        };
+
+        ShowDialog = true;
+    }
+
+    private void OpenEditDialog(ReportTemplate template)
+    {
+        DialogError = null;
+        IsEditMode = true;
+
+        EditModel = new ReportTemplate
+        {
+            Id = template.Id,
+            Code = template.Code,
+            Name = template.Name,
+            ReportType = template.ReportType,
+            Authority = template.Authority,
+            Version = template.Version,
+            IsActive = template.IsActive,
+            Description = template.Description
+        };
+
+        ShowDialog = true;
+    }
+
+    private void CloseDialog()
+    {
+        ShowDialog = false;
+        DialogError = null;
+    }
+
+    private async Task SaveTemplate()
+    {
+        try
+        {
+            DialogError = null;
+
+            if (string.IsNullOrWhiteSpace(EditModel.Code))
+            {
+                DialogError = "کد قالب الزامی است.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(EditModel.Name))
+            {
+                DialogError = "نام قالب الزامی است.";
+                return;
+            }
+
+            if (IsEditMode)
+            {
+                var success = await ReportTemplateService
+                    .UpdateAsync(EditModel);
+
+                if (!success)
+                {
+                    DialogError = "قالب موردنظر پیدا نشد.";
+                    return;
+                }
+            }
+            else
+            {
+                await ReportTemplateService
+                    .CreateAsync(EditModel);
+            }
+
+            CloseDialog();
+            await LoadTemplates();
+        }
+        catch (Exception ex)
+        {
+            DialogError = ex.Message;
+        }
+    }
+
+    private async Task DeleteTemplate(ReportTemplate template)
+    {
+        try
+        {
+            ErrorMessage = null;
+
+            var success = await ReportTemplateService
+                .DeleteAsync(template.Id);
+
+            if (!success)
+            {
+                ErrorMessage = "قالب موردنظر پیدا نشد.";
+                return;
+            }
+
+            await LoadTemplates();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+    private async Task OpenSections(ReportTemplate template)
+{
+    SelectedTemplate = template;
+
+    SectionError = null;
+    FieldError = null;
+
+    Sections = await ReportTemplateSectionService
+        .GetByTemplateIdAsync(template.Id);
+
+    ShowSectionsDialog = true;
+}
+
+private void CloseSections()
+{
+    ShowSectionsDialog = false;
+    ShowFieldDialog = false;
+    SelectedTemplate = null;
+}
+
+private void OpenCreateSection()
+{
+    SectionError = null;
+    IsSectionEditMode = false;
+
+    SectionModel = new ReportTemplateSection
+    {
+        ReportTemplateId = SelectedTemplate!.Id,
+        Code = "",
+        Name = "",
+        SectionType = "Standard",
+        Position = "Body",
+        Layout = "Stack",
+        DisplayOrder = Sections.Count + 1,
+        IsVisible = true
+    };
+}
+
+private void OpenEditSection(ReportTemplateSection section)
+{
+    SectionError = null;
+    IsSectionEditMode = true;
+
+    SectionModel = new ReportTemplateSection
+    {
+        Id = section.Id,
+        ReportTemplateId = section.ReportTemplateId,
+        Code = section.Code,
+        Name = section.Name,
+        SectionType = section.SectionType,
+        Position = section.Position,
+        Layout = section.Layout,
+        DisplayOrder = section.DisplayOrder,
+        IsVisible = section.IsVisible
+    };
+}
+
+
+private string GenerateSectionCode(string sectionType)
+{
+    var prefix = sectionType switch
+    {
+        "Results" => "RESULTS",
+        "Signature" => "SIGNATURES",
+        "Text" => "TEXT",
+        "Custom" => "CUSTOM",
+        _ => "SECTION"
+    };
+
+    var number = 1;
+
+    while (Sections.Any(x =>
+        string.Equals(
+            x.Code,
+            $"{prefix}_{number:000}",
+            StringComparison.OrdinalIgnoreCase)))
+    {
+        number++;
+    }
+
+    return $"{prefix}_{number:000}";
+}
+
+
+private async Task SaveSection()
+{
+    try
+    {
+        SectionError = null;
+
+        if (SelectedTemplate is null)
+        {
+            SectionError = "قالب گزارش انتخاب نشده است.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SectionModel.Name))
+        {
+            SectionError = "نام بخش الزامی است.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SectionModel.SectionType))
+        {
+            SectionError = "نوع بخش را انتخاب کنید.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SectionModel.Position))
+        {
+            SectionError = "محل قرارگیری را انتخاب کنید.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SectionModel.Layout))
+        {
+            SectionError = "نوع چیدمان را انتخاب کنید.";
+            return;
+        }
+
+        SectionModel.ReportTemplateId = SelectedTemplate.Id;
+
+        if (!IsSectionEditMode &&
+            string.IsNullOrWhiteSpace(SectionModel.Code))
+        {
+            SectionModel.Code = GenerateSectionCode(
+                SectionModel.SectionType);
+        }
+
+        if (IsSectionEditMode)
+        {
+            var success = await ReportTemplateSectionService
+                .UpdateAsync(SectionModel);
+
+            if (!success)
+            {
+                SectionError = "بخش موردنظر پیدا نشد.";
+                return;
+            }
+        }
+        else
+        {
+            await ReportTemplateSectionService
+                .CreateAsync(SectionModel);
+        }
+
+        Sections = await ReportTemplateSectionService
+            .GetByTemplateIdAsync(SelectedTemplate.Id);
+
+        SectionModel = new ReportTemplateSection
+        {
+            ReportTemplateId = SelectedTemplate.Id,
+            SectionType = "Standard",
+            Position = "Body",
+            Layout = "Stack",
+            DisplayOrder = Sections.Count + 1,
+            IsVisible = true
+        };
+
+        IsSectionEditMode = false;
+    }
+    catch (Exception ex)
+    {
+        SectionError = ex.Message;
+    }
+}
+
+
+
+private async Task DeleteSection(ReportTemplateSection section)
+{
+    try
+    {
+        SectionError = null;
+
+        var success = await ReportTemplateSectionService
+            .DeleteAsync(section.Id);
+
+        if (!success)
+        {
+            SectionError = "بخش موردنظر پیدا نشد.";
+            return;
+        }
+
+        Sections = await ReportTemplateSectionService
+            .GetByTemplateIdAsync(SelectedTemplate!.Id);
+    }
+    catch (Exception ex)
+    {
+        SectionError = ex.Message;
+    }
+}
+
+
+private async Task OpenFields(ReportTemplateSection section)
+{
+    FieldError = null;
+
+    SelectedSection = section;
+
+    Fields = await ReportTemplateFieldService
+        .GetBySectionIdAsync(section.Id);
+
+    FieldModel = new ReportTemplateField
+    {
+        ReportTemplateSectionId = section.Id,
+        DisplayOrder = Fields.Count + 1,
+        IsVisible = true
+    };
+
+    IsFieldEditMode = false;
+    ShowFieldDialog = true;
+}
+
+
+private void CloseFields()
+{
+    ShowFieldDialog = false;
+    FieldError = null;
+    SelectedSection = null;
+}
+
+private void OpenEditField(ReportTemplateField field)
+{
+    FieldError = null;
+    IsFieldEditMode = true;
+
+    FieldModel = new ReportTemplateField
+    {
+        Id = field.Id,
+        ReportTemplateSectionId = field.ReportTemplateSectionId,
+        Source = field.Source,
+        FieldCode = field.FieldCode,
+        FieldType = field.FieldType,
+        Caption = field.Caption,
+        DisplayOrder = field.DisplayOrder,
+        IsVisible = field.IsVisible,
+        Width = field.Width,
+        Alignment = field.Alignment,
+        Format = field.Format,
+        Description = field.Description
+    };
+}
+
+private IReadOnlyList<ReportFieldDefinition> GetAvailableReportFields()
+{
+    if (string.IsNullOrWhiteSpace(FieldModel.Source))
+        return Array.Empty<ReportFieldDefinition>();
+
+    return FieldModel.Source switch
+    {
+        "Report" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "گزارش")
+                .ToList(),
+
+        "Laboratory" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "آزمایشگاه")
+                .ToList(),
+
+        "Reception" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "پذیرش")
+                .ToList(),
+
+        "Customer" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "مشتری")
+                .ToList(),
+
+        "Sample" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "نمونه")
+                .ToList(),
+
+        "Test" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "آزمون")
+                .ToList(),
+
+        "Result" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "نتایج")
+                .ToList(),
+
+        "Limit" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "حدود مجاز")
+                .ToList(),
+
+        "Signature" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "امضاها")
+                .ToList(),
+
+        "CustomField" =>
+            ReportFieldCatalog.All
+                .Where(x => x.Group == "فیلدهای سفارشی")
+                .ToList(),
+
+        _ => Array.Empty<ReportFieldDefinition>()
+    };
+}
+
+private async Task SaveField()
+{
+    try
+    {
+        FieldError = null;
+        if (string.IsNullOrWhiteSpace(FieldModel.FieldCode))
+{
+    FieldError = "انتخاب FieldCode الزامی است.";
+    return;
+}
+
+var fieldDefinition = ReportFieldCatalog.Find(FieldModel.FieldCode);
+
+if (fieldDefinition is null)
+{
+    FieldError = "FieldCode انتخاب‌شده معتبر نیست.";
+    return;
+}
+
+if (string.IsNullOrWhiteSpace(FieldModel.Caption))
+{
+    FieldModel.Caption = fieldDefinition.Caption;
+}
+        if (string.IsNullOrWhiteSpace(FieldModel.FieldCode))
+        {
+            FieldError = "کد فیلد الزامی است.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(FieldModel.Source))
+{
+    FieldError = "انتخاب منبع اطلاعات الزامی است.";
+    return;
+}
+        if (string.IsNullOrWhiteSpace(FieldModel.Caption))
+        {
+            FieldError = "عنوان فیلد الزامی است.";
+            return;
+        }
+
+        if (IsFieldEditMode)
+        {
+            var success = await ReportTemplateFieldService
+                .UpdateAsync(FieldModel);
+
+            if (!success)
+            {
+                FieldError = "فیلد موردنظر پیدا نشد.";
+                return;
+            }
+        }
+        else
+        {
+            await ReportTemplateFieldService
+                .CreateAsync(FieldModel);
+        }
+
+        Fields = await ReportTemplateFieldService
+            .GetBySectionIdAsync(FieldModel.ReportTemplateSectionId);
+
+        FieldModel = new ReportTemplateField
+        {
+            ReportTemplateSectionId = FieldModel.ReportTemplateSectionId,
+            DisplayOrder = Fields.Count + 1,
+            IsVisible = true
+        };
+
+        IsFieldEditMode = false;
+    }
+    catch (Exception ex)
+    {
+        FieldError = ex.Message;
+    }
+}
+
+private async Task DeleteField(ReportTemplateField field)
+{
+    try
+    {
+        FieldError = null;
+
+        var success = await ReportTemplateFieldService
+            .DeleteAsync(field.Id);
+
+        if (!success)
+        {
+            FieldError = "فیلد موردنظر پیدا نشد.";
+            return;
+        }
+
+        Fields = await ReportTemplateFieldService
+            .GetBySectionIdAsync(field.ReportTemplateSectionId);
+    }
+    catch (Exception ex)
+    {
+        FieldError = ex.Message;
+    }
+}
+private void CancelFieldEdit()
+{
+    var sectionId = FieldModel.ReportTemplateSectionId;
+
+    IsFieldEditMode = false;
+
+    FieldModel = new ReportTemplateField
+    {
+        ReportTemplateSectionId = sectionId,
+        DisplayOrder = Fields.Count + 1,
+        IsVisible = true
+    };
+
+    FieldError = null;
+}
+
+private bool ShowCloneDialog;
+private ReportTemplate? CloneSource;
+private string CloneCode = "";
+private string CloneName = "";
+private string? CloneError;
+
+private void OpenCloneTemplate(ReportTemplate template)
+{
+    CloneSource = template;
+
+    CloneCode = "";
+    CloneName = $"{template.Name} - کپی";
+
+    CloneError = null;
+    ShowCloneDialog = true;
+}
+
+private void CloseCloneDialog()
+{
+    ShowCloneDialog = false;
+    CloneSource = null;
+    CloneCode = "";
+    CloneName = "";
+    CloneError = null;
+}
+
+private async Task CloneTemplate()
+{
+    try
+    {
+        CloneError = null;
+
+        if (CloneSource is null)
+        {
+            CloneError = "قالب مبنا انتخاب نشده است.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(CloneCode))
+        {
+            CloneError = "کد قالب جدید الزامی است.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(CloneName))
+        {
+            CloneError = "نام قالب جدید الزامی است.";
+            return;
+        }
+
+        await ReportTemplateService.CloneAsync(
+            CloneSource.Id,
+            CloneCode.Trim(),
+            CloneName.Trim());
+
+        CloseCloneDialog();
+
+        await LoadTemplates();
+    }
+    catch (Exception ex)
+    {
+        CloneError = ex.Message;
+    }
+}
+
+private bool ShowFieldPicker;
+private Guid FieldPickerSectionId;
+
+private void OpenFieldPicker()
+{
+    if (SelectedTemplate is null)
+        return;
+
+    if (FieldModel.ReportTemplateSectionId == Guid.Empty)
+        return;
+
+    FieldPickerSectionId =
+        FieldModel.ReportTemplateSectionId;
+
+    ShowFieldPicker = true;
+}
+private async Task CloseFieldPicker()
+{
+    ShowFieldPicker = false;
+
+    if (FieldPickerSectionId != Guid.Empty)
+    {
+        Fields =
+            await ReportTemplateFieldService
+                .GetBySectionIdAsync(FieldPickerSectionId);
+
+        StateHasChanged();
+    }
+}
+
+private async Task SaveFieldPicker()
+{
+    ShowFieldPicker = false;
+
+    if (FieldPickerSectionId != Guid.Empty)
+    {
+        Fields =
+            await ReportTemplateFieldService
+                .GetBySectionIdAsync(FieldPickerSectionId);
+
+        StateHasChanged();
+    }
+}
+
+}

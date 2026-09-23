@@ -5,6 +5,7 @@ namespace Barman.Application.Interfaces;
 public interface ITestLimitChangeRequestService
 {
     Task<TestLimitChangeRequest> CreateRequestAsync(
+        Guid testAssignmentId,
         Guid testId,
         Guid requestedByEmployeeId,
         Guid? referenceLimitId,
@@ -15,6 +16,17 @@ public interface ITestLimitChangeRequestService
         decimal? requestedWarningLow,
         decimal? requestedWarningHigh,
         string? reason);
+
+    Task<TestLimitChangeRequest>
+     CreateResultSetItemRequestAsync(
+         Guid testAssignmentId,
+         Guid testResultSetItemId,
+         Guid requestedByEmployeeId,
+         decimal? requestedLOD,
+         decimal? requestedLOQ,
+         decimal? requestedMinValue,
+         decimal? requestedMaxValue,
+         string? reason);
 
     Task<List<TestLimitChangeRequest>>
         GetPendingForSectionHeadAsync(Guid departmentId);

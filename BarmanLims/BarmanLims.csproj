@@ -20,4 +20,8 @@
     <ProjectReference Include="..\Barman.Persistence\Barman.Persistence.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Components\Pages\OrganizationType\" />
+  </ItemGroup>
+
 </Project>

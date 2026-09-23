@@ -1,0 +1,369 @@
+﻿@page "/master-data"
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.JSInterop
+@using Barman.Application.DTOs.Excel.MasterDataImport
+
+@inject Barman.Application.Interfaces.Excel.IExcelExportService ExcelExportService
+@inject Barman.Application.Interfaces.Excel.IExcelImportService ExcelImportService
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+
+<PageTitle>مستر دیتا</PageTitle>
+
+<div class="container-fluid">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3>مستر دیتا</h3>
+            <p class="text-muted mb-0">
+                مدیریت ورود و خروجی اطلاعات پایه سیستم
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <span class="oi oi-data-transfer-download"
+                          style="font-size: 40px;"></span>
+
+                    <h5 class="card-title mt-3">
+                        خروجی مستر دیتا
+                    </h5>
+
+                    <p class="text-muted">
+                        دریافت اطلاعات مستر دیتای سیستم در قالب Excel
+                    </p>
+                    @if (HasPermission("MasterData.Export"))
+                        {
+                            <button class="btn btn-primary"
+                                    @onclick="ExportBarmanMasterDataAsync">
+                                خروجی مستر دیتا
+                            </button>
+                        }
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <span class="oi oi-data-transfer-upload"
+                          style="font-size: 40px;"></span>
+
+                    <h5 class="card-title mt-3">
+                        ورود مستر دیتا
+                    </h5>
+
+                    <p class="text-muted">
+                        ورود اطلاعات مستر دیتا از فایل Excel
+                    </p>
+                    @if (HasPermission("MasterData.Import"))
+                    {
+                    <button class="btn btn-success"
+                            @onclick="OpenImportFilePicker">
+                        ورود مستر دیتا
+                    </button>
+                    }
+                    <InputFile @ref="ImportFileInput"
+                               OnChange="OnImportFileSelected"
+                               accept=".xlsm"
+                               id="masterDataImportFile"
+                               style="display:none;" />
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body text-center">
+                    <span class="oi oi-calculator"
+                          style="font-size: 40px;"></span>
+
+                    <h5 class="card-title mt-3">
+                        مدیریت تعرفه‌ها
+                    </h5>
+
+                    <p class="text-muted">
+                        مدیریت ماتریس تعرفه و قیمت آزمون‌ها
+                    </p>
+                    @if (HasPermission("Tariff.View"))
+                    {
+                    <a class="btn btn-warning"
+                       href="test-tariff-matrix">
+                        ورود به مدیریت تعرفه‌ها
+                    </a>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(SuccessMessage))
+    {
+        <div class="alert alert-success mt-4">
+            @SuccessMessage
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger mt-4">
+            @ErrorMessage
+        </div>
+    }
+
+    @if (ImportResult is not null)
+    {
+        <div class="card mt-4 shadow-sm">
+            <div class="card-header">
+                <strong>نتیجه ورود مستر دیتا</strong>
+            </div>
+
+            <div class="card-body">
+
+                <div class="row g-3 mb-4">
+
+                    <div class="col-md-2">
+                        <div class="alert alert-secondary mb-0">
+                            <strong>کل ردیف‌ها</strong><br />
+                            @ImportResult.TotalRows
+                        </div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <div class="alert alert-success mb-0">
+                            <strong>درج</strong><br />
+                            @ImportResult.InsertCount
+                        </div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <div class="alert alert-info mb-0">
+                            <strong>ویرایش</strong><br />
+                            @ImportResult.UpdateCount
+                        </div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <div class="alert alert-warning mb-0">
+                            <strong>رد شده</strong><br />
+                            @ImportResult.SkipCount
+                        </div>
+                    </div>
+
+                    <div class="col-md-2">
+                        <div class="alert alert-danger mb-0">
+                            <strong>خطا</strong><br />
+                            @ImportResult.ErrorCount
+                        </div>
+                    </div>
+
+                </div>
+
+                @if (ImportResult.Sheets.Count > 0)
+                {
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Sheet</th>
+                                    <th>کل</th>
+                                    <th>درج</th>
+                                    <th>ویرایش</th>
+                                    <th>رد شده</th>
+                                    <th>خطا</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                @foreach (var sheet in ImportResult.Sheets)
+                                {
+                                    <tr>
+                                        <td>@sheet.SheetName</td>
+                                        <td>@sheet.TotalRows</td>
+                                        <td>@sheet.InsertCount</td>
+                                        <td>@sheet.UpdateCount</td>
+                                        <td>@sheet.SkipCount</td>
+                                        <td>@sheet.ErrorCount</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (ImportResult.Errors.Count > 0)
+                {
+                    <div class="mt-4">
+                        <h5>خطاهای ورود اطلاعات</h5>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Sheet</th>
+                                        <th>ردیف</th>
+                                        <th>Code</th>
+                                        <th>خطا</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @foreach (var row in ImportResult.Errors)
+                                    {
+                                        <tr>
+                                            <td>@row.SheetName</td>
+                                            <td>@row.RowNumber</td>
+                                            <td>@row.Code</td>
+                                            <td>
+                                                @string.Join(" | ", row.Errors)
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+
+    private const string PermissionClaimType = "Barman.Permission";
+
+private HashSet<string> Permissions =
+    new(StringComparer.OrdinalIgnoreCase);
+
+protected override async Task OnInitializedAsync()
+{
+    var authState =
+        await AuthenticationStateProvider
+            .GetAuthenticationStateAsync();
+
+    var user = authState.User;
+
+    Permissions = user.Claims
+        .Where(x => x.Type == PermissionClaimType)
+        .Select(x => x.Value)
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+}
+
+private bool HasPermission(string permissionCode)
+{
+    return Permissions.Contains("Admin") ||
+           Permissions.Contains(permissionCode);
+}
+
+    private InputFile? ImportFileInput;
+
+    private MasterDataImportResultDto? ImportResult;
+
+    private string? SuccessMessage;
+
+    private string? ErrorMessage;
+
+
+    private async Task ExportBarmanMasterDataAsync()
+    {
+        try
+        {
+            SuccessMessage = null;
+            ErrorMessage = null;
+            ImportResult = null;
+
+            var bytes =
+                await ExcelExportService.ExportBarmanMasterDataAsync();
+
+            var fileName =
+                $"BarmanMasterData_{DateTime.Now:yyyyMMdd_HHmmss}.xlsm";
+
+            await JS.InvokeVoidAsync(
+                "BlazorDownloadFile",
+                fileName,
+                "application/vnd.ms-excel.sheet.macroEnabled.12",
+                bytes);
+
+            SuccessMessage =
+                "خروجی مستر دیتا با موفقیت ایجاد شد.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در خروجی مستر دیتا: {ex.Message}";
+        }
+    }
+
+
+    private async Task OpenImportFilePicker()
+    {
+        await JS.InvokeVoidAsync(
+            "eval",
+            "document.getElementById('masterDataImportFile')?.click()");
+    }
+
+
+    private async Task OnImportFileSelected(InputFileChangeEventArgs e)
+    {
+        SuccessMessage = null;
+        ErrorMessage = null;
+        ImportResult = null;
+
+        var file = e.File;
+
+        if (file is null)
+        {
+            ErrorMessage = "فایلی انتخاب نشده است.";
+            return;
+        }
+
+        if (!file.Name.EndsWith(".xlsm", StringComparison.OrdinalIgnoreCase))
+        {
+            ErrorMessage =
+                "فقط فایل Excel با پسوند .xlsm قابل ورود است.";
+            return;
+        }
+
+        try
+        {
+            await using var stream = file.OpenReadStream(50 * 1024 * 1024);
+
+            using var memoryStream = new MemoryStream();
+
+            await stream.CopyToAsync(memoryStream);
+
+            ImportResult =
+                await ExcelImportService.ImportBarmanMasterDataAsync(
+                    memoryStream.ToArray());
+
+            if (ImportResult.ErrorCount == 0)
+            {
+                SuccessMessage =
+                    "ورود مستر دیتا با موفقیت انجام شد.";
+            }
+            else
+            {
+                ErrorMessage =
+                    $"ورود مستر دیتا با {ImportResult.ErrorCount} خطا انجام شد.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در ورود مستر دیتا: {ex.Message}";
+        }
+    }
+}

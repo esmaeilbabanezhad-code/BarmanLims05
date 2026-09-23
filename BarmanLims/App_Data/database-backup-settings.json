@@ -1,0 +1,8 @@
+{
+  "Enabled": true,
+  "Mode": "Daily",
+  "DailyTime": "10:33",
+  "WeeklyDay": "Tuesday",
+  "WeeklyTime": "12:11",
+  "RetentionCount": 30
+}

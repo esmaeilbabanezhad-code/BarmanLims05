@@ -1,17 +1,33 @@
-@page "/tests"
+﻿@page "/tests"
 
 @using MudBlazor
 @using Barman.Application.DTOs.Test
 @using Barman.Domain.Entities
+@using Barman.Domain.Enums
+@using Barman.Application.Interfaces
+@using Barman.Application.DTOs.Customer
+@using Barman.Application.DTOs.LimitReference
 
 @inject Barman.Application.Interfaces.ITestService TestService
+@inject Barman.Application.Interfaces.IReferenceLimitService ReferenceLimitService
+@inject Barman.Application.Interfaces.ILimitReferenceService LimitReferenceService
+@inject Barman.Application.Interfaces.ITestLimitRuleService TestLimitRuleService
+@inject Barman.Application.Interfaces.ITestResultDefinitionService TestResultDefinitionService
+@inject Barman.Application.Interfaces.ITestResultSetService TestResultSetService
+@inject Barman.Application.Interfaces.ITestResultSetItemService TestResultSetItemService
+@inject Barman.Application.Interfaces.IStandardSampleService StandardSampleService
+@inject ICustomerService CustomerService
+@inject ISampleCategoryService SampleCategoryService
+@inject IMatrixService MatrixService
+@inject INumberSequenceService NumberSequenceService
+@inject IEmployeeService EmployeeService
 
 <MudPaper Class="pa-4">
 
     <div class="d-flex justify-space-between align-center">
 
         <MudText Typo="Typo.h5">
-            Test List
+            ماتریس آزمون و مشخصات آزمون
         </MudText>
 
         <div>
@@ -20,7 +36,7 @@
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Add"
                        OnClick="OpenCreate">
-                New
+                آزمون جدید
             </MudButton>
 
             <MudButton Variant="Variant.Outlined"
@@ -28,7 +44,7 @@
                        Class="ms-2"
                        StartIcon="@Icons.Material.Filled.DeleteSweep"
                        OnClick="ShowDeleted">
-                Deleted Tests
+                آزمون‌های حذف‌شده
             </MudButton>
 
         </div>
@@ -37,10 +53,252 @@
 
     <MudDivider Class="my-3" />
 
+    @* =========================================================
+       ماتریس آزمون — نمای Context / Effective Specification
+       منطق Save فعلی آزمون‌ها و Dialogها عمداً دست‌نخورده است.
+       ========================================================= *@
+
+    <MudPaper Class="pa-3 mb-4" Outlined="true">
+        <div class="d-flex justify-space-between align-center mb-3">
+            <MudText Typo="Typo.h6">ماتریس مشخصات مؤثر آزمون</MudText>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="LoadTestMatrixAsync"
+                       Disabled="@IsMatrixLoading">
+                @(IsMatrixLoading ? "در حال بارگذاری..." : "به‌روزرسانی ماتریس")
+            </MudButton>
+        </div>
+
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="Guid?"
+                           @bind-Value="MatrixTestId"
+                           Label="آزمون"
+                           Variant="Variant.Outlined"
+                           Clearable="true"
+                           Dense="true">
+                    @foreach (var test in TestItems.OrderBy(x => x.Name))
+                    {
+                        <MudSelectItem T="Guid?" Value="@test.Id">
+                            @test.Code - @test.Name
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="Guid?"
+                           @bind-Value="MatrixCategoryId"
+                           Label="دسته‌بندی نمونه"
+                           Variant="Variant.Outlined"
+                           Clearable="true"
+                           Dense="true">
+                    @foreach (var category in SampleCategories.OrderBy(x => x.Name))
+                    {
+                        <MudSelectItem T="Guid?" Value="@category.Id">
+                            @category.Name
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="Guid?"
+                           @bind-Value="MatrixContextId"
+                           Label="ماتریس"
+                           Variant="Variant.Outlined"
+                           Clearable="true"
+                           Dense="true">
+                    @foreach (var matrix in Matrices.OrderBy(x => x.Name))
+                    {
+                        <MudSelectItem T="Guid?" Value="@matrix.Id">
+                            @matrix.Name
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="Guid?"
+                           @bind-Value="MatrixStandardSampleId"
+                           Label="نمونه استاندارد"
+                           Variant="Variant.Outlined"
+                           Clearable="true"
+                           Dense="true">
+                    @foreach (var sample in StandardSamples.OrderBy(x => x.Name))
+                    {
+                        <MudSelectItem T="Guid?" Value="@sample.Id">
+                            @sample.Name
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="Guid?"
+                           @bind-Value="MatrixCustomerId"
+                           Label="مشتری"
+                           Variant="Variant.Outlined"
+                           Clearable="true"
+                           Dense="true">
+                    @foreach (var customer in Customers.OrderBy(x => x.DisplayName))
+                    {
+                        <MudSelectItem T="Guid?" Value="@customer.Id">
+                            @customer.DisplayName
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudTextField T="string"
+                              @bind-Value="MatrixSearchText"
+                              Label="جستجوی ماتریس"
+                              Placeholder="کد، نام آزمون یا نام Result..."
+                              Variant="Variant.Outlined"
+                              Immediate="true"
+                              Clearable="true"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+        </MudGrid>
+
+        <MudDivider Class="my-3" />
+
+        @if (IsMatrixLoading)
+        {
+            <div class="d-flex justify-center pa-5">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(MatrixError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-2">
+                @MatrixError
+            </MudAlert>
+        }
+        else if (FilteredTestMatrixRows.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                موردی مطابق فیلترهای ماتریس پیدا نشد.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="FilteredTestMatrixRows"
+                      Dense="true"
+                      Hover="true"
+                      Striped="true"
+                      Bordered="true"
+                      FixedHeader="true"
+                      Height="520px"
+                      RowsPerPage="25">
+                <HeaderContent>
+                    <MudTh>آزمون</MudTh>
+                    <MudTh>نتیجه</MudTh>
+                    <MudTh>دسته‌بندی</MudTh>
+                    <MudTh>ماتریس</MudTh>
+                    <MudTh>نمونه استاندارد</MudTh>
+                    <MudTh>مشتری</MudTh>
+                    <MudTh>واحد</MudTh>
+                    <MudTh>LOD</MudTh>
+                    <MudTh>LOQ</MudTh>
+                    <MudTh>Min</MudTh>
+                    <MudTh>Max</MudTh>
+                    <MudTh>منبع</MudTh>
+                    <MudTh>عملیات</MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd DataLabel="آزمون">
+                        <b>@context.TestCode</b><br />
+                        @context.TestName
+                    </MudTd>
+
+                    <MudTd DataLabel="نتیجه">
+                        @if (!string.IsNullOrWhiteSpace(context.ResultCode))
+                        {
+                            <b>@context.ResultCode</b><br />
+                        }
+                        @context.ResultName
+                    </MudTd>
+
+                    <MudTd DataLabel="دسته‌بندی">
+                        @(context.CategoryName ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="ماتریس">
+                        @(context.MatrixName ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="نمونه استاندارد">
+                        @(context.StandardSampleName ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="مشتری">
+                        @(context.CustomerName ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="واحد">
+                        @(context.Unit ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="LOD">
+                        @(context.LOD?.ToString("0.######") ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="LOQ">
+                        @(context.LOQ?.ToString("0.######") ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="Min">
+                        @(context.MinValue?.ToString("0.######") ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="Max">
+                        @(context.MaxValue?.ToString("0.######") ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="منبع">
+                        @context.Source
+                    </MudTd>
+
+                    <MudTd DataLabel="عملیات">
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => OpenResultSets(context.TestId))">
+                            مشخصات آزمون
+                        </MudButton>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Warning"
+                                   OnClick="@(() => OpenReferenceLimits(context.Test))">
+                            حدود مجاز
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+
+                <PagerContent>
+                    <MudTablePager RowsPerPageString="تعداد در صفحه"
+                                   AllItemsText="همه"
+                                   HorizontalAlignment="HorizontalAlignment.Right" />
+                </PagerContent>
+            </MudTable>
+        }
+    </MudPaper>
+
+    <MudText Typo="Typo.h6" Class="mb-2">
+        مدیریت پایه آزمون‌ها
+    </MudText>
+
     <MudTextField T="string"
                   @bind-Value="SearchText"
-                  Label="Search"
-                  Placeholder="Code, name or English name..."
+                  Label="جستجو"
+                  Placeholder="کد، نام یا نام انگلیسی..."
                   Variant="Variant.Outlined"
                   Adornment="Adornment.Start"
                   AdornmentIcon="@Icons.Material.Filled.Search"
@@ -70,7 +328,7 @@
     {
         <MudAlert Severity="Severity.Info">
 
-            No tests found.
+            آزمونی یافت نشد.
 
         </MudAlert>
     }
@@ -80,19 +338,68 @@
                   Hover="true"
                   Dense="true"
                   Striped="true"
-                  Bordered="true">
+                  Bordered="true"
+                  RowsPerPage="25">
 
             <HeaderContent>
 
-                <MudTh>Code</MudTh>
-                <MudTh>Name</MudTh>
-                <MudTh>English Name</MudTh>
-                <MudTh>Unit</MudTh>
-                <MudTh>Type</MudTh>
-                <MudTh>Reception Status</MudTh>
-                <MudTh>LOD</MudTh>
-                <MudTh>LOQ</MudTh>
-                <MudTh>Action</MudTh>
+                <MudTh>
+                    <MudTableSortLabel T="Test"
+                                       SortBy="@(x => x.Code)">
+                        کد
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Test"
+                                       SortBy="@(x => x.Name)">
+                        نام
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Test"
+                                       SortBy="@(x => x.EnglishName)">
+                        نام انگلیسی
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Test"
+                                       SortBy="@(x => x.Unit)">
+                        واحد
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Test"
+                                       SortBy="@(x => x.IsQuantitative)">
+                        نوع
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Test"
+                                       SortBy="@(x => x.IsActiveForReception)">
+                        وضعیت پذیرش
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Test"
+                                       SortBy="@(x => x.LOD)">
+                        LOD
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="Test"
+                                       SortBy="@(x => x.LOQ)">
+                        LOQ
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>عملیات</MudTh>
 
             </HeaderContent>
 
@@ -121,7 +428,7 @@
                         <MudChip T="string"
                                  Color="Color.Primary"
                                  Size="Size.Small">
-                            Quantitative
+                            کمی
                         </MudChip>
                     }
                     else
@@ -129,7 +436,7 @@
                         <MudChip T="string"
                                  Color="Color.Secondary"
                                  Size="Size.Small">
-                            Qualitative
+                            کیفی
                         </MudChip>
                     }
 
@@ -142,7 +449,7 @@
                         <MudChip T="string"
                                  Color="Color.Success"
                                  Size="Size.Small">
-                            Active
+                            فعال
                         </MudChip>
                     }
                     else
@@ -150,7 +457,7 @@
                         <MudChip T="string"
                                  Color="Color.Default"
                                  Size="Size.Small">
-                            Inactive
+                            غیرفعال
                         </MudChip>
                     }
 
@@ -171,10 +478,27 @@
                                Color="Color.Primary"
                                OnClick="@(() => OpenEdit(context))">
 
-                        Edit
+                        ویرایش
 
                     </MudButton>
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Outlined"
+                               Color="Color.Info"
+                               Class="ms-1"
+                               OnClick="@(() => OpenReferenceLimits(context))">
 
+                        حدود مجاز
+
+                    </MudButton>
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               Class="ms-1"
+                               OnClick="@(() => OpenResultSets(context))">
+
+                        مجموعه‌های نتیجه
+
+                    </MudButton>
                     @if (context.IsActiveForReception)
                     {
                         <MudButton Size="Size.Small"
@@ -183,7 +507,7 @@
                                    Class="ms-1"
                                    OnClick="@(() => Deactivate(context.Id))">
 
-                            Disable
+                            غیرفعال کردن
 
                         </MudButton>
                     }
@@ -195,7 +519,7 @@
                                    Class="ms-1"
                                    OnClick="@(() => Activate(context.Id))">
 
-                            Activate
+                            فعال کردن
 
                         </MudButton>
                     }
@@ -206,14 +530,17 @@
                                Class="ms-1"
                                OnClick="@(() => Delete(context.Id))">
 
-                        Delete
+                        حذف
 
                     </MudButton>
 
                 </MudTd>
 
             </RowTemplate>
-
+            <PagerContent>
+                <MudTablePager RowsPerPageString="تعداد در صفحه"
+                               PageSizeOptions="@(new[] { 10, 25, 50, 100 })" />
+            </PagerContent>
         </MudTable>
     }
 
@@ -237,15 +564,16 @@
 
         <MudTextField T="string"
                       @bind-Value="Form.Code"
-                      Label="Code"
+                      Label="کد"
                       Variant="Variant.Outlined"
                       Required="true"
+                      ReadOnly="true"
                       Disabled="@IsSaving"
                       Class="mb-3" />
 
         <MudTextField T="string"
                       @bind-Value="Form.Name"
-                      Label="Name"
+                      Label="نام"
                       Variant="Variant.Outlined"
                       Required="true"
                       Disabled="@IsSaving"
@@ -253,13 +581,13 @@
 
         <MudTextField T="string"
                       @bind-Value="Form.EnglishName"
-                      Label="English Name"
+                      Label="نام انگلیسی"
                       Variant="Variant.Outlined"
                       Disabled="@IsSaving"
                       Class="mb-3" />
 
         <MudSelect T="Guid?"
-                   Label="Department"
+                   Label="بخش"
                    Variant="Variant.Outlined"
                    @bind-Value="Form.DepartmentId"
                    Disabled="@IsSaving"
@@ -276,9 +604,27 @@
             }
 
         </MudSelect>
+        <MudSelect T="Guid?"
+                   Label="کارشناس پیش‌فرض"
+                   Variant="Variant.Outlined"
+                   @bind-Value="Form.DefaultAnalystId"
+                   Disabled="@IsSaving"
+                   Class="mb-3">
+
+            @foreach (var employee in Employees.Where(x => x.IsActive))
+            {
+                <MudSelectItem T="Guid?"
+                               Value="@employee.Id">
+
+                    @employee.FullName
+
+                </MudSelectItem>
+            }
+
+        </MudSelect>
 
         <MudSelect T="Guid?"
-                   Label="Sample Category"
+                   Label="دسته‌بندی نمونه"
                    Variant="Variant.Outlined"
                    Value="Form.SampleCategoryId"
                    ValueChanged="OnSampleCategoryChanged"
@@ -298,7 +644,7 @@
         </MudSelect>
 
         <MudSelect T="Guid?"
-                   Label="Matrix"
+                   Label="ماتریس"
                    Variant="Variant.Outlined"
                    @bind-Value="Form.MatrixId"
                    Disabled="@IsSaving"
@@ -318,21 +664,21 @@
 
         <MudTextField T="string"
                       @bind-Value="Form.Unit"
-                      Label="Unit"
+                      Label="واحد"
                       Variant="Variant.Outlined"
                       Disabled="@IsSaving"
                       Class="mb-3" />
 
         <MudTextField T="string"
                       @bind-Value="Form.Method"
-                      Label="Method"
+                      Label="روش"
                       Variant="Variant.Outlined"
                       Disabled="@IsSaving"
                       Class="mb-3" />
 
         <MudTextField T="string"
                       @bind-Value="Form.InstrumentName"
-                      Label="Instrument"
+                      Label="دستگاه"
                       Variant="Variant.Outlined"
                       Disabled="@IsSaving"
                       Class="mb-3" />
@@ -343,7 +689,7 @@
 
                 <MudNumericField T="decimal?"
                                  @bind-Value="Form.LOD"
-                                 Label="LOD"
+                                 Label="LOD (حد تشخیص)"
                                  Variant="Variant.Outlined"
                                  Disabled="@IsSaving" />
 
@@ -353,7 +699,7 @@
 
                 <MudNumericField T="decimal?"
                                  @bind-Value="Form.LOQ"
-                                 Label="LOQ"
+                                 Label="LOQ (حد تعیین مقدار)"
                                  Variant="Variant.Outlined"
                                  Disabled="@IsSaving" />
 
@@ -363,28 +709,157 @@
 
         <MudTextField T="string"
                       @bind-Value="Form.DefaultResult"
-                      Label="Default Result"
+                      Label="نتیجه پیش‌فرض"
                       Variant="Variant.Outlined"
                       Disabled="@IsSaving"
                       Class="mt-3 mb-3" />
 
         <MudCheckBox T="bool"
                      @bind-Value="Form.IsQuantitative"
-                     Label="Quantitative Test"
+                     Label="آزمون کمی"
                      Disabled="@IsSaving" />
 
         <MudCheckBox T="bool"
                      @bind-Value="Form.IsActiveForReception"
-                     Label="Available for Reception"
+                     Label="قابل استفاده در پذیرش"
                      Disabled="@IsSaving" />
 
         <MudTextField T="string"
                       @bind-Value="Form.Description"
-                      Label="Description"
+                      Label="توضیحات"
                       Variant="Variant.Outlined"
                       Lines="3"
                       Disabled="@IsSaving"
                       Class="mt-3" />
+
+        @* ========================================================= *@
+        @* Test Result Definitions                                  *@
+        @* ========================================================= *@
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.h6" Class="mb-3">
+            تعریف نتایج
+        </MudText>
+
+        <div class="d-flex justify-space-between align-center mb-3">
+
+            <MudText Typo="Typo.body2">
+                تعریف خروجی‌های آزمون
+            </MudText>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Disabled="@(!IsEditMode || IsSaving)"
+                       OnClick="OpenCreateResultDefinition">
+
+                افزودن نتیجه
+
+            </MudButton>
+
+        </div>
+
+        @if (ResultDefinitions.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info"
+                      Variant="Variant.Outlined">
+
+                برای این آزمون نتیجه تفصیلی تعریف نشده است.
+
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="ResultDefinitions"
+                      Dense="true"
+                      Hover="true"
+                      Bordered="true"
+                      Striped="true">
+
+                <HeaderContent>
+
+                    <MudTh>ترتیب</MudTh>
+                    <MudTh>کد</MudTh>
+                    <MudTh>نام نتیجه</MudTh>
+                    <MudTh>واحد</MudTh>
+                    <MudTh>اجباری</MudTh>
+                    <MudTh>اعشار</MudTh>
+                    <MudTh>عملیات</MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd>
+                        @context.DisplayOrder
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Code
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Name
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.Unit ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+
+                        @if (context.IsRequired)
+                        {
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="Color.Success">
+                                بله
+                            </MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="Color.Default">
+                                خیر
+                            </MudChip>
+                        }
+
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.DecimalPlaces?.ToString() ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   Disabled="@IsSaving"
+                                   OnClick="@(() => OpenEditResultDefinition(context))">
+
+                            ویرایش
+
+                        </MudButton>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Error"
+                                   Disabled="@IsSaving"
+                                   OnClick="@(() => DeleteResultDefinition(context.Id))">
+
+                            حذف
+
+                        </MudButton>
+
+                    </MudTd>
+
+                </RowTemplate>
+
+            </MudTable>
+        }
 
         @if (!string.IsNullOrWhiteSpace(DialogError))
         {
@@ -404,7 +879,7 @@
                    Disabled="@IsSaving"
                    OnClick="CloseDialog">
 
-            Cancel
+            انصراف
 
         </MudButton>
 
@@ -419,11 +894,11 @@
                                      Indeterminate="true"
                                      Class="me-2" />
 
-                <span>Saving...</span>
+                <span>در حال ذخیره...</span>
             }
             else
             {
-                <span>Save</span>
+                <span>ذخیره</span>
             }
 
         </MudButton>
@@ -432,7 +907,99 @@
 
 </MudDialog>
 
+@* ========================================================= *@
+@* Test Result Definition Dialog                          *@
+@* ========================================================= *@
 
+<MudDialog @bind-Visible="ResultDefinitionDialogVisible">
+
+    <DialogContent>
+
+        <MudTextField T="string"
+                      @bind-Value="ResultDefinitionForm.Code"
+                      Label="کد نتیجه"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Disabled="@IsSaving"
+                      Class="mb-3"
+                      ReadOnly="true" />
+
+        <MudTextField T="string"
+                      @bind-Value="ResultDefinitionForm.Name"
+                      Label="نام نتیجه"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Disabled="@IsSaving"
+                      Class="mb-3" />
+
+        <MudTextField T="string"
+                      @bind-Value="ResultDefinitionForm.Unit"
+                      Label="واحد"
+                      Variant="Variant.Outlined"
+                      Disabled="@IsSaving"
+                      Class="mb-3" />
+
+        <MudNumericField T="int"
+                         @bind-Value="ResultDefinitionForm.DisplayOrder"
+                         Label="ترتیب نمایش"
+                         Variant="Variant.Outlined"
+                         Min="0"
+                         Disabled="@IsSaving"
+                         Class="mb-3" />
+
+        <MudCheckBox T="bool"
+                     @bind-Value="ResultDefinitionForm.IsRequired"
+                     Label="نتیجه اجباری است"
+                     Disabled="@IsSaving"
+                     Class="mb-2" />
+
+        <MudNumericField T="int?"
+                         @bind-Value="ResultDefinitionForm.DecimalPlaces"
+                         Label="تعداد ارقام اعشار"
+                         Variant="Variant.Outlined"
+                         Min="0"
+                         Disabled="@IsSaving"
+                         Class="mb-3" />
+
+        <MudTextField T="string"
+                      @bind-Value="ResultDefinitionForm.Description"
+                      Label="توضیحات"
+                      Variant="Variant.Outlined"
+                      Lines="3"
+                      Disabled="@IsSaving"
+                      Class="mb-3" />
+
+        @if (!string.IsNullOrWhiteSpace(ResultDefinitionError))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mb-4">
+
+                @ResultDefinitionError
+
+            </MudAlert>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@IsSaving"
+                   OnClick="SaveResultDefinition">
+
+            @(IsEditingResultDefinition ? "ذخیره تغییرات" : "ذخیره")
+
+        </MudButton>
+        <MudButton Variant="Variant.Text"
+                   OnClick="@(() => ResultDefinitionDialogVisible = false)">
+
+            انصراف
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
 @* ========================================================= *@
 @* Deleted Tests Dialog                                      *@
 @* ========================================================= *@
@@ -444,7 +1011,7 @@
         <MudText Typo="Typo.h6"
                  Class="mb-4">
 
-            Deleted Tests
+            آزمون‌های حذف‌شده
 
         </MudText>
 
@@ -461,7 +1028,7 @@
         {
             <MudAlert Severity="Severity.Info">
 
-                No deleted tests found.
+                آزمون حذف‌شده‌ای یافت نشد.
 
             </MudAlert>
         }
@@ -474,10 +1041,10 @@
 
                 <HeaderContent>
 
-                    <MudTh>Code</MudTh>
-                    <MudTh>Name</MudTh>
-                    <MudTh>English Name</MudTh>
-                    <MudTh>Action</MudTh>
+                    <MudTh>کد</MudTh>
+                    <MudTh>نام</MudTh>
+                    <MudTh>نام انگلیسی</MudTh>
+                    <MudTh>عملیات</MudTh>
 
                 </HeaderContent>
 
@@ -502,7 +1069,7 @@
                                    Color="Color.Success"
                                    OnClick="@(() => Restore(context.Id))">
 
-                            Restore
+                            بازیابی
 
                         </MudButton>
 
@@ -520,7 +1087,7 @@
         <MudButton Variant="Variant.Text"
                    OnClick="CloseDeletedDialog">
 
-            Close
+            بستن
 
         </MudButton>
 
@@ -528,7 +1095,1262 @@
 
 </MudDialog>
 
+@* ========================================================= *@
+@* Test Result Sets Dialog                                  *@
+@* ========================================================= *@
 
+<MudDialog @bind-Visible="ResultSetsDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            مجموعه‌های نتیجه
+        </MudText>
+
+        @if (SelectedTestForResultSets != null)
+        {
+            <MudText Typo="Typo.body1" Class="mb-3">
+                آزمون:
+                <b>@SelectedTestForResultSets.Name</b>
+            </MudText>
+        }
+        <div class="d-flex justify-end mb-3">
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenAddResultSet">
+
+                افزودن مجموعه نتیجه
+
+            </MudButton>
+
+        </div>
+        @if (ResultSets.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                برای این آزمون مجموعه نتیجه‌ای تعریف نشده است.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="ResultSets"
+                      Dense="true"
+                      Hover="true"
+                      Bordered="true">
+
+                <HeaderContent>
+
+                    <MudTh>کد</MudTh>
+                    <MudTh>نام</MudTh>
+                    <MudTh>اولویت</MudTh>
+                    <MudTh>عملیات</MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd>
+                        @context.Code
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Name
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Priority
+                    </MudTd>
+
+                    <MudTd>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => OpenResultSetItems(context))">
+
+                            اقلام
+
+                        </MudButton>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Warning"
+                                   OnClick="@(() => OpenEditResultSet(context))">
+
+                            ویرایش
+
+                        </MudButton>
+
+                    </MudTd>
+
+                </RowTemplate>
+
+            </MudTable>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="@(() => ResultSetsDialogVisible = false)">
+
+            بستن
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+
+@* ========================================================= *@
+@* Add Result Set Dialog                                    *@
+@* ========================================================= *@
+
+<MudDialog @bind-Visible="AddResultSetDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            @(ResultSetForm.Id == Guid.Empty
+                        ? "Add Result Set"
+                        : "Edit Result Set")
+        </MudText>
+
+        @if (SelectedTestForResultSets != null)
+        {
+            <MudText Typo="Typo.body1" Class="mb-4">
+                آزمون:
+                <b>@SelectedTestForResultSets.Name</b>
+            </MudText>
+        }
+
+        <MudTextField T="string"
+                      @bind-Value="ResultSetForm.Code"
+                      Label="کد"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Class="mb-3"
+                      ReadOnly="true" />
+
+        <MudTextField T="string"
+                      @bind-Value="ResultSetForm.Name"
+                      Label="نام"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Class="mb-3" />
+
+        <MudSelect T="Guid?"
+                   @bind-Value="ResultSetForm.StandardSampleId"
+                   Label="نمونه استاندارد"
+                   Variant="Variant.Outlined"
+                   Clearable="true"
+                   Class="mb-3">
+
+            @foreach (var standardSample in StandardSamples)
+            {
+                <MudSelectItem T="Guid?"
+                               Value="@standardSample.Id">
+                    @standardSample.Name
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudSelect T="Guid?"
+                   @bind-Value="ResultSetForm.CustomerId"
+                   Label="مشتری"
+                   Variant="Variant.Outlined"
+                   Clearable="true"
+                   Class="mb-3">
+
+            @foreach (var customer in Customers)
+            {
+                <MudSelectItem T="Guid?"
+                               Value="@customer.Id">
+                    @customer.DisplayName
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudSelect T="Guid?"
+                   @bind-Value="ResultSetForm.SampleCategoryId"
+                   Label="دسته‌بندی نمونه"
+                   Variant="Variant.Outlined"
+                   Clearable="true"
+                   Class="mb-3">
+
+            @foreach (var category in SampleCategories)
+            {
+                <MudSelectItem T="Guid?"
+                               Value="@category.Id">
+                    @category.Name
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudSelect T="Guid?"
+                   @bind-Value="ResultSetForm.MatrixId"
+                   Label="ماتریس"
+                   Variant="Variant.Outlined"
+                   Clearable="true"
+                   Class="mb-3">
+
+            @foreach (var matrix in Matrices)
+            {
+                <MudSelectItem T="Guid?"
+                               Value="@matrix.Id">
+                    @matrix.Name
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudNumericField T="int"
+                         @bind-Value="ResultSetForm.Priority"
+                         Label="اولویت"
+                         Variant="Variant.Outlined"
+                         Min="0"
+                         Class="mb-3" />
+
+        <MudTextField T="string"
+                      @bind-Value="ResultSetForm.Description"
+                      Label="توضیحات"
+                      Variant="Variant.Outlined"
+                      Lines="3"
+                      Class="mb-3" />
+
+        @if (!string.IsNullOrWhiteSpace(ResultSetError))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mt-4">
+
+                @ResultSetError
+
+            </MudAlert>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveResultSet">
+
+            @(ResultSetForm.Id == Guid.Empty
+                        ? "Save"
+                        : "Save Changes")
+
+        </MudButton>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="@(() => AddResultSetDialogVisible = false)">
+
+            انصراف
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+
+@* ========================================================= *@
+@* Test Result Set Items Dialog                              *@
+@* ========================================================= *@
+
+<MudDialog @bind-Visible="ResultSetItemsDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            اقلام مجموعه نتیجه
+        </MudText>
+
+        @if (SelectedResultSet != null)
+        {
+            <MudText Typo="Typo.body1" Class="mb-3">
+                مجموعه نتیجه:
+                <b>@SelectedResultSet.Name</b>
+            </MudText>
+        }
+
+        <div class="d-flex justify-end mb-3">
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenAddResultSetItem">
+
+                افزودن نتیجه
+
+            </MudButton>
+
+        </div>
+
+        @if (ResultSetItems.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                هیچ تعریف نتیجه‌ای به این مجموعه نتیجه اضافه نشده است.
+            </MudAlert>
+        }
+        else
+        {
+
+            <MudTable Items="ResultSetItems"
+                      Dense="true"
+                      Hover="true"
+                      Bordered="true">
+
+                <HeaderContent>
+
+                    <MudTh>ترتیب</MudTh>
+                    <MudTh>کد</MudTh>
+                    <MudTh>نام</MudTh>
+                    <MudTh>واحد</MudTh>
+                    <MudTh>LOD</MudTh>
+                    <MudTh>LOQ</MudTh>
+                    <MudTh>حداقل</MudTh>
+                    <MudTh>حداکثر</MudTh>
+                    <MudTh>اجباری</MudTh>
+                    <MudTh>عملیات</MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd DataLabel="ترتیب">
+                        @context.DisplayOrder
+                    </MudTd>
+
+                    <MudTd DataLabel="کد">
+                        @context.Code
+                    </MudTd>
+
+                    <MudTd DataLabel="نام">
+                        @context.Name
+                    </MudTd>
+
+                    <MudTd DataLabel="واحد">
+                        @context.Unit
+                    </MudTd>
+
+                    <MudTd DataLabel="LOD (حد تشخیص)">
+                        @(context.LOD?.ToString("0.######") ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="LOQ (حد تعیین مقدار)">
+                        @(context.LOQ?.ToString("0.######") ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="حداقل">
+                        @(context.MinValue?.ToString("0.######") ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="حداکثر">
+                        @(context.MaxValue?.ToString("0.######") ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="اجباری">
+                        @(context.IsRequired ? "Yes" : "No")
+                    </MudTd>
+
+                    <MudTd DataLabel="عملیات">
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Color="Color.Primary"
+                                       Size="Size.Small"
+                                       Title="ویرایش"
+                                       OnClick="@(() => OpenEditResultSetItem(context))" />
+
+                    </MudTd>
+
+                </RowTemplate>
+
+            </MudTable>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="@(() => ResultSetItemsDialogVisible = false)">
+
+            بستن
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+@* ========================================================= *@
+@* Add Result Set Item Dialog                                *@
+@* ========================================================= *@
+
+<MudDialog @bind-Visible="AddResultSetItemDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            افزودن تعریف نتیجه
+        </MudText>
+
+        @if (SelectedResultSet != null)
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                مجموعه نتیجه:
+                <b>@SelectedResultSet.Name</b>
+            </MudText>
+        }
+
+        @if (AvailableResultDefinitions.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                تعریف نتیجه قابل انتخابی برای این آزمون وجود ندارد.
+            </MudAlert>
+        }
+        else
+        {
+            <MudSelect T="Guid"
+                       @bind-Value="SelectedResultDefinitionId"
+                       Label="تعریف نتیجه"
+                       Variant="Variant.Outlined"
+                       FullWidth="true">
+
+                @foreach (var definition in AvailableResultDefinitions)
+                {
+                    <MudSelectItem T="Guid"
+                                   Value="@definition.Id">
+
+                        @definition.Code - @definition.Name
+
+                    </MudSelectItem>
+                }
+
+            </MudSelect>
+
+            <MudNumericField T="int"
+                             @bind-Value="NewResultSetItemDisplayOrder"
+                             Label="ترتیب نمایش"
+                             Variant="Variant.Outlined"
+                             Min="1"
+                             Class="mt-4" />
+
+            <MudGrid Class="mt-2">
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="decimal?"
+                                     @bind-Value="NewResultSetItemLOD"
+                                     Label="LOD (حد تشخیص)"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Min="0" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="decimal?"
+                                     @bind-Value="NewResultSetItemLOQ"
+                                     Label="LOQ (حد تعیین مقدار)"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Min="0" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="decimal?"
+                                     @bind-Value="NewResultSetItemMinValue"
+                                     Label="حداقل"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense" />
+                </MudItem>
+
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="decimal?"
+                                     @bind-Value="NewResultSetItemMaxValue"
+                                     Label="حداکثر"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense" />
+                </MudItem>
+
+            </MudGrid>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(ResultSetItemError))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mt-4">
+
+                @ResultSetItemError
+
+            </MudAlert>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="@(() => AddResultSetItemDialogVisible = false)">
+
+            انصراف
+
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(AvailableResultDefinitions.Count == 0)"
+                   OnClick="SaveResultSetItem">
+
+            افزودن
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+@* ========================================================= *@
+@* Edit Test Result Set Item Dialog                         *@
+@* ========================================================= *@
+
+<MudDialog @bind-Visible="EditResultSetItemDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            ویرایش نتیجه
+        </MudText>
+
+        @if (SelectedResultSetItem != null)
+        {
+            <MudText Typo="Typo.body1" Class="mb-3">
+                <b>@SelectedResultSetItem.Code</b>
+                -
+                @SelectedResultSetItem.Name
+            </MudText>
+
+            <MudText Typo="Typo.body2" Class="mb-4">
+                واحد:
+                @(SelectedResultSetItem.Unit ?? "-")
+            </MudText>
+
+            <MudNumericField T="int"
+                             Label="ترتیب نمایش"
+                             @bind-Value="EditResultSetItemDisplayOrder"
+                             Variant="Variant.Outlined"
+                             Min="1"
+                             Class="mb-3" />
+
+            <MudNumericField T="decimal?"
+                             Label="LOD (حد تشخیص)"
+                             @bind-Value="EditResultSetItemLOD"
+                             Variant="Variant.Outlined"
+                             Min="0"
+                             Class="mb-3" />
+
+            <MudNumericField T="decimal?"
+                             Label="LOQ (حد تعیین مقدار)"
+                             @bind-Value="EditResultSetItemLOQ"
+                             Variant="Variant.Outlined"
+                             Min="0"
+                             Class="mb-3" />
+
+            <MudNumericField T="decimal?"
+                             Label="حداقل مقدار"
+                             @bind-Value="EditResultSetItemMinValue"
+                             Variant="Variant.Outlined"
+                             Class="mb-3" />
+
+            <MudNumericField T="decimal?"
+                             Label="حداکثر مقدار"
+                             @bind-Value="EditResultSetItemMaxValue"
+                             Variant="Variant.Outlined"
+                             Class="mb-3" />
+
+            @if (!string.IsNullOrWhiteSpace(ResultSetItemError))
+            {
+                <MudAlert Severity="Severity.Error"
+                          Class="mt-3">
+                    @ResultSetItemError
+                </MudAlert>
+            }
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="@(() => EditResultSetItemDialogVisible = false)">
+            انصراف
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveEditResultSetItem">
+            ذخیره
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+
+@* ========================================================= *@
+@* Edit Result Set Item Dialog                               *@
+@* ========================================================= *@
+
+<MudDialog @bind-Visible="EditResultSetItemDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            ویرایش تعریف نتیجه
+        </MudText>
+
+        @if (SelectedResultSetItem != null)
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                تعریف نتیجه:
+                <b>
+                    @(SelectedResultSetItem.Code ?? "-")
+                    -
+                    @(SelectedResultSetItem.Name ?? "-")
+                </b>
+            </MudText>
+        }
+
+        <MudNumericField T="int"
+                         @bind-Value="EditResultSetItemDisplayOrder"
+                         Label="ترتیب نمایش"
+                         Variant="Variant.Outlined"
+                         Min="1"
+                         Class="mt-2" />
+
+        <MudGrid Class="mt-2">
+
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="decimal?"
+                                 @bind-Value="EditResultSetItemLOD"
+                                 Label="LOD (حد تشخیص)"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Min="0" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="decimal?"
+                                 @bind-Value="EditResultSetItemLOQ"
+                                 Label="LOQ (حد تعیین مقدار)"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Min="0" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="decimal?"
+                                 @bind-Value="EditResultSetItemMinValue"
+                                 Label="حداقل"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="decimal?"
+                                 @bind-Value="EditResultSetItemMaxValue"
+                                 Label="حداکثر"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense" />
+            </MudItem>
+
+        </MudGrid>
+
+        @if (!string.IsNullOrWhiteSpace(ResultSetItemError))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mt-4">
+
+                @ResultSetItemError
+
+            </MudAlert>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="@(() => EditResultSetItemDialogVisible = false)">
+
+            انصراف
+
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveEditResultSetItem">
+
+            ذخیره
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+@* ========================================================= *@
+@* Reference Limits Dialog                                  *@
+@* ========================================================= *@
+
+<MudDialog @bind-Visible="ReferenceLimitsDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            حدود مجاز آزمون
+        </MudText>
+        <div class="d-flex justify-end mb-3">
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateReferenceLimit">
+
+                افزودن حد مجاز
+
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Secondary"
+                       StartIcon="@Icons.Material.Filled.Rule"
+                       OnClick="OpenTestLimitRules">
+
+                قوانین حد مجاز
+
+            </MudButton>
+        </div>
+        @if (ReferenceLimits.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                برای این آزمون هنوز حد مجازی ثبت نشده است.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="ReferenceLimits"
+                      Dense="true"
+                      Hover="true"
+                      Bordered="true">
+
+                <HeaderContent>
+
+                    <MudTh>ماتریس</MudTh>
+                    <MudTh>محصول</MudTh>
+                    <MudTh>سازمان / مرجع</MudTh>
+                    <MudTh>حداقل</MudTh>
+                    <MudTh>حداکثر</MudTh>
+                    <MudTh>واحد</MudTh>
+                    <MudTh>اولویت</MudTh>
+                    <MudTh>عملیات</MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd>
+                        @(context.Matrix?.Name ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.ProductName ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.OrganizationName ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.MinValue?.ToString() ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.MaxValue?.ToString() ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.Unit ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Priority
+                    </MudTd>
+                    <MudTd>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => OpenEditReferenceLimit(context))">
+
+                            ویرایش
+
+                        </MudButton>
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteTestLimitRule(context.Id))">
+                            حذف
+                        </MudButton>
+                    </MudTd>
+                </RowTemplate>
+
+            </MudTable>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="CloseReferenceLimits">
+
+            بستن
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+<MudDialog @bind-Visible="TestLimitRulesDialogVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            قوانین حد مجاز آزمون
+        </MudText>
+
+        <div class="d-flex justify-end mb-3">
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateTestLimitRule">
+
+                افزودن قانون حد مجاز
+
+            </MudButton>
+
+        </div>
+
+        @if (TestLimitRules.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                برای این آزمون هنوز قانون حد مجازی ثبت نشده است.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="TestLimitRules"
+                      Dense="true"
+                      Hover="true"
+                      Bordered="true">
+
+                <HeaderContent>
+
+                    <MudTh>مرجع حد مجاز</MudTh>
+                    <MudTh>نوع</MudTh>
+                    <MudTh>حد پایین</MudTh>
+                    <MudTh>حد بالا</MudTh>
+                    <MudTh>مقدار دقیق</MudTh>
+                    <MudTh>مقادیر مجاز</MudTh>
+                    <MudTh>اولویت</MudTh>
+                    <MudTh>عملیات</MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd>
+                        @if (context.LimitReference is null)
+                        {
+                            <span>-</span>
+                        }
+                        else
+                        {
+                            <span>
+                                @context.LimitReference.Code
+                                -
+                                @context.LimitReference.Name
+                            </span>
+                        }
+                    </MudTd>
+
+                    <MudTd>
+                        @context.LimitType
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.LowerValue?.ToString() ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.UpperValue?.ToString() ?? "-")
+                    </MudTd>
+                    <MudTd DataLabel="مقدار دقیق">
+                        @(context.ExactValue?.ToString() ?? "-")
+                    </MudTd>
+
+                    <MudTd DataLabel="مقادیر مجاز">
+                        @(string.IsNullOrWhiteSpace(context.AllowedValues)
+                                            ? "-"
+                                            : context.AllowedValues)
+                    </MudTd>
+                    <MudTd>
+                        @context.Priority
+                    </MudTd>
+
+                    <MudTd>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => OpenEditTestLimitRule(context))">
+                            ویرایش
+                        </MudButton>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Error"
+                                   OnClick="@(() => DeleteTestLimitRule(context.Id))">
+                            حذف
+                        </MudButton>
+
+                    </MudTd>
+
+                </RowTemplate>
+
+            </MudTable>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="CloseTestLimitRules">
+
+            بستن
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+<MudDialog @bind-Visible="TestLimitRuleFormVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            افزودن قانون حد مجاز
+        </MudText>
+
+        @if (!string.IsNullOrWhiteSpace(TestLimitRuleFormError))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-3">
+                @TestLimitRuleFormError
+            </MudAlert>
+        }
+
+        <MudSelect T="Guid"
+                   Label="مرجع حد مجاز"
+                   @bind-Value="TestLimitRuleLimitReferenceId"
+                   Variant="Variant.Outlined"
+                   Required="true">
+
+            @foreach (var limit in LimitReferenceList)
+            {
+                <MudSelectItem T="Guid" Value="@limit.Id">
+                    @limit.Code
+                    -
+                    @limit.Name
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudSelect T="LimitType"
+                   Label="نوع قانون"
+                   @bind-Value="TestLimitRuleType"
+                   Variant="Variant.Outlined"
+                   Class="mt-3">
+
+            @foreach (var type in Enum.GetValues<LimitType>())
+            {
+                <MudSelectItem T="LimitType" Value="@type">
+                    @type
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudNumericField T="decimal?"
+                         Label="حد پایین"
+                         @bind-Value="TestLimitRuleLowerValue"
+                         Variant="Variant.Outlined"
+                         Class="mt-3"
+                         Disabled="@(!IsLowerLimitEnabled)" />
+
+        <MudCheckBox T="bool"
+                     Label="حد پایین شامل باشد"
+                     @bind-Value="TestLimitRuleLowerInclusive"
+                     Class="mt-2"
+                     Disabled="@(!IsLowerLimitEnabled)" />
+
+        <MudNumericField T="decimal?"
+                         Label="حد بالا"
+                         @bind-Value="TestLimitRuleUpperValue"
+                         Variant="Variant.Outlined"
+                         Class="mt-3"
+                         Disabled="@(!IsUpperLimitEnabled)" />
+
+        <MudNumericField T="decimal?"
+                         Label="مقدار دقیق"
+                         @bind-Value="TestLimitRuleExactValue"
+                         Variant="Variant.Outlined"
+                         Class="mt-3"
+                         Disabled="@(TestLimitRuleType != LimitType.Exact)" />
+
+        <MudCheckBox T="bool"
+                     Label="حد بالا شامل باشد"
+                     @bind-Value="TestLimitRuleUpperInclusive"
+                     Class="mt-2"
+                     Disabled="@(!IsUpperLimitEnabled)" />
+
+        <MudNumericField T="int"
+                         Label="اولویت"
+                         @bind-Value="TestLimitRulePriority"
+                         Variant="Variant.Outlined"
+                         Class="mt-3" />
+
+        <MudDatePicker Label="تاریخ شروع اعتبار"
+                       @bind-Date="TestLimitRuleValidFrom"
+                       Variant="Variant.Outlined"
+                       Class="mt-3" />
+
+        <MudDatePicker Label="تاریخ پایان اعتبار"
+                       @bind-Date="TestLimitRuleValidTo"
+                       Variant="Variant.Outlined"
+                       Class="mt-3" />
+
+        <MudCheckBox T="bool"
+                     Label="فعال"
+                     @bind-Value="TestLimitRuleIsActive"
+                     Class="mt-2" />
+
+        <MudTextField T="string"
+                      Label="واحد"
+                      @bind-Value="TestLimitRuleUnit"
+                      Variant="Variant.Outlined"
+                      Class="mt-3" />
+
+        <MudTextField T="string"
+                      Label="مقادیر مجاز"
+                      @bind-Value="TestLimitRuleAllowedValues"
+                      Variant="Variant.Outlined"
+                      Class="mt-3"
+                      Lines="3"
+                      Disabled="@(!IsAllowedValuesEnabled)"
+                      HelperText="برای قوانین دارای مقادیر مشخص، مقادیر مجاز را وارد کنید." />
+
+        <MudTextField T="string"
+                      Label="توضیحات"
+                      @bind-Value="TestLimitRuleDescription"
+                      Variant="Variant.Outlined"
+                      Class="mt-3"
+                      Lines="3" />
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="CloseTestLimitRuleForm">
+            انصراف
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveTestLimitRule">
+            ذخیره
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
+@* ========================================================= *@
+@* Create Reference Limit Dialog                            *@
+@* ========================================================= *@
+
+<MudDialog @bind-Visible="ReferenceLimitFormVisible">
+
+    <DialogContent>
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            افزودن حد مجاز
+        </MudText>
+
+        <MudSelect T="Guid?"
+                   Label="ماتریس"
+                   Variant="Variant.Outlined"
+                   @bind-Value="ReferenceLimitMatrixId"
+                   Class="mb-3">
+
+            <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+                همه ماتریس‌ها
+            </MudSelectItem>
+
+            @foreach (var matrix in Matrices)
+            {
+                <MudSelectItem T="Guid?"
+                               Value="@matrix.Id">
+
+                    @matrix.Name
+
+                </MudSelectItem>
+            }
+
+        </MudSelect>
+
+        <MudTextField T="string"
+                      @bind-Value="ReferenceLimitProductName"
+                      Label="نام محصول"
+                      Variant="Variant.Outlined"
+                      Class="mb-3" />
+
+        <MudTextField T="string"
+                      @bind-Value="ReferenceLimitOrganizationName"
+                      Label="سازمان / مرجع"
+                      Variant="Variant.Outlined"
+                      Class="mb-3" />
+
+        <MudGrid>
+
+            <MudItem xs="12" sm="6">
+
+                <MudNumericField T="decimal?"
+                                 @bind-Value="ReferenceLimitMinValue"
+                                 Label="حداقل"
+                                 Variant="Variant.Outlined" />
+
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+
+                <MudNumericField T="decimal?"
+                                 @bind-Value="ReferenceLimitMaxValue"
+                                 Label="حداکثر"
+                                 Variant="Variant.Outlined" />
+
+            </MudItem>
+
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+
+            <MudItem xs="12" sm="6">
+
+                <MudNumericField T="decimal?"
+                                 @bind-Value="ReferenceLimitWarningLow"
+                                 Label="هشدار پایین"
+                                 Variant="Variant.Outlined" />
+
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+
+                <MudNumericField T="decimal?"
+                                 @bind-Value="ReferenceLimitWarningHigh"
+                                 Label="هشدار بالا"
+                                 Variant="Variant.Outlined" />
+
+            </MudItem>
+
+        </MudGrid>
+
+        <MudTextField T="string"
+                      @bind-Value="ReferenceLimitUnit"
+                      Label="واحد"
+                      Variant="Variant.Outlined"
+                      Class="mt-3 mb-3" />
+
+        <MudNumericField T="int"
+                         @bind-Value="ReferenceLimitPriority"
+                         Label="اولویت"
+                         Variant="Variant.Outlined"
+                         Min="1"
+                         Class="mb-3" />
+
+        <MudCheckBox T="bool"
+                     @bind-Value="ReferenceLimitIsTemporary"
+                     Label="موقت" />
+        <MudGrid Class="mt-3">
+
+            <MudItem xs="12" sm="6">
+
+                <MudDatePicker Label="اعتبار از"
+                               @bind-Date="ReferenceLimitValidFrom"
+                               Variant="Variant.Outlined" />
+
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+
+                <MudDatePicker Label="اعتبار تا"
+                               @bind-Date="ReferenceLimitValidTo"
+                               Variant="Variant.Outlined" />
+
+            </MudItem>
+
+        </MudGrid>
+          
+        <MudTextField T="string"
+                      @bind-Value="ReferenceLimitDescription"
+                      Label="توضیحات"
+                      Variant="Variant.Outlined"
+                      Lines="3"
+                      Class="mt-3" />
+
+        @if (!string.IsNullOrWhiteSpace(ReferenceLimitFormError))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mt-4">
+
+                @ReferenceLimitFormError
+
+            </MudAlert>
+        }
+
+    </DialogContent>
+
+    <DialogActions>
+
+        <MudButton Variant="Variant.Text"
+                   OnClick="CloseCreateReferenceLimit">
+
+            انصراف
+
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveReferenceLimit">
+
+            ذخیره
+
+        </MudButton>
+
+    </DialogActions>
+
+</MudDialog>
 @code
 {
     // =========================================================
@@ -545,6 +2367,48 @@
 
     private List<Matrix> Matrices = new();
 
+    private List<Employee> Employees = new();
+
+    private List<ReferenceLimit> ReferenceLimits = new();
+
+    private TestLookupDto? SelectedTestForReferenceLimits;
+
+    private bool ReferenceLimitFormVisible;
+
+    private bool IsEditingReferenceLimit;
+
+    private Guid EditingReferenceLimitId;
+
+    private Guid ReferenceLimitTestId;
+
+    private Guid? ReferenceLimitMatrixId;
+
+    private string? ReferenceLimitProductName;
+
+    private string? ReferenceLimitOrganizationName;
+
+    private decimal? ReferenceLimitMinValue;
+
+    private decimal? ReferenceLimitMaxValue;
+
+    private decimal? ReferenceLimitWarningLow;
+
+    private decimal? ReferenceLimitWarningHigh;
+
+    private string? ReferenceLimitUnit;
+
+    private int ReferenceLimitPriority = 1;
+
+    private bool ReferenceLimitIsTemporary;
+
+    private DateTime? ReferenceLimitValidFrom;
+
+    private DateTime? ReferenceLimitValidTo;
+
+    private string? ReferenceLimitDescription;
+
+    private string ReferenceLimitFormError = "";
+
 
     // =========================================================
     // State
@@ -557,6 +2421,8 @@
     private bool IsSaving;
 
     private bool DialogVisible;
+
+    private bool ReferenceLimitsDialogVisible;
 
     private bool DeletedDialogVisible;
 
@@ -587,6 +2453,290 @@
 
     private TestFormModel Form = new();
 
+    // =========================================================
+    // Test Result Definitions
+    // =========================================================
+
+    private List<TestResultDefinitionDto> ResultDefinitions = new();
+
+    private TestResultDefinitionDto ResultDefinitionForm = new();
+
+    private bool ResultDefinitionDialogVisible = false;
+
+    private bool IsEditingResultDefinition = false;
+
+    private Guid EditingResultDefinitionId = Guid.Empty;
+
+    private string ResultDefinitionError = "";
+
+    // =========================================================
+    // Test Result Sets
+    // =========================================================
+
+    private List<TestResultSetDto> ResultSets = new();
+
+    private TestResultSetDto ResultSetForm = new();
+
+    private bool ResultSetsDialogVisible = false;
+
+    private bool AddResultSetDialogVisible = false;
+
+    private string ResultSetError = "";
+
+    private List<StandardSample> StandardSamples = new();
+
+  
+    private List<CustomerLookupDto> Customers = new();
+    
+
+   
+
+
+    // =========================================================
+    // Test Matrix View
+    // =========================================================
+
+    private bool IsMatrixLoading;
+    private string MatrixError = "";
+    private string MatrixSearchText = "";
+
+    private Guid? MatrixTestId;
+    private Guid? MatrixCategoryId;
+    private Guid? MatrixContextId;
+    private Guid? MatrixStandardSampleId;
+    private Guid? MatrixCustomerId;
+
+    private List<TestMatrixRow> TestMatrixRows = new();
+
+    private List<TestMatrixRow> FilteredTestMatrixRows
+    {
+        get
+        {
+            IEnumerable<TestMatrixRow> query = TestMatrixRows;
+
+            if (MatrixTestId.HasValue)
+                query = query.Where(x => x.TestId == MatrixTestId.Value);
+
+            if (MatrixCategoryId.HasValue)
+                query = query.Where(x => x.CategoryId == MatrixCategoryId.Value);
+
+            if (MatrixContextId.HasValue)
+                query = query.Where(x => x.MatrixId == MatrixContextId.Value);
+
+            if (MatrixStandardSampleId.HasValue)
+                query = query.Where(x => x.StandardSampleId == MatrixStandardSampleId.Value);
+
+            if (MatrixCustomerId.HasValue)
+                query = query.Where(x => x.CustomerId == MatrixCustomerId.Value);
+
+            if (!string.IsNullOrWhiteSpace(MatrixSearchText))
+            {
+                var search = MatrixSearchText.Trim();
+
+                query = query.Where(x =>
+                    Contains(x.TestCode, search) ||
+                    Contains(x.TestName, search) ||
+                    Contains(x.ResultCode, search) ||
+                    Contains(x.ResultName, search) ||
+                    Contains(x.CategoryName, search) ||
+                    Contains(x.MatrixName, search) ||
+                    Contains(x.StandardSampleName, search) ||
+                    Contains(x.CustomerName, search));
+            }
+
+            return query
+                .OrderBy(x => x.TestName)
+                .ThenBy(x => x.CategoryName)
+                .ThenBy(x => x.MatrixName)
+                .ThenBy(x => x.ResultDisplayOrder)
+                .ToList();
+        }
+    }
+
+    private sealed class TestMatrixRow
+    {
+        public Guid TestId { get; set; }
+        public TestLookupDto Test { get; set; } = new();
+
+        public string TestCode { get; set; } = "";
+        public string TestName { get; set; } = "";
+        public string? ResultCode { get; set; }
+        public string ResultName { get; set; } = "";
+
+        public Guid? CategoryId { get; set; }
+        public Guid? MatrixId { get; set; }
+        public Guid? StandardSampleId { get; set; }
+        public Guid? CustomerId { get; set; }
+
+        public string? CategoryName { get; set; }
+        public string? MatrixName { get; set; }
+        public string? StandardSampleName { get; set; }
+        public string? CustomerName { get; set; }
+        public string? Unit { get; set; }
+
+        public decimal? LOD { get; set; }
+        public decimal? LOQ { get; set; }
+        public decimal? MinValue { get; set; }
+        public decimal? MaxValue { get; set; }
+
+        public string Source { get; set; } = "";
+        public int ResultDisplayOrder { get; set; }
+    }
+
+    private async Task LoadTestMatrixAsync()
+    {
+        try
+        {
+            IsMatrixLoading = true;
+            MatrixError = "";
+            TestMatrixRows.Clear();
+
+            if (StandardSamples.Count == 0)
+                StandardSamples = await StandardSampleService.GetAllAsync();
+
+            if (Customers.Count == 0)
+                Customers = await CustomerService.GetLookupAsync();
+
+            var categoryNames = SampleCategories
+                .ToDictionary(x => x.Id, x => x.Name);
+
+            var matrixNames = Matrices
+                .ToDictionary(x => x.Id, x => x.Name);
+
+            var standardSampleNames = StandardSamples
+                .ToDictionary(x => x.Id, x => x.Name);
+
+            var customerNames = Customers
+                .ToDictionary(x => x.Id, x => x.DisplayName);
+
+            foreach (var test in TestItems)
+            {
+                var resultSets =
+                    await TestResultSetService.GetByTestIdAsync(test.Id);
+
+                if (resultSets.Count == 0)
+                {
+                    TestMatrixRows.Add(new TestMatrixRow
+                    {
+                        TestId = test.Id,
+                        Test = test,
+                        TestCode = test.Code,
+                        TestName = test.Name,
+                        ResultName = test.Name,
+                        CategoryId = test.SampleCategoryId,
+                        MatrixId = test.MatrixId,
+                        CategoryName = test.SampleCategoryId.HasValue &&
+                                       categoryNames.TryGetValue(test.SampleCategoryId.Value, out var catName)
+                            ? catName
+                            : null,
+                        MatrixName = test.MatrixId.HasValue &&
+                                     matrixNames.TryGetValue(test.MatrixId.Value, out var matrixName)
+                            ? matrixName
+                            : null,
+                        Unit = test.Unit,
+                        LOD = test.LOD,
+                        LOQ = test.LOQ,
+                        Source = "پیش‌فرض آزمون"
+                    });
+
+                    continue;
+                }
+
+                foreach (var resultSet in resultSets)
+                {
+                    var items =
+                        await TestResultSetItemService
+                            .GetByResultSetIdAsync(resultSet.Id);
+
+                    if (items.Count == 0)
+                    {
+                        TestMatrixRows.Add(new TestMatrixRow
+                        {
+                            TestId = test.Id,
+                            Test = test,
+                            TestCode = test.Code,
+                            TestName = test.Name,
+                            ResultName = resultSet.Name,
+                            CategoryId = resultSet.SampleCategoryId,
+                            MatrixId = resultSet.MatrixId,
+                            StandardSampleId = resultSet.StandardSampleId,
+                            CustomerId = resultSet.CustomerId,
+                            CategoryName = resultSet.SampleCategoryId.HasValue &&
+                                           categoryNames.TryGetValue(resultSet.SampleCategoryId.Value, out var emptyCatName)
+                                ? emptyCatName
+                                : null,
+                            MatrixName = resultSet.MatrixId.HasValue &&
+                                         matrixNames.TryGetValue(resultSet.MatrixId.Value, out var emptyMatrixName)
+                                ? emptyMatrixName
+                                : null,
+                            StandardSampleName = resultSet.StandardSampleId.HasValue &&
+                                                 standardSampleNames.TryGetValue(resultSet.StandardSampleId.Value, out var emptySampleName)
+                                ? emptySampleName
+                                : null,
+                            CustomerName = resultSet.CustomerId.HasValue &&
+                                           customerNames.TryGetValue(resultSet.CustomerId.Value, out var emptyCustomerName)
+                                ? emptyCustomerName
+                                : null,
+                            Unit = test.Unit,
+                            LOD = test.LOD,
+                            LOQ = test.LOQ,
+                            Source = $"مجموعه: {resultSet.Name}"
+                        });
+
+                        continue;
+                    }
+
+                    foreach (var item in items)
+                    {
+                        TestMatrixRows.Add(new TestMatrixRow
+                        {
+                            TestId = test.Id,
+                            Test = test,
+                            TestCode = test.Code,
+                            TestName = test.Name,
+                            ResultCode = item.Code,
+                            ResultName = item.Name,
+                            CategoryId = resultSet.SampleCategoryId,
+                            MatrixId = resultSet.MatrixId,
+                            StandardSampleId = resultSet.StandardSampleId,
+                            CustomerId = resultSet.CustomerId,
+                            CategoryName = resultSet.SampleCategoryId.HasValue &&
+                                           categoryNames.TryGetValue(resultSet.SampleCategoryId.Value, out var itemCatName)
+                                ? itemCatName
+                                : null,
+                            MatrixName = resultSet.MatrixId.HasValue &&
+                                         matrixNames.TryGetValue(resultSet.MatrixId.Value, out var itemMatrixName)
+                                ? itemMatrixName
+                                : null,
+                            StandardSampleName = resultSet.StandardSampleId.HasValue &&
+                                                 standardSampleNames.TryGetValue(resultSet.StandardSampleId.Value, out var itemSampleName)
+                                ? itemSampleName
+                                : null,
+                            CustomerName = resultSet.CustomerId.HasValue &&
+                                           customerNames.TryGetValue(resultSet.CustomerId.Value, out var itemCustomerName)
+                                ? itemCustomerName
+                                : null,
+                            Unit = item.Unit ?? test.Unit,
+                            LOD = item.LOD ?? test.LOD,
+                            LOQ = item.LOQ ?? test.LOQ,
+                            MinValue = item.MinValue,
+                            MaxValue = item.MaxValue,
+                            Source = $"مجموعه: {resultSet.Name}",
+                            ResultDisplayOrder = item.DisplayOrder
+                        });
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MatrixError = $"خطا در بارگذاری ماتریس آزمون: {ex.Message}";
+        }
+        finally
+        {
+            IsMatrixLoading = false;
+        }
+    }
 
     // =========================================================
     // Filter
@@ -622,11 +2772,22 @@
         Departments =
             await TestService.GetDepartmentsAsync();
 
+        Employees =
+              await EmployeeService.GetAllAsync();
+
         SampleCategories =
             await TestService.GetSampleCategoriesAsync();
 
         Matrices =
             await TestService.GetMatricesAsync();
+
+        StandardSamples =
+            await StandardSampleService.GetAllAsync();
+
+        Customers =
+           await CustomerService.GetLookupAsync();
+
+        await LoadTestMatrixAsync();
     }
 
 
@@ -660,21 +2821,34 @@
     // Create
     // =========================================================
 
-    private void OpenCreate()
+    private async Task OpenCreate()
     {
         IsEditMode = false;
 
         EditingId = Guid.Empty;
 
-        Form = new TestFormModel
-        {
-            IsActiveForReception = true,
-            IsQuantitative = false
-        };
-
         DialogError = "";
 
-        DialogVisible = true;
+        try
+        {
+            var code =
+                await NumberSequenceService
+                    .GetNextCodeAsync("Test");
+
+            Form = new TestFormModel
+            {
+                Code = code,
+                IsActiveForReception = true,
+                IsQuantitative = false
+            };
+
+            DialogVisible = true;
+        }
+        catch (Exception ex)
+        {
+            DialogError =
+                $"خطا در تولید کد آزمون: {ex.Message}";
+        }
     }
 
 
@@ -682,7 +2856,7 @@
     // Edit
     // =========================================================
 
-    private void OpenEdit(TestLookupDto test)
+    private async Task OpenEdit(TestLookupDto test)
     {
         IsEditMode = true;
 
@@ -701,6 +2875,7 @@
             DepartmentId = test.DepartmentId,
             SampleCategoryId = test.SampleCategoryId,
             MatrixId = test.MatrixId,
+            DefaultAnalystId = test.DefaultAnalystId,
             DefaultResult = test.DefaultResult,
             IsQuantitative = test.IsQuantitative,
             IsActiveForReception = test.IsActiveForReception,
@@ -708,10 +2883,187 @@
         };
 
         DialogError = "";
-
+        ResultDefinitions =
+            await TestResultDefinitionService.GetByTestIdAsync(test.Id);
         DialogVisible = true;
     }
 
+    private async Task OpenCreateResultDefinition()
+    {
+        ResultDefinitionError = "";
+
+        if (!IsEditMode || EditingId == Guid.Empty)
+        {
+            ResultDefinitionError =
+                "ابتدا آزمون را ذخیره و سپس برای تعریف نتایج ویرایش کنید.";
+
+            return;
+        }
+
+        try
+        {
+            var code =
+                await NumberSequenceService
+                    .GetNextCodeAsync("ResultDefinition");
+
+            ResultDefinitionForm = new TestResultDefinitionDto
+            {
+                Id = Guid.Empty,
+                TestId = EditingId,
+                Code = code,
+                Name = "",
+                Unit = null,
+                DisplayOrder = ResultDefinitions.Count,
+                IsRequired = true,
+                DecimalPlaces = null,
+                Description = null
+            };
+
+            IsEditingResultDefinition = false;
+            EditingResultDefinitionId = Guid.Empty;
+
+            ResultDefinitionDialogVisible = true;
+        }
+        catch (Exception ex)
+        {
+            ResultDefinitionError =
+                $"خطا در تولید کد تعریف نتیجه: {ex.Message}";
+        }
+    }
+
+    private void OpenEditResultDefinition(
+    TestResultDefinitionDto definition)
+    {
+        ResultDefinitionError = "";
+
+        ResultDefinitionForm = new TestResultDefinitionDto
+        {
+            Id = definition.Id,
+            TestId = definition.TestId,
+            Code = definition.Code,
+            Name = definition.Name,
+            Unit = definition.Unit,
+            DisplayOrder = definition.DisplayOrder,
+            IsRequired = definition.IsRequired,
+            DecimalPlaces = definition.DecimalPlaces,
+            Description = definition.Description
+        };
+
+        IsEditingResultDefinition = true;
+        EditingResultDefinitionId = definition.Id;
+
+        ResultDefinitionDialogVisible = true;
+    }
+
+    private async Task DeleteResultDefinition(Guid id)
+    {
+        if (id == Guid.Empty)
+            return;
+
+        try
+        {
+            ResultDefinitionError = "";
+
+            await TestResultDefinitionService.DeleteAsync(id);
+
+            ResultDefinitions =
+                await TestResultDefinitionService
+                    .GetByTestIdAsync(EditingId);
+        }
+        catch (Exception ex)
+        {
+            ResultDefinitionError =
+                $"خطا در حذف تعریف نتیجه: {ex.Message}";
+        }
+    }
+
+    private async Task SaveResultDefinition()
+    {
+        if (IsSaving)
+            return;
+
+        try
+        {
+            ResultDefinitionError = "";
+
+            if (EditingId == Guid.Empty)
+            {
+                ResultDefinitionError =
+                    "آزمون انتخاب‌شده مشخص نیست.";
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    ResultDefinitionForm.Code))
+            {
+                ResultDefinitionError =
+                    "کد نتیجه الزامی است.";
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    ResultDefinitionForm.Name))
+            {
+                ResultDefinitionError =
+                    "نام نتیجه الزامی است.";
+
+                return;
+            }
+
+            if (ResultDefinitionForm.DisplayOrder < 0)
+            {
+                ResultDefinitionError =
+                    "ترتیب نمایش نمی‌تواند منفی باشد.";
+
+                return;
+            }
+
+            if (ResultDefinitionForm.DecimalPlaces < 0)
+            {
+                ResultDefinitionError =
+                    "تعداد ارقام اعشار نمی‌تواند منفی باشد.";
+
+                return;
+            }
+
+            ResultDefinitionForm.TestId = EditingId;
+
+            IsSaving = true;
+
+            if (IsEditingResultDefinition)
+            {
+                await TestResultDefinitionService
+                    .UpdateAsync(ResultDefinitionForm);
+            }
+            else
+            {
+                await TestResultDefinitionService
+                    .CreateAsync(ResultDefinitionForm);
+            }
+
+            ResultDefinitions =
+                await TestResultDefinitionService
+                    .GetByTestIdAsync(EditingId);
+
+            ResultDefinitionDialogVisible = false;
+
+            ResultDefinitionForm =
+                new TestResultDefinitionDto();
+
+            ResultDefinitionError = "";
+        }
+        catch (Exception ex)
+        {
+            ResultDefinitionError =
+                $"خطا در ذخیره تعریف نتیجه: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
 
     // =========================================================
     // Save
@@ -756,6 +3108,7 @@
                         DepartmentId = Form.DepartmentId,
                         SampleCategoryId = Form.SampleCategoryId,
                         MatrixId = Form.MatrixId,
+                        DefaultAnalystId = Form.DefaultAnalystId,
                         DefaultResult = Form.DefaultResult,
                         IsQuantitative = Form.IsQuantitative,
                         IsActiveForReception =
@@ -780,6 +3133,7 @@
                         DepartmentId = Form.DepartmentId,
                         SampleCategoryId = Form.SampleCategoryId,
                         MatrixId = Form.MatrixId,
+                        DefaultAnalystId = Form.DefaultAnalystId,
                         DefaultResult = Form.DefaultResult,
                         IsQuantitative = Form.IsQuantitative,
                         IsActiveForReception =
@@ -1011,6 +3365,8 @@
 
         public Guid? MatrixId { get; set; }
 
+        public Guid? DefaultAnalystId { get; set; }
+
         public string? DefaultResult { get; set; }
 
         public bool IsQuantitative { get; set; }
@@ -1018,5 +3374,1140 @@
         public bool IsActiveForReception { get; set; } = true;
 
         public string? Description { get; set; }
+
+    }
+    private List<TestLimitRule> TestLimitRules = new();
+
+    private List<LimitReferenceLookupDto> LimitReferenceList = new();
+
+    private bool TestLimitRulesDialogVisible = false;
+
+    private TestLimitRule? SelectedTestLimitRule;
+
+    private bool TestLimitRuleFormVisible = false;
+
+    private bool IsEditingTestLimitRule = false;
+
+    private Guid EditingTestLimitRuleId = Guid.Empty;
+
+    private Guid TestLimitRuleTestId = Guid.Empty;
+
+    private Guid TestLimitRuleLimitReferenceId = Guid.Empty;
+
+    private LimitType TestLimitRuleType = LimitType.Maximum;
+
+    private decimal? TestLimitRuleLowerValue;
+
+    private decimal? TestLimitRuleUpperValue;
+
+    private decimal? TestLimitRuleExactValue;
+
+    private bool TestLimitRuleLowerInclusive = true;
+
+    private bool TestLimitRuleUpperInclusive = true;
+
+    private string? TestLimitRuleUnit;
+
+    private string? TestLimitRuleAllowedValues;
+
+    private int TestLimitRulePriority = 1;
+
+    private bool TestLimitRuleIsActive = true;
+
+    private DateTime? TestLimitRuleValidFrom;
+
+    private DateTime? TestLimitRuleValidTo;
+
+    private string? TestLimitRuleDescription;
+
+    private string? TestLimitRuleFormError;
+
+    private bool IsLowerLimitEnabled =>
+    TestLimitRuleType == LimitType.Minimum ||
+    TestLimitRuleType == LimitType.Range;
+
+    private bool IsUpperLimitEnabled =>
+        TestLimitRuleType == LimitType.Maximum ||
+        TestLimitRuleType == LimitType.Range;
+
+    private bool IsAllowedValuesEnabled =>
+    TestLimitRuleType == LimitType.Qualitative;
+
+    private TestLookupDto? SelectedTestForResultSets;
+
+    private TestResultSetDto? SelectedResultSet;
+
+    private List<TestResultSetItemDto> ResultSetItems = new();
+
+    private bool ResultSetItemsDialogVisible = false;
+
+    private bool AddResultSetItemDialogVisible = false;
+
+    private List<TestResultDefinitionDto> AvailableResultDefinitions = new();
+
+    private Guid SelectedResultDefinitionId = Guid.Empty;
+
+    private int NewResultSetItemDisplayOrder = 1;
+
+    private string? ResultSetItemError;
+
+    private decimal? NewResultSetItemLOD;
+    private decimal? NewResultSetItemLOQ;
+    private decimal? NewResultSetItemMinValue;
+    private decimal? NewResultSetItemMaxValue;
+
+    private bool EditResultSetItemDialogVisible = false;
+
+    private TestResultSetItemDto? SelectedResultSetItem;
+
+    private int EditResultSetItemDisplayOrder;
+
+    private decimal? EditResultSetItemLOD;
+    private decimal? EditResultSetItemLOQ;
+    private decimal? EditResultSetItemMinValue;
+    private decimal? EditResultSetItemMaxValue;
+
+    private async Task OpenResultSetItems(TestResultSetDto resultSet)
+    {
+        if (resultSet.Id == Guid.Empty)
+            return;
+
+        SelectedResultSet = resultSet;
+
+        ResultSetItems =
+            await TestResultSetItemService.GetByResultSetIdAsync(
+                resultSet.Id);
+
+        ResultSetItemsDialogVisible = true;
+    }
+    private async Task OpenAddResultSetItem()
+    {
+        if (SelectedResultSet == null ||
+            SelectedResultSet.Id == Guid.Empty)
+            return;
+
+        ResultSetItemError = null;
+
+        AvailableResultDefinitions =
+            await TestResultDefinitionService.GetByTestIdAsync(
+                SelectedResultSet.TestId);
+
+        var existingIds =
+            ResultSetItems
+                .Select(x => x.TestResultDefinitionId)
+                .ToHashSet();
+
+        AvailableResultDefinitions =
+            AvailableResultDefinitions
+                .Where(x => !existingIds.Contains(x.Id))
+                .OrderBy(x => x.DisplayOrder)
+                .ToList();
+
+        NewResultSetItemDisplayOrder =
+            ResultSetItems.Count == 0
+                ? 1
+                : ResultSetItems.Max(x => x.DisplayOrder) + 1;
+
+        SelectedResultDefinitionId = Guid.Empty;
+
+        AddResultSetItemDialogVisible = true;
+    }
+    private async Task SaveResultSetItem()
+    {
+        if (SelectedResultSet == null ||
+            SelectedResultSet.Id == Guid.Empty)
+            return;
+
+        ResultSetItemError = null;
+
+        if (SelectedResultDefinitionId == Guid.Empty)
+        {
+            ResultSetItemError =
+                "Please select a result definition.";
+
+            return;
+        }
+
+        if (NewResultSetItemDisplayOrder < 1)
+        {
+            ResultSetItemError =
+                "Display order must be greater than zero.";
+
+            return;
+        }
+
+        if (NewResultSetItemLOD.HasValue &&
+            NewResultSetItemLOD.Value < 0)
+        {
+            ResultSetItemError =
+                "LOD cannot be negative.";
+
+            return;
+        }
+
+        if (NewResultSetItemLOQ.HasValue &&
+            NewResultSetItemLOQ.Value < 0)
+        {
+            ResultSetItemError =
+                "LOQ cannot be negative.";
+
+            return;
+        }
+
+        if (NewResultSetItemMinValue.HasValue &&
+            NewResultSetItemMaxValue.HasValue &&
+            NewResultSetItemMinValue.Value >
+            NewResultSetItemMaxValue.Value)
+        {
+            ResultSetItemError =
+                "Min value cannot be greater than Max value.";
+
+            return;
+        }
+
+        try
+        {
+            await TestResultSetItemService.AddAsync(
+                SelectedResultSet.Id,
+                SelectedResultDefinitionId,
+                NewResultSetItemDisplayOrder,
+                NewResultSetItemLOD,
+                NewResultSetItemLOQ,
+                NewResultSetItemMinValue,
+                NewResultSetItemMaxValue);
+
+            // Reload items
+            ResultSetItems =
+                await TestResultSetItemService
+                    .GetByResultSetIdAsync(
+                        SelectedResultSet.Id);
+
+            // Close add dialog
+            AddResultSetItemDialogVisible = false;
+
+            // Clear selection
+            SelectedResultDefinitionId =
+                Guid.Empty;
+
+            NewResultSetItemDisplayOrder = 1;
+
+            NewResultSetItemLOD = null;
+            NewResultSetItemLOQ = null;
+            NewResultSetItemMinValue = null;
+            NewResultSetItemMaxValue = null;
+
+            ResultSetItemError = null;
+        }
+        catch (Exception ex)
+        {
+            ResultSetItemError =
+                $"Error adding result definition: {ex.Message}";
+        }
+    }
+    private void OpenEditResultSetItem(TestResultSetItemDto item)
+    {
+        SelectedResultSetItem = item;
+
+        EditResultSetItemDisplayOrder = item.DisplayOrder;
+
+        EditResultSetItemLOD = item.LOD;
+        EditResultSetItemLOQ = item.LOQ;
+        EditResultSetItemMinValue = item.MinValue;
+        EditResultSetItemMaxValue = item.MaxValue;
+
+        ResultSetItemError = null;
+
+        EditResultSetItemDialogVisible = true;
+    }
+
+    private async Task SaveEditResultSetItem()
+    {
+        if (SelectedResultSetItem == null ||
+            SelectedResultSetItem.Id == Guid.Empty)
+            return;
+
+        ResultSetItemError = null;
+
+        if (EditResultSetItemDisplayOrder < 1)
+        {
+            ResultSetItemError =
+                "Display order must be greater than zero.";
+
+            return;
+        }
+
+        if (EditResultSetItemLOD.HasValue &&
+            EditResultSetItemLOD.Value < 0)
+        {
+            ResultSetItemError =
+                "LOD cannot be negative.";
+
+            return;
+        }
+
+        if (EditResultSetItemLOQ.HasValue &&
+            EditResultSetItemLOQ.Value < 0)
+        {
+            ResultSetItemError =
+                "LOQ cannot be negative.";
+
+            return;
+        }
+
+        if (EditResultSetItemMinValue.HasValue &&
+            EditResultSetItemMaxValue.HasValue &&
+            EditResultSetItemMinValue.Value >
+            EditResultSetItemMaxValue.Value)
+        {
+            ResultSetItemError =
+                "Min value cannot be greater than Max value.";
+
+            return;
+        }
+
+        try
+        {
+            await TestResultSetItemService.UpdateAsync(
+                SelectedResultSetItem.Id,
+                EditResultSetItemDisplayOrder,
+                EditResultSetItemLOD,
+                EditResultSetItemLOQ,
+                EditResultSetItemMinValue,
+                EditResultSetItemMaxValue);
+
+            if (SelectedResultSet != null)
+            {
+                ResultSetItems =
+                    await TestResultSetItemService
+                        .GetByResultSetIdAsync(
+                            SelectedResultSet.Id);
+            }
+
+            EditResultSetItemDialogVisible = false;
+
+            SelectedResultSetItem = null;
+
+            ResultSetItemError = null;
+        }
+        catch (Exception ex)
+        {
+            ResultSetItemError =
+                $"Error updating result item: {ex.Message}";
+        }
+    }
+    private async Task OpenResultSets(Guid testId)
+    {
+        var test = TestItems.FirstOrDefault(x => x.Id == testId);
+        if (test is null)
+            return;
+
+        await OpenResultSets(test);
+    }
+
+    private async Task OpenResultSets(TestLookupDto test)
+    {
+        if (test.Id == Guid.Empty)
+            return;
+
+        SelectedTestForResultSets = test;
+
+        ResultSets =
+            await TestResultSetService.GetByTestIdAsync(test.Id);
+
+        ResultSetsDialogVisible = true;
+    }
+    
+    private async Task OpenAddResultSet()
+    {
+        if (SelectedTestForResultSets == null)
+            return;
+
+        ResultSetError = "";
+
+        try
+        {
+            var code =
+                await NumberSequenceService
+                    .GetNextCodeAsync("ResultSet");
+
+            ResultSetForm = new TestResultSetDto
+            {
+                TestId = SelectedTestForResultSets.Id,
+                Code = code,
+                Priority = 100,
+                IsActive = true
+            };
+
+            StandardSamples =
+                await StandardSampleService.GetAllAsync();
+
+            Customers =
+                await CustomerService.GetLookupAsync();
+
+            SampleCategories =
+                await SampleCategoryService.GetAllAsync();
+
+            Matrices =
+                await MatrixService.GetAllAsync();
+
+            AddResultSetDialogVisible = true;
+        }
+        catch (Exception ex)
+        {
+            ResultSetError =
+                $"خطا در تولید کد Result Set: {ex.Message}";
+        }
+    }
+
+    private async Task OpenEditResultSet(TestResultSetDto resultSet)
+    {
+        if (resultSet == null || resultSet.Id == Guid.Empty)
+            return;
+
+        ResultSetError = "";
+
+        StandardSamples =
+            await StandardSampleService.GetAllAsync();
+
+        Customers = await CustomerService.GetLookupAsync();
+
+        SampleCategories = await SampleCategoryService.GetAllAsync();
+
+        Matrices = await MatrixService.GetAllAsync();
+
+        ResultSetForm = new TestResultSetDto
+        {
+            Id = resultSet.Id,
+            TestId = resultSet.TestId,
+            CustomerId = resultSet.CustomerId,
+            SampleCategoryId = resultSet.SampleCategoryId,
+            MatrixId = resultSet.MatrixId,
+            StandardSampleId = resultSet.StandardSampleId,
+            Code = resultSet.Code,
+            Name = resultSet.Name,
+            Description = resultSet.Description,
+            Priority = resultSet.Priority,
+            IsActive = resultSet.IsActive
+        };
+       
+        AddResultSetDialogVisible = true;
+    }
+    private async Task SaveResultSet()
+    {
+        ResultSetError = "";
+
+        if (SelectedTestForResultSets == null)
+        {
+            ResultSetError = "Test is not selected.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ResultSetForm.Code))
+        {
+            ResultSetError = "Code is required.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ResultSetForm.Name))
+        {
+            ResultSetError = "Name is required.";
+            return;
+        }
+
+        try
+        {
+            if (ResultSetForm.Id == Guid.Empty)
+            {
+                // Create
+                await TestResultSetService.CreateAsync(ResultSetForm);
+            }
+            else
+            {
+                // Update
+                await TestResultSetService.UpdateAsync(ResultSetForm);
+            }
+
+            // Refresh Result Sets
+            ResultSets =
+                await TestResultSetService.GetByTestIdAsync(
+                    SelectedTestForResultSets.Id);
+
+            AddResultSetDialogVisible = false;
+
+            ResultSetForm = new TestResultSetDto
+            {
+                TestId = SelectedTestForResultSets.Id,
+                Priority = 100,
+                IsActive = true
+            };
+
+            ResultSetError = "";
+        }
+        catch (Exception ex)
+        {
+            ResultSetError =
+                $"Error saving result set: {ex.Message}";
+        }
+        
+    }
+    private async Task OpenReferenceLimits(TestLookupDto test)
+    {
+        if (test.Id == Guid.Empty)
+            return;
+
+        SelectedTestForReferenceLimits = test;
+
+        ReferenceLimits =
+            await ReferenceLimitService.GetByTestIdAsync(test.Id);
+
+        TestLimitRules =
+            await TestLimitRuleService.GetByTestIdAsync(test.Id);
+
+        ReferenceLimitsDialogVisible = true;
+    }
+    private async Task OpenTestLimitRules()
+    {
+        if (SelectedTestForReferenceLimits is null ||
+            SelectedTestForReferenceLimits.Id == Guid.Empty)
+            return;
+
+        LimitReferenceList =
+            await LimitReferenceService.GetLookupAsync();
+
+        TestLimitRules =
+            await TestLimitRuleService.GetByTestIdAsync(
+                SelectedTestForReferenceLimits.Id);
+
+        TestLimitRulesDialogVisible = true;
+    }
+
+    private void CloseTestLimitRules()
+    {
+        TestLimitRulesDialogVisible = false;
+        TestLimitRuleFormVisible = false;
+        TestLimitRuleFormError = "";
+    }
+    private void OpenCreateTestLimitRule()
+    {
+        if (SelectedTestForReferenceLimits is null ||
+            SelectedTestForReferenceLimits.Id == Guid.Empty)
+            return;
+
+        IsEditingTestLimitRule = false;
+        EditingTestLimitRuleId = Guid.Empty;
+
+        TestLimitRuleTestId =
+            SelectedTestForReferenceLimits.Id;
+
+        TestLimitRuleLimitReferenceId = Guid.Empty;
+
+        TestLimitRuleType = LimitType.Maximum;
+
+        TestLimitRuleLowerValue = null;
+        TestLimitRuleUpperValue = null;
+        TestLimitRuleExactValue = null;
+
+        TestLimitRuleLowerInclusive = true;
+        TestLimitRuleUpperInclusive = true;
+
+        TestLimitRuleUnit =
+            SelectedTestForReferenceLimits.Unit;
+        
+        TestLimitRuleAllowedValues = null;
+
+        TestLimitRulePriority = 1;
+        TestLimitRuleIsActive = true;
+
+        TestLimitRuleValidFrom = null;
+        TestLimitRuleValidTo = null;
+
+        TestLimitRuleDescription = null;
+        TestLimitRuleFormError = "";
+
+        TestLimitRuleFormVisible = true;
+    }
+    private void OpenEditTestLimitRule(TestLimitRule rule)
+    {
+        if (rule is null || rule.Id == Guid.Empty)
+            return;
+
+        IsEditingTestLimitRule = true;
+        EditingTestLimitRuleId = rule.Id;
+
+        TestLimitRuleTestId = rule.TestId;
+
+        TestLimitRuleLimitReferenceId =
+             rule.LimitReferenceId;
+
+        TestLimitRuleType =
+            rule.LimitType;
+
+        TestLimitRuleLowerValue =
+            rule.LowerValue;
+
+        TestLimitRuleUpperValue =
+            rule.UpperValue;
+
+
+        TestLimitRuleExactValue = rule.ExactValue;
+
+        TestLimitRuleLowerInclusive =
+            rule.LowerInclusive;
+
+        TestLimitRuleUpperInclusive =
+            rule.UpperInclusive;
+
+        TestLimitRuleUnit =
+            rule.Unit;
+
+        TestLimitRuleAllowedValues =
+            rule.AllowedValues;
+
+        TestLimitRulePriority =
+            rule.Priority;
+
+        TestLimitRuleIsActive =
+            rule.IsActive;
+
+        TestLimitRuleValidFrom =
+            rule.ValidFrom;
+
+        TestLimitRuleValidTo =
+            rule.ValidTo;
+
+        TestLimitRuleDescription =
+            rule.Description;
+
+        TestLimitRuleFormError = "";
+
+        TestLimitRuleFormVisible = true;
+    }
+    private void CloseTestLimitRuleForm()
+    {
+        TestLimitRuleFormVisible = false;
+        TestLimitRuleFormError = "";
+    }
+    private async Task SaveTestLimitRule()
+    {
+        if (TestLimitRuleType == LimitType.Exact &&
+    !TestLimitRuleExactValue.HasValue)
+        {
+            TestLimitRuleFormError = "برای نوع «مقدار دقیق»، وارد کردن مقدار دقیق الزامی است.";
+            return;
+        }
+        if (TestLimitRuleType != LimitType.Minimum &&
+    TestLimitRuleType != LimitType.Range)
+        {
+            TestLimitRuleLowerValue = null;
+            TestLimitRuleLowerInclusive = false;
+        }
+
+        if (TestLimitRuleType != LimitType.Maximum &&
+            TestLimitRuleType != LimitType.Range)
+        {
+            TestLimitRuleUpperValue = null;
+            TestLimitRuleUpperInclusive = false;
+        }
+
+        if (TestLimitRuleType != LimitType.Exact)
+        {
+            TestLimitRuleExactValue = null;
+        }
+
+        if (TestLimitRuleType != LimitType.Qualitative)
+        {
+            TestLimitRuleAllowedValues = null;
+        }
+        if (TestLimitRuleTestId == Guid.Empty)
+        {
+            TestLimitRuleFormError = "آزمون مشخص نشده است.";
+            return;
+        }
+
+        if (TestLimitRuleLimitReferenceId == Guid.Empty)
+        {
+            TestLimitRuleFormError = "مرجع حد مجاز را انتخاب کنید.";
+            return;
+        }
+
+        if (TestLimitRuleType == LimitType.Minimum &&
+    !TestLimitRuleLowerValue.HasValue)
+        {
+            TestLimitRuleFormError =
+                "برای نوع «حداقل»، وارد کردن حد پایین الزامی است.";
+            return;
+        }
+
+        if (TestLimitRuleType == LimitType.Maximum &&
+            !TestLimitRuleUpperValue.HasValue)
+        {
+            TestLimitRuleFormError =
+                "برای نوع «حداکثر»، وارد کردن حد بالا الزامی است.";
+            return;
+        }
+
+        if (TestLimitRuleType == LimitType.Range)
+        {
+            if (!TestLimitRuleLowerValue.HasValue ||
+                !TestLimitRuleUpperValue.HasValue)
+            {
+                TestLimitRuleFormError =
+                    "برای نوع «بازه»، وارد کردن حد پایین و حد بالا الزامی است.";
+                return;
+            }
+
+            if (TestLimitRuleLowerValue.Value >
+                TestLimitRuleUpperValue.Value)
+            {
+                TestLimitRuleFormError =
+                    "در نوع «بازه»، حد پایین نمی‌تواند بزرگ‌تر از حد بالا باشد.";
+                return;
+            }
+        }
+
+        if (TestLimitRuleType == LimitType.Qualitative &&
+            string.IsNullOrWhiteSpace(TestLimitRuleAllowedValues))
+        {
+            TestLimitRuleFormError =
+                "برای نوع «کیفی»، وارد کردن مقادیر مجاز الزامی است.";
+            return;
+        }
+
+        if (TestLimitRulePriority < 1)
+        {
+            TestLimitRuleFormError =
+                "اولویت باید حداقل ۱ باشد.";
+            return;
+        }
+
+        if (TestLimitRuleValidFrom.HasValue &&
+            TestLimitRuleValidTo.HasValue &&
+            TestLimitRuleValidTo.Value.Date <
+            TestLimitRuleValidFrom.Value.Date)
+        {
+            TestLimitRuleFormError =
+                "تاریخ پایان اعتبار نمی‌تواند قبل از تاریخ شروع اعتبار باشد.";
+            return;
+        }
+
+        try
+        {
+            TestLimitRuleFormError = "";
+
+            if (IsEditingTestLimitRule)
+            {
+                // =========================================
+                // Update existing rule
+                // =========================================
+
+                if (EditingTestLimitRuleId == Guid.Empty)
+                {
+                    TestLimitRuleFormError =
+                        "شناسه قانون برای ویرایش مشخص نشده است.";
+
+                    return;
+                }
+
+                var rule =
+                    await TestLimitRuleService.GetByIdAsync(
+                        EditingTestLimitRuleId);
+
+                if (rule is null)
+                {
+                    TestLimitRuleFormError =
+                        "قانون حد مجاز مورد نظر پیدا نشد.";
+
+                    return;
+                }
+
+                rule.TestId =
+                    TestLimitRuleTestId;
+
+                rule.LimitReferenceId =
+                     TestLimitRuleLimitReferenceId;
+
+                rule.LimitType =
+                    TestLimitRuleType;
+
+                rule.LowerValue =
+                    TestLimitRuleLowerValue;
+
+                rule.UpperValue =
+                    TestLimitRuleUpperValue;
+
+                rule.ExactValue = TestLimitRuleExactValue;
+
+                rule.LowerInclusive =
+                    TestLimitRuleLowerInclusive;
+
+                rule.UpperInclusive =
+                    TestLimitRuleUpperInclusive;
+
+                rule.Priority =
+                    TestLimitRulePriority;
+
+                rule.IsActive =
+                    TestLimitRuleIsActive;
+
+                rule.ValidFrom =
+    TestLimitRuleValidFrom.HasValue
+        ? DateTime.SpecifyKind(
+            TestLimitRuleValidFrom.Value,
+            DateTimeKind.Utc)
+        : DateTime.UtcNow.Date;
+
+                rule.ValidTo =
+                    TestLimitRuleValidTo.HasValue
+                        ? DateTime.SpecifyKind(
+                            TestLimitRuleValidTo.Value,
+                            DateTimeKind.Utc)
+                        : null;
+
+                rule.Unit = string.IsNullOrWhiteSpace(TestLimitRuleUnit)
+                    ? null
+                    : TestLimitRuleUnit.Trim();
+
+                rule.AllowedValues = string.IsNullOrWhiteSpace(TestLimitRuleAllowedValues)
+                    ? null
+                    : TestLimitRuleAllowedValues.Trim();
+
+
+                rule.Description =
+                    string.IsNullOrWhiteSpace(
+                        TestLimitRuleDescription)
+                        ? null
+                        : TestLimitRuleDescription.Trim();
+
+                await TestLimitRuleService.UpdateAsync(rule);
+            }
+            else
+            {
+                // =========================================
+                // Create new rule
+                // =========================================
+
+                var rule = new TestLimitRule
+                {
+                    TestId =
+                        TestLimitRuleTestId,
+
+                    LimitReferenceId =
+                        TestLimitRuleLimitReferenceId,
+
+                    LimitType =
+                        TestLimitRuleType,
+
+                    LowerValue =
+                        TestLimitRuleLowerValue,
+
+                    UpperValue =
+                        TestLimitRuleUpperValue,
+
+                    ExactValue = TestLimitRuleExactValue,
+
+                    LowerInclusive =
+                        TestLimitRuleLowerInclusive,
+
+                    UpperInclusive =
+                        TestLimitRuleUpperInclusive,
+
+                    Priority =
+                        TestLimitRulePriority,
+
+                    IsActive =
+                        TestLimitRuleIsActive,
+
+                    ValidFrom =
+    TestLimitRuleValidFrom.HasValue
+        ? DateTime.SpecifyKind(
+            TestLimitRuleValidFrom.Value,
+            DateTimeKind.Utc)
+        : DateTime.UtcNow.Date,
+
+                    ValidTo =
+    TestLimitRuleValidTo.HasValue
+        ? DateTime.SpecifyKind(
+            TestLimitRuleValidTo.Value,
+            DateTimeKind.Utc)
+        : null,
+
+                    Unit = string.IsNullOrWhiteSpace(TestLimitRuleUnit)
+                        ? null
+                        : TestLimitRuleUnit.Trim(),
+
+                    AllowedValues = string.IsNullOrWhiteSpace(TestLimitRuleAllowedValues)
+                        ? null
+                        : TestLimitRuleAllowedValues.Trim(),
+
+                    Description =
+                        string.IsNullOrWhiteSpace(
+                            TestLimitRuleDescription)
+                            ? null
+                            : TestLimitRuleDescription.Trim()
+                };
+
+                await TestLimitRuleService.CreateAsync(rule);
+            }
+
+            // =========================================
+            // Refresh list
+            // =========================================
+
+            TestLimitRules =
+                await TestLimitRuleService.GetByTestIdAsync(
+                    TestLimitRuleTestId);
+
+            TestLimitRuleFormVisible = false;
+        }
+        catch (Exception ex)
+        {
+            var errorMessage =
+                ex.InnerException?.InnerException?.Message
+                ?? ex.InnerException?.Message
+                ?? ex.Message;
+
+            await InvokeAsync(() =>
+            {
+                TestLimitRuleFormError =
+                    $"خطا: {errorMessage}";
+            });
+        }
+    }
+    private async Task DeleteTestLimitRule(Guid id)
+    {
+        TestLimitRuleFormError = $"Delete clicked: {id}";
+        if (id == Guid.Empty)
+            return;
+
+        try
+        {
+            TestLimitRuleFormError = "";
+
+            var result =
+               await TestLimitRuleService.DeleteAsync(id);
+
+            TestLimitRuleFormError =
+                $"DeleteAsync result = {result}";
+
+            if (!result)
+            {
+                TestLimitRuleFormError =
+                    "قانون حد مجاز مورد نظر پیدا نشد.";
+
+                return;
+            }
+
+            TestLimitRules =
+                await TestLimitRuleService.GetByTestIdAsync(
+                    TestLimitRuleTestId);
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            var errorMessage =
+                ex.InnerException?.InnerException?.Message
+                ?? ex.InnerException?.Message
+                ?? ex.Message;
+
+            TestLimitRuleFormError =
+                $"خطا در حذف قانون حد مجاز: {errorMessage}";
+        }
+    }
+    private void CloseReferenceLimits()
+    {
+        ReferenceLimitsDialogVisible = false;
+    }
+    private void OpenCreateReferenceLimit()
+    {
+        if (SelectedTestForReferenceLimits is null ||
+            SelectedTestForReferenceLimits.Id == Guid.Empty)
+            return;
+
+        IsEditingReferenceLimit = false;
+        EditingReferenceLimitId = Guid.Empty;
+        ReferenceLimitTestId =
+            SelectedTestForReferenceLimits.Id;
+
+        ReferenceLimitMatrixId = null;
+        ReferenceLimitProductName = null;
+        ReferenceLimitOrganizationName = null;
+
+        ReferenceLimitMinValue = null;
+        ReferenceLimitMaxValue = null;
+
+        ReferenceLimitWarningLow = null;
+        ReferenceLimitWarningHigh = null;
+
+        ReferenceLimitUnit =
+            SelectedTestForReferenceLimits.Unit;
+
+        ReferenceLimitPriority = 1;
+
+        ReferenceLimitIsTemporary = false;
+
+        ReferenceLimitValidFrom = null;
+        ReferenceLimitValidTo = null;
+
+        ReferenceLimitDescription = null;
+
+        ReferenceLimitFormError = "";
+
+        ReferenceLimitFormVisible = true;
+    }
+    private void CloseCreateReferenceLimit()
+    {
+        ReferenceLimitFormVisible = false;
+        ReferenceLimitFormError = "";
+    }
+    private async Task SaveReferenceLimit()
+    {
+        if (ReferenceLimitTestId == Guid.Empty)
+        {
+            ReferenceLimitFormError =
+                "آزمون برای حد مجاز مشخص نشده است.";
+
+            return;
+        }
+
+        try
+        {
+            ReferenceLimitFormError = "";
+
+            var referenceLimit = new ReferenceLimit
+            {
+                TestId = ReferenceLimitTestId,
+
+                MatrixId = ReferenceLimitMatrixId,
+
+                ProductName = string.IsNullOrWhiteSpace(
+                    ReferenceLimitProductName)
+                    ? null
+                    : ReferenceLimitProductName.Trim(),
+
+                OrganizationName = string.IsNullOrWhiteSpace(
+                    ReferenceLimitOrganizationName)
+                    ? null
+                    : ReferenceLimitOrganizationName.Trim(),
+
+                MinValue = ReferenceLimitMinValue,
+                MaxValue = ReferenceLimitMaxValue,
+
+                WarningLow = ReferenceLimitWarningLow,
+                WarningHigh = ReferenceLimitWarningHigh,
+
+                Unit = string.IsNullOrWhiteSpace(
+                    ReferenceLimitUnit)
+                    ? null
+                    : ReferenceLimitUnit.Trim(),
+
+                Priority = ReferenceLimitPriority,
+
+                IsTemporary = ReferenceLimitIsTemporary,
+
+                ValidFrom = ReferenceLimitValidFrom,
+                ValidTo = ReferenceLimitValidTo,
+
+                Description = string.IsNullOrWhiteSpace(
+                    ReferenceLimitDescription)
+                    ? null
+                    : ReferenceLimitDescription.Trim()
+            };
+
+            if (IsEditingReferenceLimit)
+            {
+                // در حالت ویرایش باید Id رکورد اصلی حفظ شود.
+                if (EditingReferenceLimitId == Guid.Empty)
+                {
+                    ReferenceLimitFormError =
+                        "رکورد حد مجاز برای ویرایش مشخص نشده است.";
+
+                    return;
+                }
+
+                referenceLimit.Id = EditingReferenceLimitId;
+
+                await ReferenceLimitService.UpdateAsync(
+                    referenceLimit);
+            }
+            else
+            {
+                await ReferenceLimitService.CreateAsync(
+                    referenceLimit);
+            }
+
+            ReferenceLimits =
+                await ReferenceLimitService.GetByTestIdAsync(
+                    ReferenceLimitTestId);
+
+            ReferenceLimitFormVisible = false;
+            IsEditingReferenceLimit = false;
+            EditingReferenceLimitId = Guid.Empty;
+        }
+        catch (Exception ex)
+        {
+            ReferenceLimitFormError =
+                $"خطا در ذخیره حد مجاز: {ex.Message}";
+        }
+    }
+    private void OpenEditReferenceLimit(ReferenceLimit limit)
+    {
+        IsEditingReferenceLimit = true;
+        EditingReferenceLimitId = limit.Id;
+        ReferenceLimitTestId = limit.TestId;
+
+        ReferenceLimitMatrixId = limit.MatrixId;
+        ReferenceLimitProductName = limit.ProductName;
+        ReferenceLimitOrganizationName = limit.OrganizationName;
+
+        ReferenceLimitMinValue = limit.MinValue;
+        ReferenceLimitMaxValue = limit.MaxValue;
+
+        ReferenceLimitWarningLow = limit.WarningLow;
+        ReferenceLimitWarningHigh = limit.WarningHigh;
+
+        ReferenceLimitUnit = limit.Unit;
+        ReferenceLimitPriority = limit.Priority;
+
+        ReferenceLimitIsTemporary = limit.IsTemporary;
+
+        ReferenceLimitValidFrom = limit.ValidFrom;
+        ReferenceLimitValidTo = limit.ValidTo;
+
+        ReferenceLimitDescription = limit.Description;
+
+        ReferenceLimitFormError = "";
+
+        ReferenceLimitFormVisible = true;
+    }
+    private async Task DeleteReferenceLimit(Guid id)
+    {
+        if (id == Guid.Empty)
+            return;
+
+        try
+        {
+            ReferenceLimitFormError = "";
+
+            var deleted =
+                await ReferenceLimitService.DeleteAsync(id);
+
+            if (!deleted)
+            {
+                ReferenceLimitFormError =
+                    "حد مجاز موردنظر پیدا نشد.";
+
+                return;
+            }
+
+            ReferenceLimits =
+                await ReferenceLimitService.GetByTestIdAsync(
+                    ReferenceLimitTestId);
+        }
+        catch (Exception ex)
+        {
+            ReferenceLimitFormError =
+                $"خطا در حذف حد مجاز: {ex.Message}";
+        }
     }
 }

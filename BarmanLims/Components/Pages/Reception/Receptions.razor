@@ -2,6 +2,8 @@
 
 @using MudBlazor
 @using Barman.Domain.Entities
+@using BarmanLims.Components.Authorization
+@attribute [RequirePermission("Reception.View")]
 
 @inject Barman.Application.Interfaces.IReceptionService ReceptionService
 @inject NavigationManager NavigationManager

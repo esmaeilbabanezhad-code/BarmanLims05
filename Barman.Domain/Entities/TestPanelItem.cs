@@ -13,4 +13,15 @@ public class TestPanelItem : BaseEntity
     public Test Test { get; set; } = null!;
 
     public int SortOrder { get; set; }
+
+
+    // =========================
+    // Default Analyst
+    // =========================
+
+    public Guid? DefaultAnalystId { get; set; }
+
+    public Employee? DefaultAnalyst { get; set; }
+
+
 }

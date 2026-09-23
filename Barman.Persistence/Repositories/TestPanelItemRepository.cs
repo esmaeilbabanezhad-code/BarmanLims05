@@ -20,6 +20,7 @@ public class TestPanelItemRepository : ITestPanelItemRepository
     {
         return await _context.TestPanelItems
             .Include(x => x.Test)
+            .Include(x => x.DefaultAnalyst)
             .Where(x => x.TestPanelId == testPanelId)
             .OrderBy(x => x.SortOrder)
             .ToListAsync(cancellationToken);
@@ -31,8 +32,28 @@ public class TestPanelItemRepository : ITestPanelItemRepository
     {
         return await _context.TestPanelItems
             .Include(x => x.Test)
+            .Include(x => x.DefaultAnalyst)
             .FirstOrDefaultAsync(
                 x => x.Id == id,
+                cancellationToken);
+    }
+
+
+
+    public async Task<TestPanelItem?> GetByPanelAndTestAsync(
+    Guid testPanelId,
+    Guid testId,
+    CancellationToken cancellationToken = default)
+    {
+        if (testPanelId == Guid.Empty || testId == Guid.Empty)
+            return null;
+
+        return await _context.TestPanelItems
+            .Include(x => x.Test)
+            .Include(x => x.DefaultAnalyst)
+            .FirstOrDefaultAsync(
+                x => x.TestPanelId == testPanelId &&
+                     x.TestId == testId,
                 cancellationToken);
     }
 

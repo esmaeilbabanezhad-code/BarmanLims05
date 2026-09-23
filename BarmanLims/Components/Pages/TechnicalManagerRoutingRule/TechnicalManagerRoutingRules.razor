@@ -1,0 +1,793 @@
+﻿@page "/technical-manager-routing-rules"
+
+@using Barman.Application.Interfaces
+@using Barman.Domain.Entities
+@using Barman.Application.DTOs.Test
+
+@inject ITechnicalManagerRoutingRuleService RoutingRuleService
+@inject ICustomerService CustomerService
+@inject ISampleCategoryService SampleCategoryService
+@inject IMatrixService MatrixService
+@inject ITestService TestService
+@inject ITestPanelService TestPanelService
+@inject IDepartmentService DepartmentService
+@inject ITechnicalManagerScopeService ScopeService
+
+<PageTitle>Technical Manager Routing Rules</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+    <MudPaper Class="pa-5">
+
+        <MudText Typo="Typo.h5" Class="mb-4">
+            قوانین مسیریابی مسئول فنی
+        </MudText>
+
+        @if (!showForm)
+        {
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="ShowAddForm">
+                افزودن قانون
+            </MudButton>
+        }
+
+        @if (showForm)
+        {
+            <MudPaper Outlined="true" Class="pa-4 mt-4">
+
+                <MudText Typo="Typo.h6" Class="mb-4">
+                    @(EditingId == Guid.Empty
+                                    ? "افزودن قانون مسیریابی"
+                                    : "ویرایش قانون مسیریابی")
+            </MudText>
+
+                <MudGrid>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="Code"
+                                      Label="کد قانون"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      FullWidth="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="Name"
+                                      Label="نام قانون"
+                                      Variant="Variant.Outlined"
+                                      Required="true"
+                                      FullWidth="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="int"
+                                         @bind-Value="Priority"
+                                         Label="اولویت"
+                                         Variant="Variant.Outlined"
+                                         Min="0"
+                                         FullWidth="true" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudCheckBox @bind-Value="IsActive"
+                                     Label="فعال" />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudAlert Severity="Severity.Info">
+                            هر فیلد اختیاری است. خالی بودن یک معیار یعنی آن معیار در تطبیق قانون نادیده گرفته شود.
+                        </MudAlert>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="Guid?"
+                                   @bind-Value="CustomerId"
+                                   Label="مشتری"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   FullWidth="true">
+
+                            <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+                                همه مشتریان
+                            </MudSelectItem>
+
+                        @foreach (var customer in customers)
+                            {
+                                <MudSelectItem T="Guid?"
+                                               Value="@((Guid?)customer.Id)">
+                                    @customer.DisplayName
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="Guid?"
+                                   @bind-Value="SampleCategoryId"
+                                   Label="دسته‌بندی نمونه"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   FullWidth="true">
+
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)null)">
+                                همه دسته‌بندی‌ها
+                            </MudSelectItem>
+
+                            @foreach (var category in sampleCategories)
+                            {
+                                <MudSelectItem T="Guid?"
+                                               Value="@((Guid?)category.Id)">
+                                    @category.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="Guid?"
+                                   @bind-Value="MatrixId"
+                                   Label="ماتریس"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   FullWidth="true">
+
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)null)">
+                                همه ماتریس‌ها
+                            </MudSelectItem>
+
+                            @foreach (var matrix in matrices)
+                            {
+                                <MudSelectItem T="Guid?"
+                                               Value="@((Guid?)matrix.Id)">
+                                    @matrix.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="Guid?"
+                                   @bind-Value="TestPanelId"
+                                   Label="پنل آزمون"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   FullWidth="true">
+
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)null)">
+                                همه پنل‌ها
+                            </MudSelectItem>
+
+                            @foreach (var panel in testPanels)
+                            {
+                                <MudSelectItem T="Guid?"
+                                               Value="@((Guid?)panel.Id)">
+                                    @panel.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="Guid?"
+                                   @bind-Value="TestId"
+                                   Label="آزمون"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   FullWidth="true">
+
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)null)">
+                                همه آزمون‌ها
+                            </MudSelectItem>
+
+                            @foreach (var test in tests)
+                            {
+                                <MudSelectItem T="Guid?"
+                                               Value="@((Guid?)test.Id)">
+                                    @test.Code - @test.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="Guid?"
+                                   @bind-Value="DepartmentId"
+                                   Label="بخش / معیار بخش"
+                                   Variant="Variant.Outlined"
+                                   Clearable="true"
+                                   FullWidth="true">
+
+                            <MudSelectItem T="Guid?"
+                                           Value="@((Guid?)null)">
+                                همه بخش‌ها
+                            </MudSelectItem>
+
+                            @foreach (var department in departments)
+                            {
+                                <MudSelectItem T="Guid?"
+                                               Value="@((Guid?)department.Id)">
+                                    @department.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="Guid"
+                                   @bind-Value="TechnicalManagerScopeId"
+                                   Label="محدوده مسئول فنی"
+                                   Variant="Variant.Outlined"
+                                   Required="true"
+                                   FullWidth="true">
+
+                            @foreach (var scope in scopes.Where(x => x.IsActive && !x.IsDeleted))
+                            {
+                                <MudSelectItem T="Guid"
+                                               Value="@scope.Id">
+                                    @scope.Name
+                                </MudSelectItem>
+                            }
+
+                        </MudSelect>
+                    </MudItem>
+
+                </MudGrid>
+
+                @if (!string.IsNullOrWhiteSpace(formMessage))
+                {
+                    <MudAlert Severity="@formMessageSeverity"
+                              Class="mt-4">
+                        @formMessage
+                    </MudAlert>
+                }
+
+                <div class="mt-4">
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="SaveRule"
+                               Disabled="@isSaving">
+                        @(isSaving ? "در حال ذخیره..." : "ذخیره")
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               Class="mr-2"
+                               OnClick="CancelForm"
+                               Disabled="@isSaving">
+                        انصراف
+                    </MudButton>
+
+                </div>
+
+            </MudPaper>
+        }
+
+    </MudPaper>
+
+    <MudPaper Class="pa-5 mt-5">
+
+        <MudText Typo="Typo.h6" Class="mb-3">
+            فهرست قوانین
+        </MudText>
+
+        @if (isLoading)
+        {
+            <MudProgressLinear Indeterminate="true"
+                               Color="Color.Primary"
+                               Class="mb-4" />
+        }
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mb-4">
+                @errorMessage
+            </MudAlert>
+        }
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="LoadRules"
+                   Disabled="@isLoading">
+            بازخوانی
+        </MudButton>
+
+        <MudTable Items="rules"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="true"
+                  Striped="true"
+                  Class="mt-4">
+
+            <HeaderContent>
+
+                <MudTh>کد</MudTh>
+                <MudTh>نام</MudTh>
+                <MudTh>شرایط</MudTh>
+                <MudTh>محدوده مسئول فنی</MudTh>
+                <MudTh>اولویت</MudTh>
+                <MudTh>وضعیت</MudTh>
+                <MudTh>عملیات</MudTh>
+
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd DataLabel="کد">
+                    @context.Code
+                </MudTd>
+
+                <MudTd DataLabel="نام">
+                    @context.Name
+                </MudTd>
+
+                <MudTd DataLabel="شرایط">
+
+                    @if (context.Customer != null)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Class="ma-1">
+                            مشتری: @context.Customer.DisplayName
+                        </MudChip>
+                    }
+
+                    @if (context.SampleCategory != null)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Class="ma-1">
+                            دسته: @context.SampleCategory.Name
+                        </MudChip>
+                    }
+
+                    @if (context.Matrix != null)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Class="ma-1">
+                            ماتریس: @context.Matrix.Name
+                        </MudChip>
+                    }
+
+                    @if (context.TestPanel != null)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Class="ma-1">
+                            پنل: @context.TestPanel.Name
+                        </MudChip>
+                    }
+
+                    @if (context.Test != null)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Class="ma-1">
+                            آزمون: @context.Test.Name
+                        </MudChip>
+                    }
+
+                    @if (context.Department != null)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Class="ma-1">
+                            بخش: @context.Department.Name
+                        </MudChip>
+                    }
+
+                    @if (context.Customer == null &&
+                                        context.SampleCategory == null &&
+                                        context.Matrix == null &&
+                                        context.TestPanel == null &&
+                                        context.Test == null &&
+                                        context.Department == null)
+                    {
+                        <MudChip T="string"
+                                 Size="Size.Small">
+                            قانون عمومی
+                        </MudChip>
+                    }
+
+                </MudTd>
+
+                <MudTd DataLabel="محدوده مسئول فنی">
+                    @context.TechnicalManagerScope?.Name
+                </MudTd>
+
+                <MudTd DataLabel="اولویت">
+                    @context.Priority
+                </MudTd>
+
+                <MudTd DataLabel="وضعیت">
+
+                    @if (context.IsActive)
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Success"
+                                 Size="Size.Small">
+                            فعال
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Default"
+                                 Size="Size.Small">
+                            غیرفعال
+                        </MudChip>
+                    }
+
+                </MudTd>
+
+                <MudTd DataLabel="عملیات">
+
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               OnClick="@(() => EditRule(context))">
+                        ویرایش
+                    </MudButton>
+
+                    @if (context.IsActive)
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Warning"
+                                   Class="mr-2"
+                                   OnClick="@(() => DeactivateRule(context.Id))"
+                                   Disabled="@isSaving">
+                            غیرفعال
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Success"
+                                   Class="mr-2"
+                                   OnClick="@(() => ActivateRule(context.Id))"
+                                   Disabled="@isSaving">
+                            فعال
+                        </MudButton>
+                    }
+
+                </MudTd>
+
+            </RowTemplate>
+
+            <NoRecordsContent>
+
+                <MudText Class="pa-4">
+                    هنوز قانون مسیریابی ثبت نشده است.
+                </MudText>
+
+            </NoRecordsContent>
+
+        </MudTable>
+
+    </MudPaper>
+
+</MudContainer>
+
+@code {
+
+    private List<TechnicalManagerRoutingRule> rules = new();
+
+    private List<Customer> customers = new();
+    private List<SampleCategory> sampleCategories = new();
+    private List<Matrix> matrices = new();
+    private List<TestLookupDto> tests = new();
+    private List<TestPanel> testPanels = new();
+    private List<Department> departments = new();
+    private List<TechnicalManagerScope> scopes = new();
+
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool showForm = false;
+
+    private Guid EditingId = Guid.Empty;
+
+    private string? errorMessage;
+    private string? formMessage;
+
+    private Severity formMessageSeverity = Severity.Info;
+
+    private string Code = "";
+    private string Name = "";
+
+    private Guid? CustomerId;
+    private Guid? SampleCategoryId;
+    private Guid? MatrixId;
+    private Guid? TestPanelId;
+    private Guid? TestId;
+    private Guid? DepartmentId;
+
+    private Guid TechnicalManagerScopeId = Guid.Empty;
+
+    private int Priority = 100;
+    private bool IsActive = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLookups();
+        await LoadRules();
+    }
+
+    private async Task LoadLookups()
+    {
+        try
+        {
+            customers = await CustomerService.GetAllAsync();
+            sampleCategories = await SampleCategoryService.GetAllAsync();
+            matrices = await MatrixService.GetAllAsync();
+            tests = await TestService.GetAllAsync();
+            testPanels = await TestPanelService.GetAllAsync();
+            departments = await DepartmentService.GetAllAsync();
+            scopes = await ScopeService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"خطا در بارگذاری اطلاعات پایه: {ex.Message}";
+        }
+    }
+
+    private async Task LoadRules()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            rules =
+                await RoutingRuleService.GetAllAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"خطا در بارگذاری قوانین مسیریابی: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ShowAddForm()
+    {
+        EditingId = Guid.Empty;
+
+        ClearForm();
+
+        showForm = true;
+        formMessage = null;
+    }
+
+    private void CancelForm()
+    {
+        showForm = false;
+
+        ClearForm();
+
+        formMessage = null;
+    }
+
+    private void ClearForm()
+    {
+        EditingId = Guid.Empty;
+
+        Code = "";
+        Name = "";
+
+        CustomerId = null;
+        SampleCategoryId = null;
+        MatrixId = null;
+        TestPanelId = null;
+        TestId = null;
+        DepartmentId = null;
+
+        TechnicalManagerScopeId = Guid.Empty;
+
+        Priority = 100;
+        IsActive = true;
+    }
+
+    private void EditRule(
+        TechnicalManagerRoutingRule rule)
+    {
+        EditingId = rule.Id;
+
+        Code = rule.Code;
+        Name = rule.Name;
+
+        CustomerId = rule.CustomerId;
+        SampleCategoryId = rule.SampleCategoryId;
+        MatrixId = rule.MatrixId;
+        TestPanelId = rule.TestPanelId;
+        TestId = rule.TestId;
+        DepartmentId = rule.DepartmentId;
+
+        TechnicalManagerScopeId =
+            rule.TechnicalManagerScopeId;
+
+        Priority = rule.Priority;
+        IsActive = rule.IsActive;
+
+        formMessage = null;
+        showForm = true;
+    }
+
+    private async Task SaveRule()
+    {
+        formMessage = null;
+
+        if (string.IsNullOrWhiteSpace(Code))
+        {
+            formMessage = "کد قانون الزامی است.";
+            formMessageSeverity = Severity.Error;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Name))
+        {
+            formMessage = "نام قانون الزامی است.";
+            formMessageSeverity = Severity.Error;
+            return;
+        }
+
+        if (TechnicalManagerScopeId == Guid.Empty)
+        {
+            formMessage = "انتخاب محدوده مسئول فنی الزامی است.";
+            formMessageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+
+            if (EditingId == Guid.Empty)
+            {
+                var rule = new TechnicalManagerRoutingRule
+                {
+                    Code = Code.Trim(),
+                    Name = Name.Trim(),
+
+                    CustomerId = CustomerId,
+                    SampleCategoryId = SampleCategoryId,
+                    MatrixId = MatrixId,
+                    TestPanelId = TestPanelId,
+                    TestId = TestId,
+                    DepartmentId = DepartmentId,
+
+                    TechnicalManagerScopeId =
+                        TechnicalManagerScopeId,
+
+                    Priority = Priority,
+                    IsActive = IsActive
+                };
+
+                await RoutingRuleService.AddAsync(rule);
+
+                formMessage =
+                    "قانون مسیریابی با موفقیت ایجاد شد.";
+            }
+            else
+            {
+                var rule =
+                    await RoutingRuleService
+                        .GetByIdAsync(EditingId);
+
+                if (rule is null)
+                {
+                    formMessage =
+                        "قانون مسیریابی پیدا نشد.";
+                    formMessageSeverity = Severity.Error;
+                    return;
+                }
+
+                rule.Code = Code.Trim();
+                rule.Name = Name.Trim();
+
+                rule.CustomerId = CustomerId;
+                rule.SampleCategoryId = SampleCategoryId;
+                rule.MatrixId = MatrixId;
+                rule.TestPanelId = TestPanelId;
+                rule.TestId = TestId;
+                rule.DepartmentId = DepartmentId;
+
+                rule.TechnicalManagerScopeId =
+                    TechnicalManagerScopeId;
+
+                rule.Priority = Priority;
+                rule.IsActive = IsActive;
+
+                await RoutingRuleService.UpdateAsync(rule);
+
+                formMessage =
+                    "قانون مسیریابی با موفقیت به‌روزرسانی شد.";
+            }
+
+            formMessageSeverity = Severity.Success;
+
+            await LoadRules();
+
+            ClearForm();
+
+            showForm = false;
+        }
+        catch (Exception ex)
+        {
+            formMessage =
+                $"خطا در ذخیره قانون: {ex.Message}";
+
+            formMessageSeverity = Severity.Error;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task ActivateRule(Guid id)
+    {
+        try
+        {
+            isSaving = true;
+
+            await RoutingRuleService
+                .ActivateAsync(id);
+
+            await LoadRules();
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"خطا در فعال‌سازی قانون: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task DeactivateRule(Guid id)
+    {
+        try
+        {
+            isSaving = true;
+
+            await RoutingRuleService
+                .DeactivateAsync(id);
+
+            await LoadRules();
+        }
+        catch (Exception ex)
+        {
+            errorMessage =
+                $"خطا در غیرفعال‌سازی قانون: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}

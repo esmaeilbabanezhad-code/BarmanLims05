@@ -1,0 +1,61 @@
+@page "/login"
+
+@using Barman.Application.Interfaces
+@inject IUserAccountService UserAccountService
+@inject NavigationManager NavigationManager
+
+<PageTitle>ورود به سامانه</PageTitle>
+
+<div class="d-flex justify-content-center align-items-center"
+     style="min-height: 80vh;">
+
+    <MudPaper Elevation="4"
+              Class="pa-6"
+              Style="width:100%; max-width:420px;">
+
+        <MudText Typo="Typo.h5"
+                 Align="Align.Center"
+                 Class="mb-6">
+            ورود به سامانه Barman LIMS
+        </MudText>
+
+        <form method="post" action="/account/login">
+
+            <MudTextField T="string"
+                          Name="Username"
+                          Label="نام کاربری"
+                          Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Class="mb-4"
+                          Required="true" />
+
+            <MudTextField T="string"
+                          Name="Password"
+                          Label="رمز عبور"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          FullWidth="true"
+                          Required="true"
+                          Class="mb-4" />
+
+            <MudButton ButtonType="ButtonType.Submit"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large">
+                ورود
+            </MudButton>
+
+        </form>
+
+        @if (NavigationManager.Uri.Contains("error=1"))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mt-4">
+                نام کاربری یا رمز عبور صحیح نیست.
+            </MudAlert>
+        }
+
+    </MudPaper>
+
+</div>

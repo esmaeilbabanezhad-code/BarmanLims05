@@ -1,0 +1,162 @@
+﻿@page "/admin/database-backup-settings"
+
+@using Barman.Application.Interfaces.Services
+@using BarmanLims.Components.Authorization
+@using BackupSettingsModel = Barman.Application.Interfaces.Services.DatabaseBackupSettings
+
+@attribute [RequirePermission("Admin")]
+
+@inject Barman.Persistence.Services.DatabaseBackupSettingsService SettingsService
+
+<PageTitle>تنظیمات Backup</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+
+    <MudText Typo="Typo.h5" Class="mb-4">
+        تنظیمات پشتیبان‌گیری خودکار
+    </MudText>
+
+    <MudPaper Class="pa-4">
+
+        <MudSwitch @bind-Value="Settings.Enabled"
+                   Color="Color.Primary"
+                   Label="فعال بودن Backup خودکار" />
+
+        <MudSelect T="string"
+                   @bind-Value="Settings.Mode"
+                   Label="نوع برنامه Backup"
+                   Variant="Variant.Outlined"
+                   Class="mt-4">
+
+            <MudSelectItem Value="@("Daily")">
+                روزانه
+            </MudSelectItem>
+
+            <MudSelectItem Value="@("Weekly")">
+                هفتگی
+            </MudSelectItem>
+
+        </MudSelect>
+
+        @if (Settings.Mode == "Daily")
+        {
+            <MudTimePicker @bind-Time="DailyTime"
+                           Label="ساعت Backup روزانه"
+                           AmPm="false"
+                           Class="mt-4" />
+        }
+
+        @if (Settings.Mode == "Weekly")
+        {
+            <MudSelect T="string"
+                       @bind-Value="Settings.WeeklyDay"
+                       Label="روز Backup هفتگی"
+                       Variant="Variant.Outlined"
+                       Class="mt-4">
+
+                <MudSelectItem Value="@("Saturday")">شنبه</MudSelectItem>
+                <MudSelectItem Value="@("Sunday")">یکشنبه</MudSelectItem>
+                <MudSelectItem Value="@("Monday")">دوشنبه</MudSelectItem>
+                <MudSelectItem Value="@("Tuesday")">سه‌شنبه</MudSelectItem>
+                <MudSelectItem Value="@("Wednesday")">چهارشنبه</MudSelectItem>
+                <MudSelectItem Value="@("Thursday")">پنجشنبه</MudSelectItem>
+                <MudSelectItem Value="@("Friday")">جمعه</MudSelectItem>
+
+            </MudSelect>
+
+            <MudTimePicker @bind-Time="WeeklyTime"
+                           Label="ساعت Backup هفتگی"
+                           AmPm="false"
+                           Class="mt-4" />
+        }
+
+        <MudNumericField T="int"
+                         @bind-Value="Settings.RetentionCount"
+                         Label="تعداد Backup قابل نگهداری"
+                         Variant="Variant.Outlined"
+                         Min="1"
+                         Class="mt-4" />
+
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <MudAlert Severity="Severity.Success" Class="mt-4">
+                @Message
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-4">
+                @ErrorMessage
+            </MudAlert>
+        }
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   Class="mt-6"
+                   OnClick="SaveAsync">
+
+            ذخیره تنظیمات
+
+        </MudButton>
+
+    </MudPaper>
+
+</MudContainer>
+
+@code {
+
+    private BackupSettingsModel Settings = new();
+
+    private TimeSpan? DailyTime;
+
+    private TimeSpan? WeeklyTime;
+
+    private string? Message;
+
+    private string? ErrorMessage;
+
+    protected override void OnInitialized()
+    {
+        Settings = SettingsService.GetSettings();
+
+        DailyTime = TimeSpan.TryParse(
+            Settings.DailyTime,
+            out var daily)
+            ? daily
+            : new TimeSpan(2, 0, 0);
+
+        WeeklyTime = TimeSpan.TryParse(
+            Settings.WeeklyTime,
+            out var weekly)
+            ? weekly
+            : new TimeSpan(2, 0, 0);
+    }
+
+    private async Task SaveAsync()
+    {
+        Message = null;
+        ErrorMessage = null;
+
+        try
+        {
+            Settings.DailyTime =
+                (DailyTime ?? new TimeSpan(2, 0, 0))
+                .ToString(@"hh\:mm");
+
+            Settings.WeeklyTime =
+                (WeeklyTime ?? new TimeSpan(2, 0, 0))
+                .ToString(@"hh\:mm");
+
+            await SettingsService.SaveAsync(Settings);
+
+            Message = "تنظیمات با موفقیت ذخیره شد.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در ذخیره تنظیمات: {ex.Message}";
+        }
+    }
+}

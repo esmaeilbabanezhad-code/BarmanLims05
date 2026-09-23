@@ -1,0 +1,460 @@
+﻿@page "/issued-report/{IssuedReportId:guid}"
+
+@using Barman.Application.DTOs.Reporting
+@using Barman.Application.Interfaces.Services.Reporting
+@using Barman.Domain.Entities.Reporting
+
+@inject IIssuedReportService IssuedReportService
+@inject IReportTemplateService ReportTemplateService
+@inject IReportTemplateRenderer ReportTemplateRenderer
+@inject NavigationManager NavigationManager
+
+<PageTitle>گزارش صادرشده</PageTitle>
+
+<div class="container-fluid">
+
+    @if (IsLoading)
+    {
+        <div class="text-center p-5">
+            <div class="spinner-border"></div>
+
+            <div class="mt-2">
+                در حال بارگذاری گزارش صادرشده...
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            @ErrorMessage
+        </div>
+    }
+    else if (Model is not null)
+    {
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+            <div>
+                <h3>گزارش نهایی صادرشده</h3>
+
+                <div class="text-muted">
+                    شماره گزارش:
+                    @Model.Data.ReportNumber
+                </div>
+
+                <div class="text-muted small">
+                    نسخه:
+                    @Model.Data.ReportVersion
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Data.TemplateCode))
+                {
+                    <div class="text-muted small">
+                        قالب:
+                        @Model.Data.TemplateCode
+                        -
+                        نسخه
+                        @(Model.Data.TemplateVersion ?? "-")
+                    </div>
+                }
+            </div>
+
+            <button class="btn btn-secondary"
+                    @onclick="GoBack">
+                بازگشت
+            </button>
+
+        </div>
+
+        <div class="alert alert-info">
+            این گزارش از Snapshot ذخیره‌شده صادر شده است و
+            مستقل از اطلاعات جاری نمونه نمایش داده می‌شود.
+        </div>
+
+        <div class="card">
+
+            <div class="card-body">
+
+                @foreach (var reportSection in Model.Sections
+                            .Where(x => x.IsVisible)
+                            .OrderBy(x => x.DisplayOrder))
+                {
+                    <div class="mb-4">
+
+                        <h5 class="border-bottom pb-2">
+                            @reportSection.Name
+                        </h5>
+
+                        @if (reportSection.Fields.Count > 0)
+                        {
+                            <div class="row g-2">
+
+                                @foreach (var field in reportSection.Fields
+                                                    .Where(x => x.IsVisible)
+                                                    .OrderBy(x => x.DisplayOrder))
+                                {
+                                    <div class="@GetFieldColumnClass(field.Width)">
+
+                                        @if (!string.IsNullOrWhiteSpace(field.Caption))
+                                        {
+                                            <strong>@field.Caption:</strong>
+                                        }
+
+                                        <span>
+                                            @FormatValue(
+                                            field.Value,
+                                                        field.Format)
+                        </span>
+
+                    </div>
+                                        }
+
+                            </div>
+                        }
+
+                    </div>
+                }
+
+                @if (Model.Tests.Count > 0)
+                {
+                    <div class="mt-4">
+
+                        <h5 class="border-bottom pb-2">
+                            نتایج آزمون‌ها
+                        </h5>
+
+                        @{
+                            var allColumns =
+                            GetAllTestColumns(Model.Tests);
+                        }
+
+                        @if (allColumns.Count > 0)
+                        {
+                            <table class="table table-bordered table-sm">
+
+                                <thead>
+                                    <tr>
+
+                                        @foreach (var column in allColumns)
+                                        {
+                                            <th style="@GetWidthStyle(column.Width)">
+                                                @column.Caption
+                                            </th>
+                                        }
+
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+
+                                    @foreach (var test in Model.Tests)
+                                    {
+                                        if (test.Results.Count > 0)
+                                        {
+                                            @foreach (var result in test.Results
+                                                                    .OrderBy(x => x.DisplayOrder))
+                                            {
+                                                <tr>
+
+                                                    @foreach (var column in allColumns)
+                                                    {
+                                                        var value =
+                                                        GetColumnValue(
+                                                        column,
+                                                        test,
+                                                        result);
+
+                                                        <td style="@GetWidthStyle(column.Width)">
+                                                            @FormatValue(
+                                                            value.Value,
+                                                                value.Format)
+                            </td>
+                                                        }
+
+                                                </tr>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+
+                                                @foreach (var column in allColumns)
+                                                {
+                                                    var value =
+                                                    GetColumnValue(
+                                                    column,
+                                                    test,
+                                                    null);
+
+                                                    <td style="@GetWidthStyle(column.Width)">
+                                                        @FormatValue(
+                                                        value.Value,
+                                                                value.Format)
+                            </td>
+                                                        }
+
+                                            </tr>
+                                        }
+                                    }
+
+                                </tbody>
+
+                            </table>
+                        }
+
+                    </div>
+                }
+
+                @if (Model.Data.Signatures is not null)
+                {
+                    <div class="mt-5 border-top pt-4">
+
+                        <h5 class="border-bottom pb-2">
+                            تأیید و مسئولین فنی
+                        </h5>
+
+                        <div class="row text-center mt-4">
+
+                            <div class="col-md-4">
+
+                                <strong>
+                                    مسئول بخش
+                                </strong>
+
+                                <div class="mt-2">
+                                    @(Model.Data.Signatures.SectionHeadName ?? "-")
+                                </div>
+
+                            </div>
+
+                            <div class="col-md-4">
+
+                                <strong>
+                                    مسئول فنی
+                                </strong>
+
+                                <div class="mt-2">
+                                    @(Model.Data.Signatures.TechnicalManagerName ?? "-")
+                                </div>
+
+                            </div>
+
+                            <div class="col-md-4">
+
+                                <strong>
+                                    مدیر آزمایشگاه
+                                </strong>
+
+                                <div class="mt-2">
+                                    @(Model.Data.Signatures.DirectorName ?? "-")
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+
+        </div>
+    }
+</div>
+
+@code {
+
+    [Parameter]
+    public Guid IssuedReportId { get; set; }
+
+    private ReportRenderingModel? Model;
+
+    private bool IsLoading;
+
+    private string? ErrorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadReport();
+    }
+
+    private async Task LoadReport()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+            Model = null;
+
+            var snapshot =
+                await IssuedReportService
+                    .GetSnapshotAsync(IssuedReportId);
+
+            if (snapshot is null)
+            {
+                ErrorMessage =
+                    "Snapshot گزارش صادرشده پیدا نشد.";
+
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    snapshot.TemplateCode))
+            {
+                ErrorMessage =
+                    "کد قالب در Snapshot گزارش وجود ندارد.";
+
+                return;
+            }
+
+            var template =
+                await ReportTemplateService
+                    .GetByCodeAsync(
+                        snapshot.TemplateCode);
+
+            if (template is null)
+            {
+                ErrorMessage =
+                    $"قالب گزارش با کد {snapshot.TemplateCode} پیدا نشد.";
+
+                return;
+            }
+
+            Model =
+                await ReportTemplateRenderer
+                    .RenderAsync(
+                        template,
+                        snapshot);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private static List<RenderedReportField> GetAllTestColumns(
+        IEnumerable<RenderedReportTest> tests)
+    {
+        return tests
+            .SelectMany(x => x.Columns)
+            .Where(x => x.IsVisible)
+            .GroupBy(x => new
+            {
+                x.Source,
+                x.FieldCode
+            })
+            .Select(x => x.First())
+            .OrderBy(x => x.DisplayOrder)
+            .ToList();
+    }
+
+    private static (object? Value, string? Format) GetColumnValue(
+        RenderedReportField column,
+        RenderedReportTest test,
+        RenderedReportResult? result)
+    {
+        if (column.Source.Equals(
+                "Test",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            var testField =
+                test.Fields
+                    .FirstOrDefault(x =>
+                        x.IsVisible &&
+                        x.FieldCode.Equals(
+                            column.FieldCode,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (testField is not null)
+            {
+                return (
+                    testField.Value,
+                    testField.Format);
+            }
+        }
+
+        if (column.Source.Equals(
+                "Result",
+                StringComparison.OrdinalIgnoreCase) &&
+            result is not null)
+        {
+            var resultField =
+                result.Fields
+                    .FirstOrDefault(x =>
+                        x.IsVisible &&
+                        x.FieldCode.Equals(
+                            column.FieldCode,
+                            StringComparison.OrdinalIgnoreCase));
+
+            if (resultField is not null)
+            {
+                return (
+                    resultField.Value,
+                    resultField.Format);
+            }
+        }
+
+        return (
+            null,
+            column.Format);
+    }
+
+    private static string GetFieldColumnClass(
+        string? width)
+    {
+        return "col-md-6";
+    }
+
+    private static string GetWidthStyle(
+        string? width)
+    {
+        if (string.IsNullOrWhiteSpace(width))
+            return "";
+
+        return $"width:{width};";
+    }
+
+    private static string FormatValue(
+        object? value,
+        string? format)
+    {
+        if (value is null)
+            return "";
+
+        if (value is DateTime dateTime &&
+            !string.IsNullOrWhiteSpace(format))
+        {
+            return dateTime.ToString(format);
+        }
+
+        if (value is DateOnly dateOnly &&
+            !string.IsNullOrWhiteSpace(format))
+        {
+            return dateOnly.ToString(format);
+        }
+
+        if (value is IFormattable formattable &&
+            !string.IsNullOrWhiteSpace(format))
+        {
+            return formattable.ToString(
+                format,
+                null) ?? "";
+        }
+
+        return value.ToString() ?? "";
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo(
+            $"/issued-report-versions/{GetSampleId()}");
+    }
+
+    private Guid GetSampleId()
+    {
+        return Model?.Data.Sample.Id ?? Guid.Empty;
+    }
+}

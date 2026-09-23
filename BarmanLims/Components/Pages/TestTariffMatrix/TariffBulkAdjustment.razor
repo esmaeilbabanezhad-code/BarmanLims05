@@ -1,0 +1,589 @@
+@page "/test-tariff-bulk-adjustment"
+
+@using Barman.Application.DTOs.TestTariff
+@using Barman.Application.Interfaces
+@using Barman.Domain.Entities
+@using Barman.Application.DTOs.Test
+
+@inject IOrganizationTypeService OrganizationTypeService
+@inject ITestTariffService TestTariffService
+@inject ITestService TestService
+@inject ITestPanelService TestPanelService
+@inject ICustomerService CustomerService
+@inject IDialogService DialogService
+
+<PageTitle>تعدیل گروهی تعرفه‌ها</PageTitle>
+
+<MudText Typo="Typo.h5" Class="mb-4">
+    تغییر گروهی تعرفه‌ها
+</MudText>
+
+<MudPaper Class="pa-4">
+
+    <MudGrid>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid"
+                       Label="نوع سازمان"
+                       Variant="Variant.Outlined"
+                       @bind-Value="OrganizationTypeId">
+                @foreach (var item in OrganizationTypes)
+                {
+                    <MudSelectItem Value="@item.Id">
+                        @item.Name
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="Guid?"
+                       Label="مشتری"
+                       Variant="Variant.Outlined"
+                       @bind-Value="CustomerId">
+                <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+                    تعرفه عمومی
+                </MudSelectItem>
+
+                @foreach (var customer in Customers)
+                {
+                    <MudSelectItem T="Guid?" Value="@((Guid?)customer.Id)">
+                        @customer.DisplayName
+                    </MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <BarmanDateInput Label="تاریخ اجرای تعرفه جدید"
+                             @bind-Value="EffectiveDate" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudNumericField T="decimal"
+                             Label="درصد تغییر"
+                             Variant="Variant.Outlined"
+                             @bind-Value="Percentage"
+                             Adornment="Adornment.End"
+                             AdornmentText="%"
+                             Immediate="true" />
+
+            <MudText Typo="Typo.caption" Class="mt-1">
+                عدد مثبت = افزایش | عدد منفی = کاهش
+            </MudText>
+
+        </MudItem>
+
+    </MudGrid>
+
+    <MudDivider Class="my-4" />
+
+    <MudRadioGroup T="string" @bind-Value="SelectionMode">
+        <MudRadio T="string" Value="@("all")">
+            همه آزمون‌ها و پنل‌ها
+        </MudRadio>
+
+        <MudRadio T="string" Value="@("selected")">
+            انتخاب آزمون / پنل
+        </MudRadio>
+    </MudRadioGroup>
+
+    @if (SelectionMode == "selected")
+    {
+        <MudGrid Class="mt-2">
+
+            <MudItem xs="12" md="6">
+
+                <MudText Typo="Typo.subtitle2" Class="mb-2">
+                    آزمون‌ها
+                </MudText>
+
+                <MudSelect T="Guid"
+                           MultiSelection="true"
+                           Variant="Variant.Outlined"
+                           Label="انتخاب آزمون‌ها"
+                           SelectedValues="@SelectedTestIds"
+                           SelectedValuesChanged="OnSelectedTestsChanged"
+                           MultiSelectionTextFunc="GetSelectedTestsText">
+
+                    @foreach (var test in Tests)
+                    {
+                        <MudSelectItem Value="@test.Id">
+                            @test.Code - @test.Name
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+
+                <MudText Typo="Typo.subtitle2" Class="mb-2">
+                    پنل‌ها
+                </MudText>
+
+                <MudSelect T="Guid"
+                           MultiSelection="true"
+                           Variant="Variant.Outlined"
+                           Label="انتخاب پنل‌ها"
+                           SelectedValues="@SelectedPanelIds"
+                           SelectedValuesChanged="OnSelectedPanelsChanged"
+                           MultiSelectionTextFunc="GetSelectedPanelsText">
+
+                    @foreach (var panel in Panels)
+                    {
+                        <MudSelectItem Value="@panel.Id">
+                            @panel.Code - @panel.Name
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+
+            </MudItem>
+
+        </MudGrid>
+    }
+
+    <div class="d-flex justify-end mt-4">
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@IsLoading"
+                   OnClick="PreviewAsync">
+
+            @if (IsLoading)
+            {
+                <MudProgressCircular Size="Size.Small"
+                                     Indeterminate="true"
+                                     Class="me-2" />
+            }
+
+            پیش‌نمایش تغییرات
+        </MudButton>
+
+    </div>
+
+</MudPaper>
+
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <MudAlert Severity="Severity.Error"
+              Class="mt-4">
+        @ErrorMessage
+    </MudAlert>
+}
+
+@if (PreviewItems.Count > 0)
+{
+    <MudPaper Class="pa-4 mt-4">
+
+        <MudText Typo="Typo.h6" Class="mb-3">
+            پیش‌نمایش تغییرات
+        </MudText>
+
+        <MudAlert Severity="Severity.Info"
+                  Class="mb-3">
+
+            تعداد تعرفه‌های مشمول:
+            <b>@PreviewItems.Count</b>
+
+        </MudAlert>
+
+        <MudTable Items="@PreviewItems"
+                  Dense="true"
+                  Hover="true"
+                  Striped="true"
+                  Bordered="true">
+
+            <HeaderContent>
+
+                <MudTh>نوع</MudTh>
+                <MudTh>کد</MudTh>
+                <MudTh>نام</MudTh>
+                <MudTh>تعرفه فعلی</MudTh>
+                <MudTh>درصد</MudTh>
+                <MudTh>تعرفه جدید</MudTh>
+                <MudTh>شروع تعرفه جدید</MudTh>
+
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd>
+                    @context.TargetType
+                </MudTd>
+
+                <MudTd>
+                    @context.Code
+                </MudTd>
+
+                <MudTd>
+                    @context.Name
+                </MudTd>
+
+                <MudTd>
+                    @FormatPrice(context.OldPrice)
+                    @context.Currency
+                </MudTd>
+
+                <MudTd>
+                    @context.Percentage.ToString("0.##")%
+                </MudTd>
+
+                <MudTd>
+                    <b>
+                        @FormatPrice(context.NewPrice)
+                        @context.Currency
+                    </b>
+                </MudTd>
+
+                <MudTd>
+                    @FormatPersianDate(context.NewValidFrom)
+                </MudTd>
+
+            </RowTemplate>
+
+            <PagerContent>
+                <MudTablePager RowsPerPageString="تعداد در صفحه"
+                               PageSizeOptions="@(new[] { 10, 25, 50, 100 })" />
+            </PagerContent>
+
+        </MudTable>
+
+        <div class="d-flex justify-end mt-4">
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       OnClick="ClearPreview">
+
+                پاک کردن پیش‌نمایش
+
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Warning"
+                       Disabled="@IsApplying"
+                       OnClick="ApplyAsync"
+                       Class="ms-2">
+
+                @if (IsApplying)
+                {
+                    <MudProgressCircular Size="Size.Small"
+                                         Indeterminate="true"
+                                         Class="me-2" />
+                }
+
+                تأیید و اعمال تغییرات
+
+            </MudButton>
+        </div>
+
+    </MudPaper>
+}
+
+@code {
+
+    private List<OrganizationType> OrganizationTypes = new();
+    private List<Customer> Customers = new();
+    private List<TestLookupDto> Tests = new();
+    private List<TestPanel> Panels = new();
+
+    private List<TariffBulkAdjustmentPreviewDto> PreviewItems = new();
+
+    private List<Guid> ExpectedTariffIds = new();
+
+    private Dictionary<Guid, decimal> ExpectedOldPrices = new();
+
+    private Guid OrganizationTypeId { get; set; }
+
+    private Guid? CustomerId { get; set; }
+
+    private DateTime? EffectiveDate { get; set; } = DateTime.Today;
+
+    private decimal Percentage { get; set; }
+
+    private string SelectionMode { get; set; } = "all";
+
+    private HashSet<Guid> SelectedTestIds { get; set; } = new();
+
+    private HashSet<Guid> SelectedPanelIds { get; set; } = new();
+
+    private bool IsLoading { get; set; }
+
+    private bool IsApplying { get; set; }
+
+    private string ErrorMessage { get; set; } = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            OrganizationTypes =
+                await OrganizationTypeService.GetAllAsync();
+
+            Customers =
+                await CustomerService.GetAllAsync();
+
+            Tests =
+                await TestService.GetReceptionLookupAsync();
+
+            Panels =
+                await TestPanelService.GetAllAsync();
+
+            if (OrganizationTypes.Count > 0)
+            {
+                OrganizationTypeId =
+                    OrganizationTypes[0].Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در بارگذاری اطلاعات: {ex.Message}";
+        }
+    }
+
+    private async Task PreviewAsync()
+    {
+        ErrorMessage = "";
+        PreviewItems.Clear();
+
+        if (OrganizationTypeId == Guid.Empty)
+        {
+            ErrorMessage = "نوع سازمان را انتخاب کنید.";
+            return;
+        }
+
+        if (!EffectiveDate.HasValue)
+        {
+            ErrorMessage = "تاریخ اجرای تعرفه را وارد کنید.";
+            return;
+        }
+
+        if (Percentage == 0)
+        {
+            ErrorMessage = "درصد تعدیل را وارد کنید.";
+            return;
+        }
+
+        if (SelectionMode == "selected" &&
+            SelectedTestIds.Count == 0 &&
+            SelectedPanelIds.Count == 0)
+        {
+            ErrorMessage =
+                "حداقل یک آزمون یا پنل را انتخاب کنید.";
+            return;
+        }
+
+        try
+        {
+            IsLoading = true;
+
+            var dto = new TariffBulkAdjustmentDto
+            {
+                OrganizationTypeId =
+                    OrganizationTypeId,
+
+                CustomerId =
+                    CustomerId,
+
+                EffectiveDate =
+                    EffectiveDate.Value,
+
+                Percentage =
+                    Percentage,
+
+                ApplyToAll =
+                    SelectionMode == "all",
+
+                TestIds =
+                    SelectedTestIds.ToList(),
+
+                TestPanelIds =
+                    SelectedPanelIds.ToList()
+            };
+
+            PreviewItems =
+    await TestTariffService
+        .PreviewBulkAdjustmentAsync(dto);
+
+            ExpectedTariffIds =
+                PreviewItems
+                    .Select(x => x.TariffId)
+                    .ToList();
+
+            ExpectedOldPrices =
+                PreviewItems
+                    .ToDictionary(
+                        x => x.TariffId,
+                        x => x.OldPrice);
+
+            if (PreviewItems.Count == 0)
+            {
+                ErrorMessage =
+                    "برای شرایط انتخاب‌شده تعرفه فعالی پیدا نشد.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در ایجاد پیش‌نمایش: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    private string GetSelectedTestsText(
+    List<string> selectedValues)
+    {
+        if (selectedValues == null || selectedValues.Count == 0)
+            return "";
+
+        var selectedIds = selectedValues
+            .Where(x => Guid.TryParse(x, out _))
+            .Select(Guid.Parse)
+            .ToHashSet();
+
+        return string.Join(
+            "، ",
+            Tests
+                .Where(x => selectedIds.Contains(x.Id))
+                .Select(x => $"{x.Code} - {x.Name}"));
+    }
+
+    private string GetSelectedPanelsText(
+        List<string> selectedValues)
+    {
+        if (selectedValues == null || selectedValues.Count == 0)
+            return "";
+
+        var selectedIds = selectedValues
+            .Where(x => Guid.TryParse(x, out _))
+            .Select(Guid.Parse)
+            .ToHashSet();
+
+        return string.Join(
+            "، ",
+            Panels
+                .Where(x => selectedIds.Contains(x.Id))
+                .Select(x => $"{x.Code} - {x.Name}"));
+    }
+    private Task OnSelectedTestsChanged(
+        IEnumerable<Guid> values)
+    {
+        SelectedTestIds =
+            values.ToHashSet();
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnSelectedPanelsChanged(
+        IEnumerable<Guid> values)
+    {
+        SelectedPanelIds =
+            values.ToHashSet();
+
+        return Task.CompletedTask;
+    }
+
+    private void ClearPreview()
+    {
+        PreviewItems.Clear();
+        ErrorMessage = "";
+    }
+
+    private static string FormatPrice(decimal value)
+    {
+        return value.ToString("#,##0.##");
+    }
+
+    private static string FormatPersianDate(DateTime date)
+    {
+        var calendar =
+            new System.Globalization.PersianCalendar();
+
+        var year =
+            calendar.GetYear(date);
+
+        var month =
+            calendar.GetMonth(date);
+
+        var day =
+            calendar.GetDayOfMonth(date);
+
+        return $"{year:0000}/{month:00}/{day:00}";
+    }
+    private async Task ApplyAsync()
+    {
+        if (PreviewItems.Count == 0)
+            return;
+
+        var parameters = new DialogParameters
+        {
+            ["Count"] = PreviewItems.Count,
+            ["Percentage"] = Percentage,
+            ["EffectiveDate"] = EffectiveDate
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog =
+            await DialogService.ShowAsync<
+                TariffBulkAdjustmentConfirmDialog>(
+                "تأیید تغییرات تعرفه",
+                parameters,
+                options);
+
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        try
+        {
+            IsApplying = true;
+            ErrorMessage = "";
+
+            var dto = new TariffBulkAdjustmentDto
+            {
+                OrganizationTypeId = OrganizationTypeId,
+                CustomerId = CustomerId,
+                EffectiveDate = EffectiveDate!.Value,
+                Percentage = Percentage,
+                ApplyToAll = SelectionMode == "all",
+                TestIds = SelectedTestIds.ToList(),
+                TestPanelIds = SelectedPanelIds.ToList(),
+                ExpectedTariffIds = ExpectedTariffIds.ToList(),
+                ExpectedOldPrices =
+                    new Dictionary<Guid, decimal>(
+                        ExpectedOldPrices)
+            };
+
+            var count =
+                await TestTariffService
+                    .ApplyBulkAdjustmentAsync(dto);
+
+            PreviewItems.Clear();
+            ExpectedTariffIds.Clear();
+            ExpectedOldPrices.Clear();
+
+            ErrorMessage =
+                $"تغییر {count} تعرفه با موفقیت اعمال شد.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"اعمال تغییرات انجام نشد: {ex.Message}";
+        }
+        finally
+        {
+            IsApplying = false;
+        }
+    }
+}

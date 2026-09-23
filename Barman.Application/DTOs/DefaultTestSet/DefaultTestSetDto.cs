@@ -16,6 +16,8 @@ public class DefaultTestSetDto
 
     public Guid? MatrixId { get; set; }
 
+    public Guid? StandardSampleId { get; set; }
+
     public int Priority { get; set; } = 100;
 
     public List<DefaultTestSetItemDto> Items { get; set; } = new();

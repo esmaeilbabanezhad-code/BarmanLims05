@@ -34,4 +34,7 @@ public class Employee : BaseEntity
 
     public ICollection<TechnicalManagerSectionHead> SectionHeadTechnicalManagers { get; set; }
         = new List<TechnicalManagerSectionHead>();
+
+    public ICollection<EmployeeTechnicalManagerScope> TechnicalManagerScopes { get; set; }
+    = new List<EmployeeTechnicalManagerScope>();
 }

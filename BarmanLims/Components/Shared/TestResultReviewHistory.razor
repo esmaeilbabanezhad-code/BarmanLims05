@@ -1,0 +1,113 @@
+﻿@using Barman.Application.Interfaces
+@using Barman.Domain.Entities
+@using Barman.Domain.Enums
+@inject IUnitOfWork UnitOfWork
+
+@if (IsLoading)
+{
+    <MudProgressCircular Indeterminate="true"
+                         Size="Size.Small" />
+}
+else if (Reviews.Count > 0)
+{
+    <MudPaper Class="pa-3 mt-3"
+              Elevation="1">
+
+        <MudText Typo="Typo.subtitle1"
+                 Class="mb-2">
+            ⚠️ تاریخچه بررسی و بازگشت نتیجه
+        </MudText>
+
+        @foreach (var review in Reviews)
+        {
+            <MudPaper Class="pa-2 mb-2"
+                      Outlined="true">
+
+                <MudText Typo="Typo.subtitle2">
+                    @GetReviewLevelText(review.ReviewLevel)
+                </MudText>
+
+                <MudText Typo="Typo.body2">
+                    تصمیم:
+                    @GetDecisionText(review.Decision)
+                </MudText>
+
+                @if (!string.IsNullOrWhiteSpace(review.Reason))
+                {
+                    <MudText Typo="Typo.body2"
+                             Class="mt-1">
+                        <b>علت:</b>
+                        @review.Reason
+                    </MudText>
+                }
+
+                <MudText Typo="Typo.caption"
+                         Class="mt-1">
+                    @review.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")
+                </MudText>
+
+            </MudPaper>
+        }
+
+    </MudPaper>
+}
+
+@code
+{
+    [Parameter]
+    public Guid TestAssignmentId { get; set; }
+
+    private List<TestResultReview> Reviews = new();
+
+    private bool IsLoading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        IsLoading = true;
+
+        if (TestAssignmentId != Guid.Empty)
+        {
+            Reviews = await UnitOfWork.TestResultReviews
+                .GetByAssignmentIdAsync(TestAssignmentId);
+        }
+        else
+        {
+            Reviews = new List<TestResultReview>();
+        }
+
+        IsLoading = false;
+    }
+
+    private static string GetReviewLevelText(
+        TestResultReviewLevel level)
+    {
+        return level switch
+        {
+            TestResultReviewLevel.SectionHead =>
+                "مسئول بخش",
+
+            TestResultReviewLevel.TechnicalManager =>
+                "مسئول فنی",
+
+            TestResultReviewLevel.Director =>
+                "مدیر ارشد",
+
+            _ => level.ToString()
+        };
+    }
+
+    private static string GetDecisionText(
+        TestResultReviewDecision decision)
+    {
+        return decision switch
+        {
+            TestResultReviewDecision.Approved =>
+                "تأیید",
+
+            TestResultReviewDecision.Rejected =>
+                "رد",
+
+            _ => decision.ToString()
+        };
+    }
+}

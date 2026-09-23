@@ -25,7 +25,7 @@ public class TestLimitChangeRequestRepository
     }
 
     public async Task<TestLimitChangeRequest?> GetByIdAsync(
-        Guid id)
+    Guid id)
     {
         if (id == Guid.Empty)
             return null;
@@ -33,13 +33,15 @@ public class TestLimitChangeRequestRepository
         return await _context.TestLimitChangeRequests
             .Include(x => x.Test)
             .Include(x => x.ReferenceLimit)
+            .Include(x => x.TestResultSetItem)
+                .ThenInclude(x => x!.TestResultDefinition)
             .Include(x => x.RequestedByEmployee)
             .Include(x => x.ApprovedByEmployee)
             .FirstOrDefaultAsync(x => x.Id == id);
     }
 
     public async Task<List<TestLimitChangeRequest>>
-        GetPendingForSectionHeadAsync(Guid departmentId)
+    GetPendingForSectionHeadAsync(Guid departmentId)
     {
         if (departmentId == Guid.Empty)
             return new List<TestLimitChangeRequest>();
@@ -47,6 +49,8 @@ public class TestLimitChangeRequestRepository
         return await _context.TestLimitChangeRequests
             .Include(x => x.Test)
             .Include(x => x.ReferenceLimit)
+            .Include(x => x.TestResultSetItem)
+                .ThenInclude(x => x!.TestResultDefinition)
             .Include(x => x.RequestedByEmployee)
             .Include(x => x.ApprovedByEmployee)
             .Where(x =>

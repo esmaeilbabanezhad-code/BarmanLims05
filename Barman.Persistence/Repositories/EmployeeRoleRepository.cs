@@ -24,7 +24,10 @@ public class EmployeeRoleRepository : IEmployeeRoleRepository
     {
         return await _context.EmployeeRoles
             .Include(x => x.Role)
-            .Where(x => x.EmployeeId == employeeId)
+            .Where(x =>
+                x.EmployeeId == employeeId &&
+                !x.IsDeleted &&
+                !x.Role.IsDeleted)
             .OrderByDescending(x => x.IsPrimary)
             .ThenBy(x => x.Role.Name)
             .ToListAsync();
@@ -37,7 +40,10 @@ public class EmployeeRoleRepository : IEmployeeRoleRepository
             .Include(x => x.Role)
                 .ThenInclude(x => x.RolePermissions)
                     .ThenInclude(x => x.Permission)
-            .Where(x => x.EmployeeId == employeeId)
+            .Where(x =>
+                x.EmployeeId == employeeId &&
+                !x.IsDeleted &&
+                !x.Role.IsDeleted)
             .OrderByDescending(x => x.IsPrimary)
             .ThenBy(x => x.Role.Name);
 

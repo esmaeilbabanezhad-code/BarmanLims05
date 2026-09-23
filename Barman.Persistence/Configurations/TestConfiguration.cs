@@ -73,5 +73,11 @@ public class TestConfiguration : IEntityTypeConfiguration<Test>
             .WithMany()
             .HasForeignKey(x => x.InstrumentId)
             .OnDelete(DeleteBehavior.Restrict);
+
+
+        builder.HasOne(x => x.DefaultAnalyst)
+            .WithMany()
+            .HasForeignKey(x => x.DefaultAnalystId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

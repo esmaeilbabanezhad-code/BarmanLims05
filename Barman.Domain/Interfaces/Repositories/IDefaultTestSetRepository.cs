@@ -16,10 +16,11 @@ public interface IDefaultTestSetRepository
         CancellationToken cancellationToken = default);
 
     Task<DefaultTestSet?> ResolveAsync(
-        Guid? customerId,
-        Guid? sampleCategoryId,
-        Guid? matrixId,
-        CancellationToken cancellationToken = default);
+    Guid? customerId,
+    Guid? sampleCategoryId,
+    Guid? matrixId,
+    Guid? standardSampleId,
+    CancellationToken cancellationToken = default);
 
     Task AddAsync(
         DefaultTestSet entity,

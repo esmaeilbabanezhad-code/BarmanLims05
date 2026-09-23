@@ -41,8 +41,8 @@ public class DepartmentResponsibilityService
     }
 
     public async Task<DepartmentResponsibility> AddAsync(
-        DepartmentResponsibility responsibility,
-        CancellationToken cancellationToken = default)
+    DepartmentResponsibility responsibility,
+    CancellationToken cancellationToken = default)
     {
         var isEmployeeInDepartment =
             await _unitOfWork.EmployeeDepartments
@@ -61,16 +61,56 @@ public class DepartmentResponsibilityService
                 .GetByDepartmentIdAsync(
                     responsibility.DepartmentId);
 
-        if (existing.Any(x =>
+        var matchingResponsibility = existing.FirstOrDefault(x =>
             x.EmployeeId == responsibility.EmployeeId &&
-            x.ResponsibilityType == responsibility.ResponsibilityType))
+            x.ResponsibilityType == responsibility.ResponsibilityType);
+
+        if (matchingResponsibility != null)
         {
-            throw new InvalidOperationException(
-                "This responsibility is already assigned to this employee in the department.");
+            if (!matchingResponsibility.IsDeleted &&
+                matchingResponsibility.IsActive)
+            {
+                throw new InvalidOperationException(
+                    "This responsibility is already assigned to this employee in the department.");
+            }
+
+            matchingResponsibility.IsDeleted = false;
+            matchingResponsibility.IsActive = true;
+            matchingResponsibility.IsPrimary =
+                responsibility.IsPrimary;
+            matchingResponsibility.ModifiedAt =
+                DateTimeOffset.UtcNow;
+
+            if (matchingResponsibility.IsPrimary)
+            {
+                foreach (var item in existing.Where(x =>
+                    x.Id != matchingResponsibility.Id &&
+                    !x.IsDeleted &&
+                    x.IsActive &&
+                    x.ResponsibilityType ==
+                        responsibility.ResponsibilityType))
+                {
+                    item.IsPrimary = false;
+                    item.ModifiedAt = DateTimeOffset.UtcNow;
+
+                    _unitOfWork.DepartmentResponsibilities
+                        .Update(item);
+                }
+            }
+
+            _unitOfWork.DepartmentResponsibilities
+                .Update(matchingResponsibility);
+
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return matchingResponsibility;
         }
 
         if (!existing.Any(x =>
-            x.ResponsibilityType == responsibility.ResponsibilityType))
+            !x.IsDeleted &&
+            x.IsActive &&
+            x.ResponsibilityType ==
+                responsibility.ResponsibilityType))
         {
             responsibility.IsPrimary = true;
         }
@@ -78,12 +118,21 @@ public class DepartmentResponsibilityService
         if (responsibility.IsPrimary)
         {
             foreach (var item in existing.Where(x =>
-                x.ResponsibilityType == responsibility.ResponsibilityType))
+                !x.IsDeleted &&
+                x.IsActive &&
+                x.ResponsibilityType ==
+                    responsibility.ResponsibilityType))
             {
                 item.IsPrimary = false;
-                _unitOfWork.DepartmentResponsibilities.Update(item);
+                item.ModifiedAt = DateTimeOffset.UtcNow;
+
+                _unitOfWork.DepartmentResponsibilities
+                    .Update(item);
             }
         }
+
+        responsibility.IsDeleted = false;
+        responsibility.IsActive = true;
 
         await _unitOfWork.DepartmentResponsibilities
             .AddAsync(responsibility);

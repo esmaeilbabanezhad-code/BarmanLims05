@@ -8,13 +8,16 @@ public class CustomerService : ICustomerService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPermissionService _permissionService;
+    private readonly INumberGenerator _numberGenerator;
 
     public CustomerService(
         IUnitOfWork unitOfWork,
-        IPermissionService permissionService)
+        IPermissionService permissionService,
+        INumberGenerator numberGenerator)
     {
         _unitOfWork = unitOfWork;
         _permissionService = permissionService;
+        _numberGenerator = numberGenerator;
     }
 
     public async Task<List<Customer>> GetAllAsync()
@@ -35,10 +38,7 @@ public class CustomerService : ICustomerService
     {
         await EnsurePermissionAsync("Customer.Create");
 
-        var list = await _unitOfWork.Customers.GetAllAsync();
-
-        if (list.Any(x => x.Code == customer.Code))
-            throw new Exception("Customer Code already exists.");
+        customer.Code = await _numberGenerator.GenerateAsync("Customer");
 
         customer.IsActive = true;
 

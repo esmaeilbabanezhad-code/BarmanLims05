@@ -1,0 +1,265 @@
+﻿/* =========================================================
+   Barman LIMS - Final Report Preview
+   Professional Report Preview Styling
+   ========================================================= */
+
+:host {
+    direction: rtl;
+}
+
+.container-fluid {
+    direction: rtl;
+    font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+    color: #263238;
+}
+
+.container-fluid > .d-flex {
+    direction: rtl;
+}
+
+.container-fluid h3 {
+    color: #17365d;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+
+.container-fluid .text-muted {
+    color: #6c757d !important;
+}
+
+.container-fluid .small.text-muted {
+    color: #607d8b !important;
+}
+
+/* Main report card */
+
+.container-fluid > .card {
+    border: 1px solid #d6dee6;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(23, 54, 93, 0.08);
+    background: #ffffff;
+}
+
+.container-fluid > .card > .card-body {
+    padding: 28px;
+}
+
+/* Report sections */
+
+.container-fluid .card-body > .mb-4 {
+    margin-bottom: 24px !important;
+}
+
+.container-fluid .card-body h5 {
+    color: #17365d;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    padding: 9px 12px !important;
+
+    background: #eaf2f8;
+    border: 1px solid #d4e2ee !important;
+    border-right: 4px solid #2f75b5 !important;
+    border-radius: 4px;
+}
+
+/* Section fields */
+
+.container-fluid .card-body .row.g-2 {
+    margin-top: 0;
+}
+
+.container-fluid .card-body .row.g-2 > div {
+    min-height: 42px;
+    padding: 9px 12px;
+
+    background: #fafcfd;
+    border: 1px solid #e1e7ec;
+    border-radius: 4px;
+
+    line-height: 1.7;
+}
+
+.container-fluid .card-body .row.g-2 > div strong {
+    color: #455a64;
+    font-weight: 700;
+    margin-left: 5px;
+}
+
+.container-fluid .card-body .row.g-2 > div span {
+    color: #263238;
+}
+
+/* Results table */
+
+.container-fluid .card-body .table {
+    width: 100%;
+    margin-top: 12px;
+
+    border: 1px solid #c9d4df;
+    border-collapse: separate;
+    border-spacing: 0;
+
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.container-fluid .card-body .table thead th {
+    background: #2f75b5;
+    color: #ffffff;
+
+    border-color: #255f94;
+
+    font-weight: 700;
+    text-align: center;
+    vertical-align: middle;
+
+    padding: 10px 8px;
+    white-space: nowrap;
+}
+
+.container-fluid .card-body .table tbody td {
+    background: #ffffff;
+    border-color: #d7e0e8;
+
+    padding: 8px 7px;
+
+    vertical-align: middle;
+    line-height: 1.6;
+    text-align: right;
+}
+
+.container-fluid .card-body .table tbody tr:nth-child(even) td {
+    background: #f8fafc;
+}
+
+.container-fluid .card-body .table tbody tr:hover td {
+    background: #eef5fb;
+}
+
+.container-fluid .card-body .table tbody td:nth-child(3),
+.container-fluid .card-body .table tbody td:nth-child(4),
+.container-fluid .card-body .table tbody td:nth-child(5),
+.container-fluid .card-body .table tbody td:nth-child(6) {
+    text-align: center;
+}
+
+/* Signature section */
+
+.container-fluid .card-body .border-top.pt-4 {
+    border-color: #cfd8df !important;
+}
+
+.container-fluid .card-body .row.text-center {
+    margin-top: 22px !important;
+}
+
+.container-fluid .card-body .row.text-center > div {
+    min-height: 95px;
+
+    padding: 14px 10px;
+
+    border: 1px solid #dce3e8;
+    background: #fafcfd;
+}
+
+.container-fluid .card-body .row.text-center > div strong {
+    display: block;
+
+    color: #17365d;
+    font-weight: 700;
+
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e1e7ec;
+}
+
+.container-fluid .card-body .row.text-center > div .mt-2 {
+    color: #37474f;
+    font-size: 13px;
+}
+
+/* Buttons */
+
+.container-fluid .btn {
+    border-radius: 5px;
+    font-family: Tahoma, "Segoe UI", Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.container-fluid .btn-success {
+    background: #2e7d32;
+    border-color: #2e7d32;
+}
+
+.container-fluid .btn-outline-primary {
+    color: #2f75b5;
+    border-color: #2f75b5;
+}
+
+.container-fluid .btn-outline-primary:hover {
+    background: #2f75b5;
+    color: #ffffff;
+}
+
+.container-fluid .btn-outline-danger {
+    color: #c62828;
+    border-color: #c62828;
+}
+
+.container-fluid .btn-outline-danger:hover {
+    background: #c62828;
+    color: #ffffff;
+}
+
+/* Alerts */
+
+.container-fluid .alert {
+    border-radius: 5px;
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.container-fluid .alert-success {
+    border-right: 4px solid #2e7d32;
+}
+
+.container-fluid .alert-warning {
+    border-right: 4px solid #f9a825;
+}
+
+.container-fluid .alert-danger {
+    border-right: 4px solid #c62828;
+}
+
+/* Responsive */
+
+@media (max-width: 768px) {
+
+    .container-fluid > .card > .card-body {
+        padding: 15px;
+    }
+
+    .container-fluid .card-body .row.g-2 > div {
+        margin-bottom: 4px;
+    }
+
+    .container-fluid .card-body .table {
+        font-size: 12px;
+    }
+
+    .container-fluid .card-body .table thead th,
+    .container-fluid .card-body .table tbody td {
+        padding: 6px 5px;
+    }
+
+    .container-fluid .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 12px;
+    }
+
+    .container-fluid .d-flex.gap-2 {
+        flex-wrap: wrap;
+    }
+}

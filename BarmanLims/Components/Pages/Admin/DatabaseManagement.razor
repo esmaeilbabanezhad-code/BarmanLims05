@@ -1,0 +1,637 @@
+﻿@page "/admin/database"
+
+@using Barman.Application.Interfaces.Services
+@using BarmanLims.Components.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+
+@attribute [RequirePermission("Admin")]
+
+@inject IApplicationDatabaseUpgradeService DatabaseUpgradeService
+@inject IDatabaseBackupService DatabaseBackupService
+@inject IDatabaseRestoreService DatabaseRestoreService
+
+<PageTitle>مدیریت پایگاه داده</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+
+    <MudText Typo="Typo.h5" Class="mb-4">
+        مدیریت پایگاه داده
+    </MudText>
+
+    @if (IsLoading)
+    {
+        <MudPaper Class="pa-6 d-flex justify-center">
+            <MudProgressCircular Indeterminate="true"
+                                 Color="Color.Primary" />
+        </MudPaper>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                @ErrorMessage
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(SuccessMessage))
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4">
+                @SuccessMessage
+            </MudAlert>
+        }
+
+        <MudGrid>
+
+            <MudItem xs="12" md="6">
+
+                <MudPaper Class="pa-4">
+
+                    <MudText Typo="Typo.h6" Class="mb-4">
+                        وضعیت پایگاه داده
+                    </MudText>
+
+                    <MudText Typo="Typo.body2">
+                        Migration فعلی:
+                    </MudText>
+
+                    <MudText Typo="Typo.body1"
+                             Class="mb-4"
+                             Style="word-break:break-all;">
+                        @(CurrentMigration ?? "هیچ Migrationای ثبت نشده است")
+                    </MudText>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.body2">
+                        Migrationهای در انتظار:
+                    </MudText>
+
+                    @if (PendingMigrations.Count == 0)
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Success"
+                                 Variant="Variant.Outlined"
+                                 Class="mt-2">
+                            Database به‌روز است
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Warning"
+                                 Variant="Variant.Outlined"
+                                 Class="mt-2">
+                            @PendingMigrations.Count Migration در انتظار
+                        </MudChip>
+
+                        <MudList T="string" Dense="true" Class="mt-2">
+                            @foreach (var migration in PendingMigrations)
+                            {
+                                <MudListItem T="string">
+                                    @migration
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               Disabled="@IsBusy"
+                               OnClick="LoadDatabaseStatusAsync">
+                        بررسی مجدد وضعیت
+                    </MudButton>
+
+                </MudPaper>
+
+            </MudItem>
+
+
+            <MudItem xs="12" md="6">
+
+                <MudPaper Class="pa-4">
+
+                    <MudText Typo="Typo.h6" Class="mb-4">
+                        پشتیبان‌گیری
+                    </MudText>
+
+                    <MudText Typo="Typo.body2" Class="mb-4">
+                        قبل از تغییرات مهم پایگاه داده و قبل از Migration
+                        می‌توانید یک Backup کامل تهیه کنید.
+                    </MudText>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Backup"
+                               Disabled="@IsBusy"
+                               OnClick="CreateBackupAsync">
+
+                        @if (IsBusy)
+                        {
+                            <MudProgressCircular Class="me-2"
+                                                 Size="Size.Small"
+                                                 Indeterminate="true" />
+
+                            <span>در حال تهیه Backup...</span>
+                        }
+                        else
+                        {
+                            <span>ایجاد Backup</span>
+                        }
+
+                    </MudButton>
+
+                    @if (!string.IsNullOrWhiteSpace(LastBackupPath))
+                    {
+                        <MudDivider Class="my-4" />
+
+                        <MudText Typo="Typo.subtitle2">
+                            آخرین Backup:
+                        </MudText>
+
+                        <MudText Typo="Typo.body2"
+                                 Class="mt-2"
+                                 Style="word-break:break-all;">
+                            @LastBackupPath
+                        </MudText>
+                    }
+
+                </MudPaper>
+
+            </MudItem>
+
+
+            <MudItem xs="12">
+
+                <MudPaper Class="pa-4">
+
+                    <MudText Typo="Typo.h6">
+                        بازیابی پایگاه داده
+                    </MudText>
+
+                    <MudAlert Severity="Severity.Warning" Class="mt-4">
+                        Restore هنوز اجرا نمی‌شود. ابتدا فایل Backup را انتخاب و اعتبارسنجی کنید.
+                    </MudAlert>
+
+                    <MudFileUpload T="IBrowserFile"
+                                   FilesChanged="OnBackupFileSelected"
+                                   Accept=".backup"
+                                   MaximumFileCount="1"
+                                   Class="mt-4">
+
+                        <ActivatorContent>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.UploadFile">
+                                انتخاب فایل Backup
+                            </MudButton>
+                        </ActivatorContent>
+
+                    </MudFileUpload>
+
+                    @if (!string.IsNullOrWhiteSpace(SelectedBackupPath))
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-3">
+                            فایل انتخاب‌شده:
+                        </MudText>
+
+                        <MudText Typo="Typo.body2"
+                                 Style="word-break:break-all;">
+                            @SelectedBackupPath
+                        </MudText>
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Info"
+                                   Class="mt-3"
+                                   Disabled="@IsValidatingBackup"
+                                   OnClick="ValidateSelectedBackupAsync">
+
+                            @if (IsValidatingBackup)
+                            {
+                                <MudProgressCircular Size="Size.Small"
+                                                     Indeterminate="true"
+                                                     Class="me-2" />
+
+                                <span>در حال اعتبارسنجی...</span>
+                            }
+                            else
+                            {
+                                <span>اعتبارسنجی Backup</span>
+                            }
+
+                        </MudButton>
+                    }
+
+                    @if (BackupValidationResult is not null)
+                    {
+                        <MudDivider Class="my-4" />
+
+                        <MudAlert Severity="@(BackupValidationResult.IsValid
+                                                                                     ? Severity.Success
+                                                                                     : Severity.Error)">
+
+                    @BackupValidationResult.Message
+
+                    @if (BackupValidationResult.IsValid)
+                            {
+                                <div class="mt-2">
+                                    PostgreSQL:
+                                    @BackupValidationResult.DatabaseVersion
+                                    <br />
+                                    تعداد اقلام Backup:
+                                    @BackupValidationResult.TableOfContentsCount
+                                </div>
+                            }
+
+                        </MudAlert>
+
+                        @if (BackupValidationResult.IsValid)
+                        {
+                            <MudDivider Class="my-4" />
+
+                            <MudAlert Severity="Severity.Error"
+                                      Class="mb-4">
+
+                                <MudText Typo="Typo.subtitle2">
+                                    هشدار مهم
+                                </MudText>
+
+                                <MudText Typo="Typo.body2" Class="mt-2">
+                                    عملیات Restore اطلاعات فعلی پایگاه داده را
+                                    با اطلاعات Backup جایگزین خواهد کرد.
+                                    قبل از Restore یک Backup اضطراری از
+                                    Database فعلی ایجاد خواهد شد.
+                                </MudText>
+
+                            </MudAlert>
+
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Restore"
+                                       Disabled="@IsPreparingRestore"
+                                       OnClick="PrepareRestoreAsync">
+
+                                @if (IsPreparingRestore)
+                                {
+                                    <MudProgressCircular Size="Size.Small"
+                                                         Indeterminate="true"
+                                                         Class="me-2" />
+
+                                    <span>در حال آماده‌سازی Restore...</span>
+                                }
+                                else
+                                {
+                                    <span>تأیید و آماده‌سازی Restore</span>
+                                }
+
+                            </MudButton>
+                        }
+                        @if (IsRestorePrepared)
+                        {
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Error"
+                                       Size="Size.Large"
+                                       OnClick="ExecuteRestoreAsync"
+                                       Disabled="@IsExecutingRestore">
+
+                                @if (IsExecutingRestore)
+                                {
+                                    <MudProgressCircular Indeterminate="true"
+                                                         Size="Size.Small"
+                                                         Class="me-2" />
+
+                                    <span>در حال اجرای RESTORE...</span>
+                                }
+                                else
+                                {
+                                    <span>اجرای RESTORE</span>
+                                }
+
+                            </MudButton>
+                        }
+                    }
+
+                </MudPaper>
+
+            </MudItem>
+
+        </MudGrid>
+    }
+
+</MudContainer>
+
+
+@code {
+
+    private string? PreparedRestoreRequestPath;
+
+    private bool IsRestorePrepared;
+
+    private bool IsExecutingRestore;
+
+    private IBrowserFile? SelectedBackupFile;
+
+    private string? SelectedBackupPath;
+
+    private bool IsValidatingBackup;
+
+    private DatabaseBackupValidationResult? BackupValidationResult;
+
+    private bool IsPreparingRestore;
+
+    private bool IsLoading = true;
+
+    private bool IsBusy;
+
+    private string? CurrentMigration;
+
+    private IReadOnlyList<string> PendingMigrations =
+        Array.Empty<string>();
+
+    private string? LastBackupPath;
+
+    private string? SuccessMessage;
+
+    private string? ErrorMessage;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDatabaseStatusAsync();
+    }
+
+
+    private async Task LoadDatabaseStatusAsync()
+    {
+        if (IsBusy)
+            return;
+
+        IsLoading = true;
+
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        try
+        {
+            CurrentMigration =
+                await DatabaseUpgradeService
+                    .GetCurrentMigrationAsync();
+
+            PendingMigrations =
+                await DatabaseUpgradeService
+                    .GetPendingMigrationsAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در دریافت وضعیت پایگاه داده: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+
+    private async Task CreateBackupAsync()
+    {
+        if (IsBusy)
+            return;
+
+        IsBusy = true;
+
+        ErrorMessage = null;
+        SuccessMessage = null;
+        LastBackupPath = null;
+
+        try
+        {
+            LastBackupPath =
+                await DatabaseBackupService
+                    .CreateBackupAsync("Manual");
+
+            SuccessMessage =
+                "Backup با موفقیت ایجاد شد.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در ایجاد Backup: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+
+    private void OnBackupFileSelected(IBrowserFile? file)
+    {
+        SelectedBackupFile = file;
+        SelectedBackupPath = file?.Name;
+
+        BackupValidationResult = null;
+        ErrorMessage = null;
+        SuccessMessage = null;
+    }
+
+
+    private async Task ValidateSelectedBackupAsync()
+    {
+        if (SelectedBackupFile is null)
+            return;
+
+        IsValidatingBackup = true;
+
+        ErrorMessage = null;
+        SuccessMessage = null;
+        BackupValidationResult = null;
+
+        string? tempPath = null;
+
+        try
+        {
+            var tempDirectory =
+                Path.Combine(
+                    Path.GetTempPath(),
+                    "BarmanLims",
+                    "BackupValidation");
+
+            Directory.CreateDirectory(tempDirectory);
+
+            tempPath =
+                Path.Combine(
+                    tempDirectory,
+                    $"{Guid.NewGuid():N}.backup");
+
+            await using var source =
+    SelectedBackupFile.OpenReadStream(
+        maxAllowedSize: 500 * 1024 * 1024);
+
+            using (var destination = File.Create(tempPath))
+            {
+                await source.CopyToAsync(destination);
+            }
+
+            BackupValidationResult =
+                await DatabaseRestoreService
+                    .ValidateBackupAsync(tempPath);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در اعتبارسنجی Backup: {ex.Message}";
+        }
+        finally
+        {
+            IsValidatingBackup = false;
+
+            if (!string.IsNullOrWhiteSpace(tempPath) &&
+                File.Exists(tempPath))
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                    // عدم حذف فایل موقت مانع ادامه کار نمی‌شود.
+                }
+            }
+        }
+    }
+
+
+    private async Task PrepareRestoreAsync()
+    {
+        if (SelectedBackupFile is null)
+            return;
+
+        IsPreparingRestore = true;
+
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        string? tempPath = null;
+
+        try
+        {
+            var tempDirectory =
+                Path.Combine(
+                    Path.GetTempPath(),
+                    "BarmanLims",
+                    "BackupValidation");
+
+            Directory.CreateDirectory(tempDirectory);
+
+            tempPath =
+                Path.Combine(
+                    tempDirectory,
+                    $"{Guid.NewGuid():N}.backup");
+
+            await using var source =
+                SelectedBackupFile.OpenReadStream(
+                    maxAllowedSize: 500 * 1024 * 1024);
+
+            using (var destination = File.Create(tempPath))
+            {
+                await source.CopyToAsync(destination);
+            }
+
+            var preparation =
+                await DatabaseRestoreService
+                    .PrepareRestoreAsync(tempPath);
+
+            PreparedRestoreRequestPath =
+     preparation.RestoreRequestPath;
+
+            IsRestorePrepared = true;
+
+            SuccessMessage =
+                $"Backup اضطراری با موفقیت ایجاد شد:{Environment.NewLine}" +
+                $"{preparation.EmergencyBackupPath}{Environment.NewLine}{Environment.NewLine}" +
+                $"فایل Backup برای Restore آماده شد:{Environment.NewLine}" +
+                $"{preparation.RestoreSourcePath}{Environment.NewLine}{Environment.NewLine}" +
+                "Restore آماده اجرا است.";
+
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در آماده‌سازی Restore: {ex.Message}";
+        }
+        finally
+        {
+            IsPreparingRestore = false;
+
+            if (!string.IsNullOrWhiteSpace(tempPath) &&
+                File.Exists(tempPath))
+            {
+                try
+                {
+                    File.Delete(tempPath);
+                }
+                catch
+                {
+                    // عدم حذف فایل موقت مانع ادامه کار نمی‌شود.
+                }
+            }
+        }
+    }
+    private async Task ExecuteRestoreAsync()
+    {
+        if (IsRestorePrepared == false ||
+            string.IsNullOrWhiteSpace(PreparedRestoreRequestPath))
+        {
+            return;
+        }
+
+        if (IsExecutingRestore)
+        {
+            return;
+        }
+
+        IsExecutingRestore = true;
+
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        try
+        {
+            var result =
+                await DatabaseRestoreService
+                    .ExecuteRestoreAsync(
+                        PreparedRestoreRequestPath);
+
+            if (result.IsSuccess)
+            {
+                SuccessMessage =
+                    "Restore با موفقیت انجام شد." +
+                    Environment.NewLine +
+                    $"ExitCode: {result.ExitCode}";
+
+                IsRestorePrepared = false;
+                PreparedRestoreRequestPath = null;
+            }
+            else
+            {
+                ErrorMessage =
+                    $"Restore ناموفق بود.{Environment.NewLine}" +
+                    $"ExitCode: {result.ExitCode}{Environment.NewLine}" +
+                    result.ErrorMessage;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در اجرای Restore: {ex.Message}";
+        }
+        finally
+        {
+            IsExecutingRestore = false;
+        }
+    }
+}

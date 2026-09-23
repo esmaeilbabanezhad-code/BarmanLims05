@@ -1,0 +1,52 @@
+﻿@using Barman.Application.Interfaces
+
+@inject IPermissionService PermissionService
+@inject NavigationManager NavigationManager
+
+@if (IsAuthorized)
+{
+    @ChildContent
+}
+else if (IsChecking)
+{
+    <div class="pa-4">
+        <MudProgressCircular Indeterminate="true"
+                             Color="Color.Primary" />
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public string Permission { get; set; } = "";
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private bool IsAuthorized;
+    private bool IsChecking = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsChecking = true;
+
+        if (string.IsNullOrWhiteSpace(Permission))
+        {
+            IsAuthorized = false;
+            IsChecking = false;
+            return;
+        }
+
+        IsAuthorized =
+            await PermissionService.HasPermissionAsync(
+                Permission);
+
+        IsChecking = false;
+
+        if (!IsAuthorized)
+        {
+            NavigationManager.NavigateTo(
+                "/access-denied");
+        }
+    }
+}

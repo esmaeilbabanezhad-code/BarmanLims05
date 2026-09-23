@@ -1,0 +1,659 @@
+﻿@page "/limit-references"
+
+@using MudBlazor
+@using Barman.Application.Interfaces
+@using Barman.Application.DTOs.LimitReference
+@using Barman.Domain.Entities
+
+@inject ILimitReferenceService LimitReferenceService
+@inject INumberSequenceService NumberSequenceService
+@inject IPermissionService PermissionService
+
+<PageTitle>مراجع حدود</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+    @if (!CanView)
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">
+            شما مجوز مشاهده مراجع حدود را ندارید.
+        </MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4">
+
+            <div class="d-flex justify-space-between align-center">
+
+                <MudText Typo="Typo.h5">
+                    مراجع حدود
+                </MudText>
+
+                <div>
+
+                    @if (CanCreate)
+                    {
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   OnClick="NewLimitReference">
+                            مرجع حدود جدید
+                        </MudButton>
+                    }
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               Class="ms-2"
+                               OnClick="ShowDeleted">
+                        موارد حذف‌شده
+                    </MudButton>
+
+                </div>
+
+            </div>
+
+            <MudDivider Class="my-3" />
+
+            @if (!ShowDeletedItems)
+            {
+                <MudTextField T="string"
+                              @bind-Value="SearchText"
+                              Label="جستجوی مرجع حدود"
+                              Placeholder="کد، نام، نسخه یا شماره سند..."
+                              Variant="Variant.Outlined"
+                              Clearable="true"
+                              Immediate="true"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Class="mb-3" />
+
+                <MudTable Items="FilteredLimitReferences"
+                          Hover="true"
+                          Dense="true"
+                          Striped="true"
+                          RowsPerPage="25"
+                          SortLabel="مرتب‌سازی">
+
+                    <HeaderContent>
+
+                        <MudTh>
+                            <MudTableSortLabel T="LimitReference"
+                                               SortBy="@(x => x.Code)">
+                                کد
+                            </MudTableSortLabel>
+                        </MudTh>
+
+                        <MudTh>
+                            <MudTableSortLabel T="LimitReference"
+                                               SortBy="@(x => x.Name)">
+                                نام
+                            </MudTableSortLabel>
+                        </MudTh>
+
+                        <MudTh>
+                            <MudTableSortLabel T="LimitReference"
+                                               SortBy="@(x => x.Version)">
+                                نسخه
+                            </MudTableSortLabel>
+                        </MudTh>
+
+                        <MudTh>شروع اعتبار</MudTh>
+
+                        <MudTh>پایان اعتبار</MudTh>
+
+                        <MudTh>
+                            <MudTableSortLabel T="LimitReference"
+                                               SortBy="@(x => x.Priority)">
+                                اولویت
+                            </MudTableSortLabel>
+                        </MudTh>
+
+                        <MudTh>
+                            <MudTableSortLabel T="LimitReference"
+                                               SortBy="@(x => x.IsActive)">
+                                وضعیت
+                            </MudTableSortLabel>
+                        </MudTh>
+
+                        <MudTh>عملیات</MudTh>
+
+                    </HeaderContent>
+
+                    <RowTemplate>
+
+                        <MudTd>
+                            @context.Code
+                        </MudTd>
+
+                        <MudTd>
+                            @context.Name
+                        </MudTd>
+
+                        <MudTd>
+                            @(context.Version ?? "—")
+                        </MudTd>
+
+                        <MudTd>
+                            @(context.ValidFrom.HasValue
+                                ? FormatPersianDate(context.ValidFrom.Value)
+                                : "—")
+                        </MudTd>
+
+                        <MudTd>
+                            @(context.ValidTo.HasValue
+                                ? FormatPersianDate(context.ValidTo.Value)
+                                : "—")
+                        </MudTd>
+
+                        <MudTd>
+                            @context.Priority
+                        </MudTd>
+
+                        <MudTd>
+
+                            @if (context.IsActive)
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Success"
+                                         Size="Size.Small">
+                                    فعال
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Error"
+                                         Size="Size.Small">
+                                    غیرفعال
+                                </MudChip>
+                            }
+
+                        </MudTd>
+
+                        <MudTd>
+
+                            @if (CanEdit)
+                            {
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Outlined"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => Edit(context))">
+                                    ویرایش
+                                </MudButton>
+
+                                @if (context.IsActive)
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Warning"
+                                               Class="ms-1"
+                                               OnClick="@(() => Deactivate(context.Id))">
+                                        غیرفعال
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Text"
+                                               Color="Color.Success"
+                                               Class="ms-1"
+                                               OnClick="@(() => Activate(context.Id))">
+                                        فعال
+                                    </MudButton>
+                                }
+                            }
+
+                            @if (CanDelete)
+                            {
+                                <MudButton Size="Size.Small"
+                                           Variant="Variant.Text"
+                                           Color="Color.Error"
+                                           Class="ms-1"
+                                           OnClick="@(() => Delete(context.Id))">
+                                    حذف
+                                </MudButton>
+                            }
+
+                        </MudTd>
+
+                    </RowTemplate>
+
+                    <PagerContent>
+                        <MudTablePager RowsPerPageString="تعداد در صفحه"
+                                       PageSizeOptions="@(new[] { 10, 25, 50, 100 })" />
+                    </PagerContent>
+
+                </MudTable>
+            }
+            else
+            {
+                <div class="d-flex justify-space-between align-center mb-3">
+
+                    <MudText Typo="Typo.h6">
+                        مراجع حدود حذف‌شده
+                    </MudText>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               OnClick="ShowMainList">
+                        بازگشت به فهرست مراجع حدود
+                    </MudButton>
+
+                </div>
+
+                <MudTable Items="DeletedLimitReferences"
+                          Hover="true"
+                          Dense="true"
+                          Striped="true">
+
+                    <HeaderContent>
+                        <MudTh>کد</MudTh>
+                        <MudTh>نام</MudTh>
+                        <MudTh>نسخه</MudTh>
+                        <MudTh>شماره سند</MudTh>
+                        <MudTh>عملیات</MudTh>
+                    </HeaderContent>
+
+                    <RowTemplate>
+
+                        <MudTd>
+                            @context.Code
+                        </MudTd>
+
+                        <MudTd>
+                            @context.Name
+                        </MudTd>
+
+                        <MudTd>
+                            @(context.Version ?? "—")
+                        </MudTd>
+
+                        <MudTd>
+                            @(context.DocumentNo ?? "—")
+                        </MudTd>
+
+                        <MudTd>
+
+                            <MudButton Size="Size.Small"
+                                       Variant="Variant.Outlined"
+                                       Color="Color.Success"
+                                       OnClick="@(() => Restore(context.Id))">
+                                بازیابی
+                            </MudButton>
+
+                        </MudTd>
+
+                    </RowTemplate>
+
+                    <PagerContent>
+                        <MudTablePager RowsPerPageString="تعداد در صفحه"
+                                       PageSizeOptions="@(new[] { 10, 25, 50, 100 })" />
+                    </PagerContent>
+
+                </MudTable>
+            }
+
+            <MudDialog @bind-Visible="DialogVisible">
+
+                <DialogContent>
+
+                    <MudTextField Label="کد"
+                                  @bind-Value="CurrentLimitReference.Code"
+                                  ReadOnly="true"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3" />
+
+                    <MudTextField Label="نام"
+                                  @bind-Value="CurrentLimitReference.Name"
+                                  Required="true"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3" />
+
+                    <MudTextField Label="نسخه"
+                                  @bind-Value="CurrentLimitReference.Version"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3" />
+
+                    <MudDatePicker Label="تاریخ صدور"
+                                   @bind-Date="CurrentLimitReference.IssueDate"
+                                   Variant="Variant.Outlined"
+                                   Class="mb-3" />
+
+                    <MudDatePicker Label="شروع اعتبار"
+                                   @bind-Date="CurrentLimitReference.ValidFrom"
+                                   Variant="Variant.Outlined"
+                                   Class="mb-3" />
+
+                    <MudDatePicker Label="پایان اعتبار"
+                                   @bind-Date="CurrentLimitReference.ValidTo"
+                                   Variant="Variant.Outlined"
+                                   Class="mb-3" />
+
+                    <MudTextField Label="شماره سند"
+                                  @bind-Value="CurrentLimitReference.DocumentNo"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3" />
+
+                    <MudNumericField T="int"
+                                     Label="اولویت"
+                                     @bind-Value="CurrentLimitReference.Priority"
+                                     Variant="Variant.Outlined"
+                                     Min="0"
+                                     Class="mb-3" />
+
+                    @if (IsEdit)
+                    {
+                        <MudSwitch T="bool"
+                                   @bind-Value="CurrentLimitReference.IsActive"
+                                   Color="Color.Primary"
+                                   Class="mb-3">
+                            فعال
+                        </MudSwitch>
+                    }
+
+                    <MudTextField Label="توضیحات"
+                                  Lines="3"
+                                  @bind-Value="CurrentLimitReference.Description"
+                                  Variant="Variant.Outlined" />
+
+                </DialogContent>
+
+                <DialogActions>
+
+                    <MudButton Color="Color.Primary"
+                               OnClick="SaveLimitReference">
+                        ذخیره
+                    </MudButton>
+
+                    <MudButton Color="Color.Secondary"
+                               OnClick="CloseDialog">
+                        انصراف
+                    </MudButton>
+
+                </DialogActions>
+
+            </MudDialog>
+
+        </MudPaper>
+    }
+
+</MudContainer>
+
+@code {
+
+    private List<LimitReference> LimitReferenceList = new();
+
+    private List<LimitReference> DeletedLimitReferences = new();
+
+    private LimitReference CurrentLimitReference = new();
+
+    private bool DialogVisible;
+    private bool IsEdit;
+    private bool ShowDeletedItems;
+
+    private string SearchText = "";
+
+    private bool CanView;
+    private bool CanCreate;
+    private bool CanEdit;
+    private bool CanDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CanView =
+            await PermissionService.HasPermissionAsync(
+                "LimitReference.View");
+
+        CanCreate =
+            await PermissionService.HasPermissionAsync(
+                "LimitReference.Create");
+
+        CanEdit =
+            await PermissionService.HasPermissionAsync(
+                "LimitReference.Edit");
+
+        CanDelete =
+            await PermissionService.HasPermissionAsync(
+                "LimitReference.Delete");
+
+        if (CanView)
+        {
+            await Load();
+        }
+    }
+
+    private async Task Load()
+    {
+        LimitReferenceList =
+            (await LimitReferenceService.GetLookupAsync())
+                .OrderBy(x => x.Priority)
+                .ThenBy(x => x.Name)
+                .Select(x => new LimitReference
+                {
+                    Id = x.Id,
+                    Code = x.Code,
+                    Name = x.Name,
+                    Version = x.Version,
+                    IssueDate = x.IssueDate,
+                    ValidFrom = x.ValidFrom,
+                    ValidTo = x.ValidTo,
+                    IsActive = x.IsActive,
+                    DocumentNo = x.DocumentNo,
+                    Priority = x.Priority,
+                    Description = x.Description,
+                    IsDeleted = false
+                })
+                .ToList();
+    }
+
+    private IEnumerable<LimitReference> FilteredLimitReferences =>
+        string.IsNullOrWhiteSpace(SearchText)
+            ? LimitReferenceList
+            : LimitReferenceList.Where(x =>
+                (x.Code ?? "").Contains(
+                    SearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.Name ?? "").Contains(
+                    SearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.Version ?? "").Contains(
+                    SearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.DocumentNo ?? "").Contains(
+                    SearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase));
+
+    private async Task NewLimitReference()
+    {
+        try
+        {
+            var code =
+                await NumberSequenceService
+                    .GetNextCodeAsync("LimitReference");
+
+            CurrentLimitReference = new LimitReference
+            {
+                Code = code,
+                IsActive = true,
+                IsDeleted = false,
+                Priority = 0
+            };
+
+            IsEdit = false;
+            DialogVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(
+                $"خطا در تولید کد LimitReference: {ex.Message}");
+        }
+    }
+
+    private void Edit(LimitReference item)
+    {
+        CurrentLimitReference = new LimitReference
+        {
+            Id = item.Id,
+            Code = item.Code,
+            Name = item.Name,
+            Version = item.Version,
+            IssueDate = item.IssueDate,
+            ValidFrom = item.ValidFrom,
+            ValidTo = item.ValidTo,
+            IsActive = item.IsActive,
+            IsDeleted = item.IsDeleted,
+            DocumentNo = item.DocumentNo,
+            Priority = item.Priority,
+            Description = item.Description
+        };
+
+        IsEdit = true;
+        DialogVisible = true;
+    }
+
+    private async Task SaveLimitReference()
+    {
+        if (IsEdit)
+        {
+            await LimitReferenceService.UpdateAsync(
+                CurrentLimitReference.Id,
+                new UpdateLimitReferenceDto
+                {
+                    Code = CurrentLimitReference.Code,
+                    Name = CurrentLimitReference.Name,
+                    Version = CurrentLimitReference.Version,
+                    IssueDate = CurrentLimitReference.IssueDate,
+                    ValidFrom = CurrentLimitReference.ValidFrom,
+                    ValidTo = CurrentLimitReference.ValidTo,
+                    IsActive = CurrentLimitReference.IsActive,
+                    DocumentNo = CurrentLimitReference.DocumentNo,
+                    Priority = CurrentLimitReference.Priority,
+                    Description = CurrentLimitReference.Description
+                });
+        }
+        else
+        {
+            await LimitReferenceService.CreateAsync(
+                new CreateLimitReferenceDto
+                {
+                    Code = CurrentLimitReference.Code,
+                    Name = CurrentLimitReference.Name,
+                    Version = CurrentLimitReference.Version,
+                    IssueDate = CurrentLimitReference.IssueDate,
+                    ValidFrom = CurrentLimitReference.ValidFrom,
+                    ValidTo = CurrentLimitReference.ValidTo,
+                    DocumentNo = CurrentLimitReference.DocumentNo,
+                    Priority = CurrentLimitReference.Priority,
+                    Description = CurrentLimitReference.Description
+                });
+        }
+
+        DialogVisible = false;
+
+        await Load();
+    }
+
+    
+    private async Task Activate(Guid id)
+{
+    var item =
+        await LimitReferenceService.GetByIdAsync(id);
+
+    if (item == null)
+        return;
+
+    await LimitReferenceService.UpdateAsync(
+        id,
+        new UpdateLimitReferenceDto
+        {
+            Code = item.Code,
+            Name = item.Name,
+            Version = item.Version,
+            IssueDate = item.IssueDate,
+            ValidFrom = item.ValidFrom,
+            ValidTo = item.ValidTo,
+            IsActive = true,
+            DocumentNo = item.DocumentNo,
+            Priority = item.Priority,
+            Description = item.Description
+        });
+
+    await Load();
+}
+
+private async Task Deactivate(Guid id)
+{
+    var item =
+        await LimitReferenceService.GetByIdAsync(id);
+
+    if (item == null)
+        return;
+
+    await LimitReferenceService.UpdateAsync(
+        id,
+        new UpdateLimitReferenceDto
+        {
+            Code = item.Code,
+            Name = item.Name,
+            Version = item.Version,
+            IssueDate = item.IssueDate,
+            ValidFrom = item.ValidFrom,
+            ValidTo = item.ValidTo,
+            IsActive = false,
+            DocumentNo = item.DocumentNo,
+            Priority = item.Priority,
+            Description = item.Description
+        });
+
+    await Load();
+}
+    
+
+    private async Task Delete(Guid id)
+    {
+        await LimitReferenceService.DeleteAsync(id);
+
+        await Load();
+    }
+
+    private async Task ShowDeleted()
+    {
+        DeletedLimitReferences =
+            await LimitReferenceService.GetDeletedAsync();
+
+        ShowDeletedItems = true;
+    }
+
+    private async Task ShowMainList()
+    {
+        ShowDeletedItems = false;
+
+        await Load();
+    }
+
+    private async Task Restore(Guid id)
+    {
+        await LimitReferenceService.RestoreAsync(id);
+
+        await ShowDeleted();
+    }
+
+    private void CloseDialog()
+    {
+        DialogVisible = false;
+    }
+
+    private static string FormatPersianDate(DateTime date)
+    {
+        var calendar =
+            new System.Globalization.PersianCalendar();
+
+        var year = calendar.GetYear(date);
+        var month = calendar.GetMonth(date);
+        var day = calendar.GetDayOfMonth(date);
+
+        return $"{year:0000}/{month:00}/{day:00}";
+    }
+}

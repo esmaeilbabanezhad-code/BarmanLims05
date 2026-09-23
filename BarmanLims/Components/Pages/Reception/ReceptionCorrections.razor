@@ -1,0 +1,164 @@
+﻿@page "/reception/corrections"
+
+@using MudBlazor
+@using Barman.Domain.Entities
+@using BarmanLims.Components.Authorization
+
+@attribute [RequirePermission("Reception.Correction")]
+
+@inject Barman.Application.Interfaces.IReceptionCorrectionRequestService CorrectionService
+@inject NavigationManager NavigationManager
+
+<PageTitle>درخواست‌های اصلاح پذیرش</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+    <MudPaper Class="pa-4">
+
+        <div class="d-flex justify-space-between align-center">
+
+            <MudText Typo="Typo.h5">
+                درخواست‌های اصلاح پذیرش
+            </MudText>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="Load">
+
+                بروزرسانی
+
+            </MudButton>
+
+        </div>
+
+        <MudDivider Class="my-3" />
+
+        @if (IsLoading)
+        {
+            <div class="d-flex justify-center pa-6">
+
+                <MudProgressCircular Indeterminate="true"
+                                     Color="Color.Primary" />
+
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error">
+                @ErrorMessage
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="Requests"
+                      Hover="true"
+                      Dense="true"
+                      Bordered="true"
+                      Striped="true">
+
+                <HeaderContent>
+
+                    <MudTh>شماره پذیرش</MudTh>
+                    <MudTh>نمونه</MudTh>
+                    <MudTh>درخواست‌کننده</MudTh>
+                    <MudTh>دلیل اصلاح</MudTh>
+                    <MudTh>تاریخ درخواست</MudTh>
+                    <MudTh></MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    <MudTd>
+                        @(context.Reception?.ReceptionNumber ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.Sample?.SampleCode ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @(context.RequestedByEmployee?.FullName ?? "-")
+                    </MudTd>
+
+                    <MudTd>
+                        @context.Reason
+                    </MudTd>
+
+                    <MudTd>
+                        @context.RequestedAt
+                        .ToLocalTime()
+                        .ToString("yyyy/MM/dd HH:mm")
+                    </MudTd>
+
+                    <MudTd>
+
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Warning"
+                                   OnClick="@(() => OpenCorrection(context.Id))">
+
+                            اصلاح
+
+                        </MudButton>
+
+                    </MudTd>
+
+                </RowTemplate>
+
+                <NoRecordsContent>
+
+                    <MudText Class="pa-4">
+                        هیچ درخواست اصلاح در انتظاری وجود ندارد.
+                    </MudText>
+
+                </NoRecordsContent>
+
+            </MudTable>
+        }
+
+    </MudPaper>
+
+</MudContainer>
+
+@code {
+
+    private List<ReceptionCorrectionRequest> Requests = new();
+
+    private bool IsLoading;
+
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            Requests =
+                await CorrectionService.GetPendingAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در بارگذاری درخواست‌های اصلاح: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void OpenCorrection(Guid requestId)
+    {
+        NavigationManager.NavigateTo(
+            $"/reception/correction/{requestId}");
+    }
+}

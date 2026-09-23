@@ -27,6 +27,11 @@ public class TestPanelItemConfiguration
             .HasForeignKey(x => x.TestId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(x => x.DefaultAnalyst)
+            .WithMany()
+            .HasForeignKey(x => x.DefaultAnalystId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(x => new
         {
             x.TestPanelId,

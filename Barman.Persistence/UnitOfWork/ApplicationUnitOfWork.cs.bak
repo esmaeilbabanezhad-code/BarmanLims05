@@ -1,0 +1,211 @@
+using Barman.Application.Interfaces;
+using Barman.Application.Interfaces.Repositories;
+using Barman.Application.Services.Resolvers;
+using Barman.Persistence.Contexts;
+using Barman.Persistence.Repositories;
+
+
+namespace Barman.Persistence.UnitOfWork;
+
+public class ApplicationUnitOfWork : IUnitOfWork
+{
+    private readonly ApplicationDbContext _context;
+
+    private readonly IScopedTemplateResolver _scopedTemplateResolver;
+
+    public IReceptionRepository Receptions { get; }
+
+    public INumberSequenceRepository NumberSequences { get; }
+
+    public ICustomerRepository Customers { get; }
+
+    public IOrganizationTypeRepository OrganizationTypes { get; }
+
+    public ITestTariffRepository TestTariffs { get; }
+
+    public ISampleRepository Samples { get; }
+
+    public ICustomFieldDefinitionRepository CustomFieldDefinitions { get; }
+
+    public ICustomFieldValueRepository CustomFieldValues { get; }
+
+    public ISampleCategoryRepository SampleCategories { get; }
+
+    public IMatrixRepository Matrices { get; }
+
+    public ITestRepository Tests { get; }
+
+    public IReferenceLimitRepository ReferenceLimits { get; }
+
+    public ILimitReferenceRepository LimitReferences { get; }
+
+    public ITestLimitRuleRepository TestLimitRules { get; }
+
+    public ITestPanelRepository TestPanels { get; }
+
+    public IStandardSampleRepository StandardSamples { get; }
+
+    public ITestPanelItemRepository TestPanelItems { get; }
+
+    public ITestResultDefinitionRepository TestResultDefinitions { get; }
+
+    public ICustomerTestPanelRepository CustomerTestPanels { get; }
+
+    public IDefaultTestSetRepository DefaultTestSets { get; }
+
+    public IDepartmentRepository Departments { get; }
+
+    public IRoleRepository Roles { get; }
+
+    public IRolePermissionRepository RolePermissions { get; }
+
+    public IPermissionRepository Permissions { get; }
+
+    public ITestAssignmentRepository TestAssignments { get; }
+
+    public ITestAssignmentResultValueRepository TestAssignmentResultValues { get; }
+
+    public ITestResultReviewRepository TestResultReviews { get; }
+
+    public ITestResultSetRepository TestResultSets { get; }
+
+    public ITestResultSetItemRepository TestResultSetItems { get; }
+
+    public ITestLimitChangeRequestRepository TestLimitChangeRequests { get; }
+
+    public IReceptionCorrectionRequestRepository ReceptionCorrectionRequests { get; }
+
+    public IEmployeeRepository Employees { get; }
+
+    public IUserAccountRepository UserAccounts { get; }
+
+    public IEmployeeDepartmentRepository EmployeeDepartments { get; }
+
+    public IEmployeeRoleRepository EmployeeRoles { get; }
+
+    public IDepartmentResponsibilityRepository DepartmentResponsibilities { get; }
+
+    public ITechnicalManagerSectionHeadRepository TechnicalManagerSectionHeads { get; }
+
+    public ITechnicalManagerScopeRepository TechnicalManagerScopes { get; }
+
+    public IEmployeeTechnicalManagerScopeRepository EmployeeTechnicalManagerScopes { get; }
+
+    public ITechnicalManagerScopeDepartmentRepository TechnicalManagerScopeDepartments { get; }
+
+    public ITechnicalManagerRoutingRuleRepository TechnicalManagerRoutingRules { get; }
+
+    public ApplicationUnitOfWork(
+                ApplicationDbContext context,
+                IScopedTemplateResolver scopedTemplateResolver)
+    {
+        _context = context;
+
+        _scopedTemplateResolver = scopedTemplateResolver;
+
+        Receptions = new ReceptionRepository(context);
+
+        NumberSequences = new NumberSequenceRepository(context);
+
+        Customers = new CustomerRepository(context);
+
+        OrganizationTypes = new OrganizationTypeRepository(context);
+
+        TestTariffs = new TestTariffRepository(context);
+
+        Samples = new SampleRepository(context);
+
+        CustomFieldDefinitions =
+    new CustomFieldDefinitionRepository(context);
+
+        CustomFieldValues =
+            new CustomFieldValueRepository(context);
+
+        SampleCategories = new SampleCategoryRepository(context);
+
+        Matrices = new MatrixRepository(context);
+
+        Tests = new TestRepository(context);
+
+        ReferenceLimits = new ReferenceLimitRepository(context);
+
+        LimitReferences = new LimitReferenceRepository(context);
+
+        TestLimitRules = new TestLimitRuleRepository(context);
+
+        TestPanels = new TestPanelRepository(context);
+
+        StandardSamples = new StandardSampleRepository(context);
+
+        TestPanelItems = new TestPanelItemRepository(context);
+
+        TestResultDefinitions =
+    new TestResultDefinitionRepository(context);
+
+        CustomerTestPanels = new CustomerTestPanelRepository(context);
+
+        DefaultTestSets = new DefaultTestSetRepository(
+                _context,
+                _scopedTemplateResolver);
+
+        Departments = new DepartmentRepository(context);
+
+        Roles = new RoleRepository(context);
+
+        RolePermissions = new RolePermissionRepository(context);
+
+        Permissions = new PermissionRepository(context);
+
+        Employees = new EmployeeRepository(context);
+
+        UserAccounts = new UserAccountRepository(context);
+
+        EmployeeDepartments = new EmployeeDepartmentRepository(context);
+
+        EmployeeRoles = new EmployeeRoleRepository(context);
+
+        TestAssignments = new TestAssignmentRepository(context);
+
+        TestAssignmentResultValues =
+            new TestAssignmentResultValueRepository(context);
+
+        TestResultReviews = new TestResultReviewRepository(context);
+
+        TestResultSets = new TestResultSetRepository(
+                _context,
+                _scopedTemplateResolver);
+
+        TestResultSetItems =
+    new TestResultSetItemRepository(context);
+
+        TestLimitChangeRequests =
+              new TestLimitChangeRequestRepository(context);
+
+        ReceptionCorrectionRequests =
+            new ReceptionCorrectionRequestRepository(context);
+
+        DepartmentResponsibilities =
+            new DepartmentResponsibilityRepository(context);
+
+        TechnicalManagerSectionHeads =
+            new TechnicalManagerSectionHeadRepository(context);
+
+        TechnicalManagerScopes =
+            new TechnicalManagerScopeRepository(context);
+
+        EmployeeTechnicalManagerScopes =
+            new EmployeeTechnicalManagerScopeRepository(context);
+
+        TechnicalManagerScopeDepartments =
+              new TechnicalManagerScopeDepartmentRepository(context);
+
+        TechnicalManagerRoutingRules =
+               new TechnicalManagerRoutingRuleRepository(context);
+    }
+
+    public async Task<int> SaveChangesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await _context.SaveChangesAsync(cancellationToken);
+    }
+}

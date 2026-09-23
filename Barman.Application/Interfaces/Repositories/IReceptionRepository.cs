@@ -10,8 +10,16 @@ public interface IReceptionRepository
         Guid id,
         CancellationToken cancellationToken = default);
 
+    Task<Reception?> GetForCorrectionAsync(
+    Guid id,
+    CancellationToken cancellationToken = default);
+
     Task<List<Reception>> GetAllAsync(
         CancellationToken cancellationToken = default);
 
     IQueryable<Reception> Query();
+
+    Task<List<Reception>> GetHistoryByCustomerIdAsync(
+    Guid customerId,
+    CancellationToken cancellationToken = default);
 }

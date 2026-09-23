@@ -2,59 +2,27 @@
 @using Barman.Application.Interfaces
 @using Barman.Domain.Entities
 @using Barman.Application.Interfaces.Repositories
+@using BarmanLims.Components.Shared
+@using BarmanLims.Components.Authorization
+@attribute [RequirePermission("Employee.View")]
+
 @inject IDepartmentRepository DepartmentRepository
 @inject IEmployeeService EmployeeService
 @inject IDepartmentService DepartmentService
 @inject IDepartmentResponsibilityService DepartmentResponsibilityService
 @inject ITechnicalManagerSectionHeadService TechnicalManagerSectionHeadService
+@inject IEmployeeTechnicalManagerScopeService EmployeeTechnicalManagerScopeService
+@inject ITechnicalManagerScopeService TechnicalManagerScopeService
 @inject IGenericRepository<Role> RoleRepository
 @inject IPermissionService PermissionService
 @inject Barman.Application.Interfaces.ICurrentUserService CurrentUserService
+@inject NavigationManager NavigationManager
+
+
 <PageTitle>مدیریت کارکنان</PageTitle>
 <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
-    <MudAlert Severity="Severity.Info" Class="mt-4">
-        Current EmployeeId:
-        @CurrentUserService.EmployeeId
-
-        <br />
-
-        InstanceId:
-        @CurrentUserService.InstanceId
-
-        <br />
-
-        CanView:
-        @CanView
-
-        <br />
-
-        DebugEmployeeView:
-        @DebugEmployeeView
-
-        <br />
-
-        Debug Permissions:
-        @string.Join(", ", DebugPermissions)
-
-        <br />
-
-        Debug Employee Roles:
-        @DebugEmployeeRoles
-    </MudAlert>
-    <MudButton Variant="Variant.Outlined"
-               Color="Color.Primary"
-               OnClick="RefreshPermissions"
-               Class="mt-2">
-        Refresh Permission
-    </MudButton>
-    @if (!CanView)
-    {
-        <MudAlert Severity="Severity.Error" Class="mt-4">
-            شما مجوز مشاهده پرسنل را ندارید.
-        </MudAlert>
-    }
-    else
-    {  
+   
+    <PermissionView Permission="Employee.View"> 
 <MudPaper Class="pa-5">
 <MudText Typo="Typo.h5" Class="mb-4">
     مدیریت کارکنان
@@ -514,7 +482,162 @@
                         </MudAlert>
                     }
                 </MudPaper>
+                        <MudPaper Outlined="true" Class="pa-4 mt-5">
 
+                            <MudText Typo="Typo.h6" Class="mb-3">
+                                محدوده‌های مسئول فنی
+                            </MudText>
+
+                            @if (EditingId != Guid.Empty)
+                            {
+                                <MudGrid>
+
+                                    <MudItem xs="12" sm="6">
+                                        <MudSelect T="Guid?"
+                                                   @bind-Value="selectedTechnicalManagerScopeId"
+                                                   Label="محدوده مسئول فنی"
+                                                   Variant="Variant.Outlined"
+                                                   Clearable="true">
+
+                                            @foreach (var scope in technicalManagerScopes)
+                                            {
+                                                <MudSelectItem T="Guid?"
+                                                               Value="@((Guid?)scope.Id)">
+                                                    @scope.Name
+                                                </MudSelectItem>
+                                            }
+
+                                        </MudSelect>
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="2">
+                                        <MudCheckBox @bind-Value="technicalManagerScopeIsPrimary"
+                                                     Label="اصلی" />
+                                    </MudItem>
+
+                                    <MudItem xs="12" sm="4">
+                                        <MudButton Variant="Variant.Filled"
+                                                   Color="Color.Primary"
+                                                   FullWidth="true"
+                                                   Class="mt-2"
+                                                   OnClick="AddTechnicalManagerScopeToEmployee"
+                                                   Disabled="@isSaving">
+                                            افزودن محدوده
+                                        </MudButton>
+                                    </MudItem>
+
+                                </MudGrid>
+
+                                @if (employeeTechnicalManagerScopes.Any())
+                                {
+                                    <MudTable Items="employeeTechnicalManagerScopes"
+                                              Dense="true"
+                                              Hover="true"
+                                              Bordered="true"
+                                              Class="mt-4">
+
+                                        <HeaderContent>
+                                            <MudTh>کد</MudTh>
+                                            <MudTh>محدوده</MudTh>
+                                            <MudTh>وضعیت</MudTh>
+                                            <MudTh>اصلی</MudTh>
+                                            <MudTh>عملیات</MudTh>
+                                        </HeaderContent>
+
+                                        <RowTemplate>
+                                            <MudTd>@context.TechnicalManagerScope?.Code</MudTd>
+                                            <MudTd>@context.TechnicalManagerScope?.Name</MudTd>
+
+                                            <MudTd>
+                                                @if (context.IsActive)
+                                                {
+                                                    <MudChip T="string"
+                                                             Color="Color.Success"
+                                                             Size="Size.Small">
+                                                        فعال
+                                                    </MudChip>
+                                                }
+                                                else
+                                                {
+                                                    <MudChip T="string"
+                                                             Color="Color.Default"
+                                                             Size="Size.Small">
+                                                        غیرفعال
+                                                    </MudChip>
+                                                }
+                                            </MudTd>
+
+                                            <MudTd>
+                                                @if (context.IsPrimary)
+                                                {
+                                                    <MudChip T="string"
+                                                             Color="Color.Success"
+                                                             Size="Size.Small">
+                                                        اصلی
+                                                    </MudChip>
+                                                }
+                                                else
+                                                {
+                                                    <MudChip T="string"
+                                                             Color="Color.Default"
+                                                             Size="Size.Small">
+                                                        عادی
+                                                    </MudChip>
+                                                }
+                                            </MudTd>
+
+                                            <MudTd>
+
+                                                <MudButton Size="Size.Small"
+                                                           Variant="Variant.Outlined"
+                                                           Color="Color.Primary"
+                                                           Class="mr-2"
+                                                           OnClick="@(() => EditTechnicalManagerScope(context))"
+                                                           Disabled="@isSaving">
+                                                    ویرایش
+                                                </MudButton>
+
+                                                @if (context.IsActive)
+                                                {
+                                                    <MudButton Size="Size.Small"
+                                                               Variant="Variant.Outlined"
+                                                               Color="Color.Warning"
+                                                               OnClick="@(() => RemoveTechnicalManagerScopeFromEmployee(context.Id))"
+                                                               Disabled="@isSaving">
+                                                        غیرفعال
+                                                    </MudButton>
+                                                }
+                                                else
+                                                {
+                                                    <MudButton Size="Size.Small"
+                                                               Variant="Variant.Outlined"
+                                                               Color="Color.Success"
+                                                               OnClick="@(() => ActivateTechnicalManagerScopeForEmployee(context.Id))"
+                                                               Disabled="@isSaving">
+                                                        فعال‌سازی
+                                                    </MudButton>
+                                                }
+
+                                            </MudTd>
+                                        </RowTemplate>
+
+                                    </MudTable>
+                                }
+                                else
+                                {
+                                    <MudAlert Severity="Severity.Info" Class="mt-4">
+                                        هنوز محدوده‌ای برای این کارمند ثبت نشده است.
+                                    </MudAlert>
+                                }
+                            }
+                            else
+                            {
+                                <MudAlert Severity="Severity.Info">
+                                    پس از ذخیره کارمند، می‌توانید محدوده مسئول فنی او را ثبت کنید.
+                                </MudAlert>
+                            }
+
+                        </MudPaper>
             <MudItem xs="12" sm="4">
                 <MudCheckBox @bind-Value="CanApprove"
                              Label="قابل تأیید" />
@@ -769,16 +892,12 @@
 
 </MudTable>
 </MudPaper>
-    }
+    </PermissionView>
 </MudContainer>
 @code {
 private List<Employee> employees = new();
 private bool isLoading = true;
 private bool isSaving = false;
-    private bool CanView;
-    private bool DebugEmployeeView;
-    private List<string> DebugPermissions = new();
-    private string DebugEmployeeRoles = "";
     private bool CanCreate;
     private bool CanEdit;
     private bool CanDeactivate;
@@ -802,7 +921,12 @@ private List<EmployeeDepartment> employeeDepartments = new();
 private List<EmployeeRole> employeeRoles = new();
 private List<DepartmentResponsibility> employeeResponsibilities = new();
 private List<TechnicalManagerSectionHead> employeeSectionHeadRelations = new();
+    private List<EmployeeTechnicalManagerScope> employeeTechnicalManagerScopes = new();
+    private List<TechnicalManagerScope> technicalManagerScopes = new();
 
+    private Guid? selectedTechnicalManagerScopeId;
+    private bool technicalManagerScopeIsPrimary;
+    private Guid? editingTechnicalManagerScopeId;
 private readonly Dictionary<Guid, List<EmployeeDepartment>> employeeDepartmentsMap = new();
 private readonly Dictionary<Guid, List<EmployeeRole>> employeeRolesMap = new();
 
@@ -817,28 +941,10 @@ private DepartmentResponsibilityType selectedResponsibilityType =
 private bool departmentIsPrimary;
 private bool roleIsPrimary;
 private bool responsibilityIsPrimary;
+    
     protected override async Task OnInitializedAsync()
     {
-        CanView =
-            await PermissionService.HasPermissionAsync(
-                "Employee.View");
-
-        DebugEmployeeView =
-          await PermissionService.HasPermissionAsync(
-          CurrentUserService.EmployeeId ?? Guid.Empty,
-          "Employee.View");
-
-        DebugPermissions =
-            await PermissionService.GetCurrentUserPermissionCodesAsync();
-
-        DebugEmployeeView =
-            await PermissionService.HasPermissionAsync(
-                CurrentUserService.EmployeeId ?? Guid.Empty,
-                "Employee.View");
-
-        DebugPermissions =
-            await PermissionService.GetCurrentUserPermissionCodesAsync();
-
+        
         CanCreate =
             await PermissionService.HasPermissionAsync(
                 "Employee.Create");
@@ -851,43 +957,21 @@ private bool responsibilityIsPrimary;
             await PermissionService.HasPermissionAsync(
                 "Employee.Deactivate");
 
-        if (CanView)
-        {
-            await LoadDepartmentsAndRoles();
-            await LoadEmployees();
-        }
+        await LoadDepartmentsAndRoles();
+        await LoadEmployees();
     }
-    private async Task RefreshPermissions()
-    {
-        var employeeId = CurrentUserService.EmployeeId;
+   
 
-        if (!employeeId.HasValue)
-            return;
 
-        CanView =
-            await PermissionService.HasPermissionAsync(
-                employeeId.Value,
-                "Employee.View");
-
-        DebugEmployeeView = CanView;
-
-        DebugPermissions =
-            await PermissionService.GetPermissionCodesAsync(
-                employeeId.Value);
-        DebugEmployeeRoles =
-await PermissionService.DebugEmployeeRolesAsync(
-employeeId.Value);
-
-        await InvokeAsync(StateHasChanged);
-    }
-
-private Guid? DebugEmployeeId => CurrentUserService.EmployeeId;
     private async Task LoadDepartmentsAndRoles()
     {
         roles = await RoleRepository.GetAllAsync();
 
         departments =
          await DepartmentRepository.GetActiveAsync();
+
+        technicalManagerScopes =
+    await TechnicalManagerScopeService.GetAllAsync();
 
     }
 private async Task LoadEmployees()
@@ -963,6 +1047,9 @@ employeeDepartments = new();
 employeeRoles = new();
 employeeResponsibilities = new();
 employeeSectionHeadRelations = new();
+        employeeTechnicalManagerScopes = new();
+        selectedTechnicalManagerScopeId = null;
+        technicalManagerScopeIsPrimary = false;
 }
 private async Task EditEmployee(Employee employee)
 {
@@ -998,6 +1085,9 @@ private async Task LoadEmployeeRelations(Guid employeeId)
 
     employeeSectionHeadRelations =
         await TechnicalManagerSectionHeadService.GetByTechnicalManagerIdAsync(employeeId);
+
+    employeeTechnicalManagerScopes =
+         await EmployeeTechnicalManagerScopeService.GetByEmployeeIdAsync(employeeId);
 }
 
 private async Task SetPrimaryDepartmentFromEmployee(Guid employeeDepartmentId)
@@ -1353,10 +1443,11 @@ private async Task AddResponsibilityToEmployee()
                 formMessageSeverity = Severity.Success;
             }
 
-        await LoadEmployeeRelations(EditingId);
+            await LoadEmployeeRelations(EditingId);
 
-        selectedResponsibilityDepartmentId = null;
-        responsibilityIsPrimary = false;
+            editingResponsibilityId = null;
+            selectedResponsibilityDepartmentId = null;
+            responsibilityIsPrimary = false;
 
        
     }
@@ -1370,6 +1461,183 @@ private async Task AddResponsibilityToEmployee()
         isSaving = false;
     }
 }
+    private async Task AddTechnicalManagerScopeToEmployee()
+    {
+        formMessage = null;
+
+        if (EditingId == Guid.Empty)
+        {
+            formMessage = "ابتدا کارمند را ذخیره کنید.";
+            formMessageSeverity = Severity.Warning;
+            return;
+        }
+
+        if (!selectedTechnicalManagerScopeId.HasValue)
+        {
+            formMessage = "انتخاب محدوده مسئول فنی الزامی است.";
+            formMessageSeverity = Severity.Error;
+            return;
+        }
+
+        try
+        {
+            isSaving = true;
+
+            if (editingTechnicalManagerScopeId.HasValue)
+            {
+                var employeeScope =
+                    await EmployeeTechnicalManagerScopeService
+                        .GetByIdAsync(editingTechnicalManagerScopeId.Value);
+
+                if (employeeScope == null)
+                {
+                    formMessage = "محدوده مسئول فنی موردنظر پیدا نشد.";
+                    formMessageSeverity = Severity.Error;
+                    return;
+                }
+
+                employeeScope.EmployeeId = EditingId;
+                employeeScope.TechnicalManagerScopeId =
+                    selectedTechnicalManagerScopeId.Value;
+                employeeScope.IsPrimary =
+                    technicalManagerScopeIsPrimary;
+                employeeScope.IsActive = true;
+
+                var updated =
+                    await EmployeeTechnicalManagerScopeService
+                        .UpdateAsync(employeeScope);
+
+                if (!updated)
+                {
+                    formMessage = "ویرایش محدوده مسئول فنی انجام نشد.";
+                    formMessageSeverity = Severity.Error;
+                    return;
+                }
+
+                formMessage =
+                    "محدوده مسئول فنی با موفقیت ویرایش شد.";
+            }
+            else
+            {
+                var employeeScope = new EmployeeTechnicalManagerScope
+                {
+                    EmployeeId = EditingId,
+                    TechnicalManagerScopeId =
+                        selectedTechnicalManagerScopeId.Value,
+                    IsPrimary = technicalManagerScopeIsPrimary,
+                    IsActive = true
+                };
+
+                await EmployeeTechnicalManagerScopeService
+                    .AddAsync(employeeScope);
+
+                formMessage =
+                    "محدوده مسئول فنی با موفقیت اضافه شد.";
+            }
+
+            await LoadEmployeeRelations(EditingId);
+
+            selectedTechnicalManagerScopeId = null;
+            technicalManagerScopeIsPrimary = false;
+            editingTechnicalManagerScopeId = null;
+
+            formMessageSeverity = Severity.Success;
+        }
+        catch (Exception ex)
+        {
+            formMessage =
+                $"خطا در ثبت محدوده مسئول فنی: {ex.Message}";
+            formMessageSeverity = Severity.Error;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private async Task RemoveTechnicalManagerScopeFromEmployee(Guid employeeScopeId)
+    {
+        formMessage = null;
+
+        try
+        {
+            isSaving = true;
+
+            var result =
+                await EmployeeTechnicalManagerScopeService
+                    .DeleteAsync(employeeScopeId);
+
+            if (!result)
+            {
+                formMessage = "حذف محدوده مسئول فنی انجام نشد.";
+                formMessageSeverity = Severity.Error;
+                return;
+            }
+
+            await LoadEmployeeRelations(EditingId);
+
+            formMessage = "محدوده مسئول فنی با موفقیت حذف شد.";
+            formMessageSeverity = Severity.Success;
+        }
+        catch (Exception ex)
+        {
+            formMessage =
+                $"خطا در حذف محدوده مسئول فنی: {ex.Message}";
+            formMessageSeverity = Severity.Error;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+    private async Task ActivateTechnicalManagerScopeForEmployee(Guid employeeScopeId)
+    {
+        formMessage = null;
+
+        try
+        {
+            isSaving = true;
+
+            var result =
+                await EmployeeTechnicalManagerScopeService
+                    .ActivateAsync(employeeScopeId);
+
+            if (!result)
+            {
+                formMessage = "فعال‌سازی محدوده مسئول فنی انجام نشد.";
+                formMessageSeverity = Severity.Error;
+                return;
+            }
+
+            await LoadEmployeeRelations(EditingId);
+
+            formMessage = "محدوده مسئول فنی با موفقیت فعال شد.";
+            formMessageSeverity = Severity.Success;
+        }
+        catch (Exception ex)
+        {
+            formMessage =
+                $"خطا در فعال‌سازی محدوده مسئول فنی: {ex.Message}";
+            formMessageSeverity = Severity.Error;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+    private void EditTechnicalManagerScope(
+    EmployeeTechnicalManagerScope scope)
+    {
+        editingTechnicalManagerScopeId = scope.Id;
+
+        selectedTechnicalManagerScopeId =
+            scope.TechnicalManagerScopeId;
+
+        technicalManagerScopeIsPrimary =
+            scope.IsPrimary;
+
+        formMessage = null;
+    }
 
 private async Task SaveEmployee()
 {

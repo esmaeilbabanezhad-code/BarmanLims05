@@ -2,6 +2,8 @@
 using Barman.Domain.Entities;
 using Barman.Persistence.Contexts;
 using Microsoft.EntityFrameworkCore;
+using Barman.Application.Interfaces;
+using Barman.Application.Services.Resolvers;
 
 namespace Barman.Persistence.Repositories;
 
@@ -9,9 +11,14 @@ public class DefaultTestSetRepository : IDefaultTestSetRepository
 {
     private readonly ApplicationDbContext _context;
 
-    public DefaultTestSetRepository(ApplicationDbContext context)
+    private readonly IScopedTemplateResolver _scopedTemplateResolver;
+
+    public DefaultTestSetRepository(
+    ApplicationDbContext context,
+    IScopedTemplateResolver scopedTemplateResolver)
     {
         _context = context;
+        _scopedTemplateResolver = scopedTemplateResolver;
     }
 
     public async Task<List<DefaultTestSet>> GetAllAsync(
@@ -81,15 +88,17 @@ public class DefaultTestSetRepository : IDefaultTestSetRepository
     }
 
     public async Task<DefaultTestSet?> ResolveAsync(
-        Guid? customerId,
-        Guid? sampleCategoryId,
-        Guid? matrixId,
-        CancellationToken cancellationToken = default)
+    Guid? customerId,
+    Guid? sampleCategoryId,
+    Guid? matrixId,
+    Guid? standardSampleId,
+    CancellationToken cancellationToken = default)
     {
         var query = _context.DefaultTestSets
             .Include(x => x.Customer)
             .Include(x => x.SampleCategory)
             .Include(x => x.Matrix)
+            .Include(x => x.StandardSample)
             .Include(x => x.Items)
                 .ThenInclude(x => x.Test)
             .Include(x => x.Items)
@@ -98,43 +107,60 @@ public class DefaultTestSetRepository : IDefaultTestSetRepository
                 !x.IsDeleted &&
                 x.IsActive);
 
-        if (customerId.HasValue &&
-            customerId.Value != Guid.Empty)
-        {
-            query = query.Where(x =>
-                x.CustomerId == customerId ||
-                x.CustomerId == null);
-        }
-        else
-        {
-            query = query.Where(x =>
-                x.CustomerId == null);
-        }
+        // -------------------------------------------------
+        // Scope matching
+        // null = General / applies to all
+        // -------------------------------------------------
 
         query = query.Where(x =>
-            x.SampleCategoryId == sampleCategoryId ||
-            x.SampleCategoryId == null);
+            (x.CustomerId == null ||
+             x.CustomerId == customerId) &&
 
-        query = query.Where(x =>
-            x.MatrixId == matrixId ||
-            x.MatrixId == null);
+            (x.SampleCategoryId == null ||
+             x.SampleCategoryId == sampleCategoryId) &&
 
-        var sets = await query.ToListAsync(cancellationToken);
+            (x.MatrixId == null ||
+             x.MatrixId == matrixId) &&
+
+            (x.StandardSampleId == null ||
+             x.StandardSampleId == standardSampleId));
+
+        var sets = await query
+            .ToListAsync(cancellationToken);
+
+        // -------------------------------------------------
+        // Central specificity order:
+        //
+        // 1. Standard Sample
+        // 2. Customer
+        // 3. Sample Category
+        // 4. Matrix
+        // 5. Priority
+        // -------------------------------------------------
 
         return sets
             .OrderByDescending(x =>
-                x.CustomerId.HasValue &&
-                customerId.HasValue &&
-                x.CustomerId == customerId)
+                _scopedTemplateResolver.Specificity(
+                    x.StandardSampleId,
+                    standardSampleId))
+
             .ThenByDescending(x =>
-                x.SampleCategoryId.HasValue &&
-                sampleCategoryId.HasValue &&
-                x.SampleCategoryId == sampleCategoryId)
+                _scopedTemplateResolver.Specificity(
+                    x.CustomerId,
+                    customerId))
+
             .ThenByDescending(x =>
-                x.MatrixId.HasValue &&
-                matrixId.HasValue &&
-                x.MatrixId == matrixId)
+                _scopedTemplateResolver.Specificity(
+                    x.SampleCategoryId,
+                    sampleCategoryId))
+
+            .ThenByDescending(x =>
+                _scopedTemplateResolver.Specificity(
+                    x.MatrixId,
+                    matrixId))
+
             .ThenBy(x => x.Priority)
+
             .FirstOrDefault();
     }
 

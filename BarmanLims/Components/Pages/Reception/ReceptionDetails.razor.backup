@@ -1,0 +1,608 @@
+@page "/reception/details/{Id:guid}"
+
+@using MudBlazor
+@using Barman.Domain.Entities
+
+@inject Barman.Application.Interfaces.IReceptionService ReceptionService
+@inject Barman.Application.Services.TestAssignmentService TestAssignmentService
+
+<PageTitle>?????? ?????</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+
+    @if (IsLoading)
+    {
+        <MudPaper Class="pa-6">
+
+            <div class="d-flex justify-center pa-6">
+
+                <MudProgressCircular Indeterminate="true"
+                                     Color="Color.Primary" />
+
+            </div>
+
+        </MudPaper>
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <MudPaper Class="pa-6">
+
+            <MudAlert Severity="Severity.Error">
+                @ErrorMessage
+            </MudAlert>
+
+        </MudPaper>
+    }
+    else if (Reception is null)
+    {
+        <MudPaper Class="pa-6">
+
+            <MudAlert Severity="Severity.Warning">
+                ????? ???? ??? ???? ???.
+            </MudAlert>
+
+        </MudPaper>
+    }
+    else
+    {
+        <MudPaper Class="pa-6">
+
+            @* ========================================================= *@
+            @* Header                                                      *@
+            @* ========================================================= *@
+
+            <div class="d-flex justify-space-between align-center">
+
+                <div>
+
+                    <MudText Typo="Typo.h5">
+                        ?????? ?????
+                    </MudText>
+
+                    <MudText Typo="Typo.body2"
+                             Color="Color.Secondary"
+                             Class="mt-1">
+
+                        @Reception.ReceptionNumber
+
+                    </MudText>
+
+                </div>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="LoadData">
+
+                    ????????
+
+                </MudButton>
+
+            </div>
+
+            <MudDivider Class="my-4" />
+
+
+            @* ========================================================= *@
+            @* Reception information                                       *@
+            @* ========================================================= *@
+
+            <MudGrid>
+
+                <MudItem xs="12" sm="6" md="3">
+
+                    <MudText Typo="Typo.caption">
+                        ????? ?????
+                    </MudText>
+
+                    <MudText Typo="Typo.body1">
+                        @Reception.ReceptionNumber
+                    </MudText>
+
+                </MudItem>
+
+
+                <MudItem xs="12" sm="6" md="3">
+
+                    <MudText Typo="Typo.caption">
+                        ?????
+                    </MudText>
+
+                    <MudText Typo="Typo.body1">
+                        @Reception.Customer?.DisplayName
+                    </MudText>
+
+                </MudItem>
+
+
+                <MudItem xs="12" sm="6" md="3">
+
+                    <MudText Typo="Typo.caption">
+                        ????? ?????
+                    </MudText>
+
+                    <MudText Typo="Typo.body1">
+                        @Reception.ReceptionDate.ToLocalTime().ToString("yyyy/MM/dd HH:mm")
+                    </MudText>
+
+                </MudItem>
+
+
+                <MudItem xs="12" sm="6" md="3">
+
+                    <MudText Typo="Typo.caption">
+                        ?????
+                    </MudText>
+
+                    <MudText Typo="Typo.body1">
+                        @Reception.Status
+                    </MudText>
+
+                </MudItem>
+
+            </MudGrid>
+
+
+            @if (Reception.IsUrgent)
+            {
+                <MudAlert Severity="Severity.Warning"
+                          Class="mt-4">
+
+                    ??? ????? ???? ???.
+
+                </MudAlert>
+            }
+
+
+            @* ========================================================= *@
+            @* Samples                                                     *@
+            @* ========================================================= *@
+
+            <MudDivider Class="my-5" />
+
+            <MudText Typo="Typo.h6">
+                ???????? ? ????????? ????
+            </MudText>
+
+
+            @if (Reception.Samples.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info"
+                          Class="mt-4">
+
+                    ???? ??? ????? ???????? ??? ???? ???.
+
+                </MudAlert>
+            }
+            else
+            {
+                @foreach (var sample in Reception.Samples.OrderBy(x => x.SampleCode))
+                {
+                    var assignments =
+                    Assignments
+                    .Where(x => x.SampleId == sample.Id)
+                    .OrderBy(x => x.Test?.Code)
+                    .ToList();
+
+                    <MudPaper Class="pa-4 mt-4"
+                              Outlined="true">
+
+                        @* ================================================= *@
+                        @* Sample header                                        *@
+                        @* ================================================= *@
+
+                        <div class="d-flex justify-space-between align-center">
+
+                            <div>
+
+                                <MudText Typo="Typo.subtitle1">
+
+                                    @sample.SampleName
+
+                                </MudText>
+
+                                <MudText Typo="Typo.body2"
+                                         Color="Color.Secondary">
+
+                                    ?? ?????:
+                                    @sample.SampleCode
+
+                                </MudText>
+
+                            </div>
+
+
+                            @if (assignments.Count > 0)
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Success"
+                                         Size="Size.Small">
+
+                                    @assignments.Count ?????
+
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string"
+                                         Color="Color.Warning"
+                                         Size="Size.Small">
+
+                                    ???? ?????
+
+                                </MudChip>
+                            }
+
+                        </div>
+
+
+                        <MudDivider Class="my-3" />
+
+
+                        @* ================================================= *@
+                        @* Sample information                                   *@
+                        @* ================================================= *@
+
+                        <MudGrid>
+
+                            <MudItem xs="12" sm="6" md="3">
+
+                                <MudText Typo="Typo.caption">
+                                    ??????
+                                </MudText>
+
+                                <MudText Typo="Typo.body2">
+
+                                    @(sample.Matrix?.Name ?? "-")
+
+                                </MudText>
+
+                            </MudItem>
+
+
+                            <MudItem xs="12" sm="6" md="3">
+
+                                <MudText Typo="Typo.caption">
+                                    ?????
+                                </MudText>
+
+                                <MudText Typo="Typo.body2">
+
+                                    @(sample.Quantity?.ToString() ?? "-")
+                                    @(sample.Unit ?? "")
+
+                                </MudText>
+
+                            </MudItem>
+
+
+                            <MudItem xs="12" sm="6" md="3">
+
+                                <MudText Typo="Typo.caption">
+                                    ??? ???
+                                </MudText>
+
+                                <MudText Typo="Typo.body2">
+
+                                    @(sample.ContainerType ?? "-")
+
+                                </MudText>
+
+                            </MudItem>
+
+
+                            <MudItem xs="12" sm="6" md="3">
+
+                                <MudText Typo="Typo.caption">
+                                    ????? ?????
+                                </MudText>
+
+                                <MudText Typo="Typo.body2">
+
+                                    @assignments.Count
+
+                                </MudText>
+
+                            </MudItem>
+
+                        </MudGrid>
+
+
+                        @* ================================================= *@
+                        @* Tests                                                 *@
+                        @* ================================================= *@
+
+                        <MudText Typo="Typo.subtitle2"
+                                 Class="mt-4 mb-2">
+
+                            ????????? ???? ?? ??? ?????
+
+                        </MudText>
+
+
+                        @if (assignments.Count == 0)
+                        {
+                            <MudAlert Severity="Severity.Warning">
+
+                                ??? TestAssignment?? ???? ??? ????? ?? ???????
+                                ???? ???.
+
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudTable Items="assignments"
+                                      Dense="true"
+                                      Hover="true"
+                                      Bordered="true"
+                                      Striped="true">
+
+                                <HeaderContent>
+
+                                    <MudTh>
+                                        ?? ?????
+                                    </MudTh>
+
+                                    <MudTh>
+                                        ??? ?????
+                                    </MudTh>
+
+                                    <MudTh>
+                                        ???
+                                    </MudTh>
+
+                                    <MudTh>
+                                        ????
+                                    </MudTh>
+
+                                    <MudTh>
+                                        ???
+                                    </MudTh>
+
+                                    <MudTh>
+                                        ????? ?????
+                                    </MudTh>
+
+                                </HeaderContent>
+
+                                <RowTemplate>
+
+                                    <MudTd DataLabel="?? ?????">
+
+                                        @context.Test?.Code
+
+                                    </MudTd>
+
+
+                                    <MudTd DataLabel="??? ?????">
+
+                                        @context.Test?.Name
+
+                                    </MudTd>
+
+                                    <MudTd DataLabel="???">
+
+                                        <MudSelect T="Guid?"
+                                                   Value="@context.DepartmentId"
+                                                   ValueChanged="@(value => ChangeDepartment(context, value))"
+                                                   Dense="true"
+                                                   Variant="Variant.Outlined"
+                                                   Margin="Margin.Dense"
+                                                   Clearable="true">
+
+                                            @foreach (var department in Departments)
+                                            {
+                                                <MudSelectItem T="Guid?"
+                                                               Value="@department.Id">
+
+                                                    @department.Name
+
+                                                </MudSelectItem>
+                                            }
+
+                                       </MudSelect>
+
+                                    </MudTd>
+
+                                    <MudTd DataLabel="????">
+
+                                        @(context.Unit
+                                                                ?? context.Test?.Unit
+                                                                ?? "-")
+
+                    </MudTd>
+
+
+                                    <MudTd DataLabel="???">
+
+                        @if (context.Test?.IsQuantitative == true)
+                                        {
+                                            <MudChip T="string"
+                                                     Color="Color.Primary"
+                                                     Size="Size.Small">
+
+                                                ???
+
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string"
+                                                     Color="Color.Secondary"
+                                                     Size="Size.Small">
+
+                                                ????
+
+                                            </MudChip>
+                                        }
+
+                                    </MudTd>
+
+
+                                    <MudTd DataLabel="????? ?????">
+
+                                        @if (string.IsNullOrWhiteSpace(context.Result))
+                                        {
+                                            <MudChip T="string"
+                                                     Color="Color.Default"
+                                                     Size="Size.Small">
+
+                                                ????? ??? ????
+
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string"
+                                                     Color="Color.Success"
+                                                     Size="Size.Small">
+
+                                                @context.Result
+
+                                            </MudChip>
+                                        }
+
+                                    </MudTd>
+
+                                </RowTemplate>
+
+                            </MudTable>
+                        }
+
+                    </MudPaper>
+                }
+            }
+
+
+            @* ========================================================= *@
+            @* Verification message                                       *@
+            @* ========================================================= *@
+
+            <MudDivider Class="my-5" />
+
+            @if (Assignments.Count > 0)
+            {
+                <MudAlert Severity="Severity.Success">
+
+                    <MudText Typo="Typo.body1">
+
+                        ????? ???????? ?? ???????? ?? ??????? ?? ??????
+                        ?????? ??.
+
+                    </MudText>
+
+                    <MudText Typo="Typo.body2" Class="mt-1">
+
+                        ????? TestAssignment:
+                        <b>@Assignments.Count</b>
+
+                    </MudText>
+
+                </MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning">
+
+                    ???? ??? ????? ??? TestAssignment?? ?? ??????? ?????? ???.
+
+                </MudAlert>
+            }
+
+        </MudPaper>
+    }
+
+</MudContainer>
+
+
+@code
+{
+    
+    private List<Department> Departments = new();
+
+    [Parameter]
+    public Guid Id { get; set; }
+
+
+    private Reception? Reception;
+
+    private List<TestAssignment> Assignments = new();
+
+
+    private bool IsLoading;
+
+    private string? ErrorMessage;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+
+    private async Task LoadData()
+    {
+        if (Id == Guid.Empty)
+        {
+            ErrorMessage = "????? ????? ????? ????.";
+            return;
+        }
+
+        try
+        {
+            IsLoading = true;
+            ErrorMessage = null;
+
+            Reception =
+                await ReceptionService.GetByIdAsync(Id);
+
+            if (Reception is null)
+            {
+                ErrorMessage =
+                    "????? ???? ??? ???? ???.";
+
+                Assignments.Clear();
+
+                return;
+            }
+
+            Assignments =
+                await TestAssignmentService
+                    .GetByReceptionIdAsync(Id);
+
+            Departments =
+await TestAssignmentService
+.GetDepartmentsAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"??? ?? ???????? ??????? ?????: {ex.Message}";
+
+            Assignments.Clear();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    private async Task ChangeDepartment(
+    TestAssignment assignment,
+    Guid? departmentId)
+    {
+        try
+        {
+            await TestAssignmentService
+                .SetDepartmentAsync(
+                    assignment.Id,
+                    departmentId);
+
+            assignment.DepartmentId = departmentId;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"??? ?? ????? ???: {ex.Message}";
+        }
+    }
+}

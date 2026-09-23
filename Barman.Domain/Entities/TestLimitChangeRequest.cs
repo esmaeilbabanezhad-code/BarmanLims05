@@ -10,6 +10,16 @@ public class TestLimitChangeRequest : BaseEntity
 
     public Test Test { get; set; } = null!;
 
+    // اجرای مشخص آزمون / نمونه
+    public Guid? TestAssignmentId { get; set; }
+
+    public TestAssignment? TestAssignment { get; set; }
+
+    // Result Row مشخص در صورت استفاده از ResultSet
+    public Guid? TestResultSetItemId { get; set; }
+
+    public TestResultSetItem? TestResultSetItem { get; set; }
+
     // حدود مجاز فعلی
     public Guid? ReferenceLimitId { get; set; }
 

@@ -22,6 +22,118 @@ namespace Barman.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Barman.Domain.Entities.CustomFieldDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DataType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsReusable")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid?>("MatrixId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("SampleCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DisplayOrder");
+
+                    b.HasIndex("MatrixId");
+
+                    b.HasIndex("SampleCategoryId");
+
+                    b.HasIndex("CustomerId", "SampleCategoryId", "MatrixId", "IsActive");
+
+                    b.ToTable("CustomFieldDefinitions", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.CustomFieldValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CustomFieldDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SampleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomFieldDefinitionId");
+
+                    b.HasIndex("SampleId", "CustomFieldDefinitionId")
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = false");
+
+                    b.ToTable("CustomFieldValues", (string)null);
+                });
+
             modelBuilder.Entity("Barman.Domain.Entities.Customer", b =>
                 {
                     b.Property<Guid>("Id")
@@ -222,6 +334,9 @@ namespace Barman.Persistence.Migrations
                     b.Property<Guid?>("SampleCategoryId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("StandardSampleId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Code")
@@ -230,6 +345,8 @@ namespace Barman.Persistence.Migrations
                     b.HasIndex("MatrixId");
 
                     b.HasIndex("SampleCategoryId");
+
+                    b.HasIndex("StandardSampleId");
 
                     b.HasIndex("CustomerId", "SampleCategoryId", "MatrixId", "Priority");
 
@@ -532,6 +649,49 @@ namespace Barman.Persistence.Migrations
                     b.ToTable("EmployeeRoles", (string)null);
                 });
 
+            modelBuilder.Entity("Barman.Domain.Entities.EmployeeTechnicalManagerScope", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPrimary")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TechnicalManagerScopeId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TechnicalManagerScopeId");
+
+                    b.HasIndex("EmployeeId", "TechnicalManagerScopeId")
+                        .IsUnique();
+
+                    b.ToTable("EmployeeTechnicalManagerScopes", (string)null);
+                });
+
             modelBuilder.Entity("Barman.Domain.Entities.Instrument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -581,7 +741,65 @@ namespace Barman.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Instruments");
+                    b.ToTable("Instruments", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.LimitReference", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DocumentNo")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("IssueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Version")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("LimitReferences", (string)null);
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Matrix", b =>
@@ -702,6 +920,55 @@ namespace Barman.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("NumberSequences", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.OrganizationType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("OrganizationTypes", (string)null);
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Permission", b =>
@@ -825,6 +1092,69 @@ namespace Barman.Persistence.Migrations
                     b.ToTable("Receptions", (string)null);
                 });
 
+            modelBuilder.Entity("Barman.Domain.Entities.ReceptionCorrectionRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Guid>("ReceptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RequestedByEmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ResolvedByEmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SampleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestedByEmployeeId");
+
+                    b.HasIndex("ResolvedByEmployeeId");
+
+                    b.HasIndex("SampleId");
+
+                    b.HasIndex("ReceptionId", "Status");
+
+                    b.ToTable("ReceptionCorrectionRequests", (string)null);
+                });
+
             modelBuilder.Entity("Barman.Domain.Entities.ReferenceLimit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -836,6 +1166,9 @@ namespace Barman.Persistence.Migrations
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
@@ -878,6 +1211,9 @@ namespace Barman.Persistence.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<Guid?>("SampleCategoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("TestId")
                         .HasColumnType("uuid");
 
@@ -901,11 +1237,304 @@ namespace Barman.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CustomerId");
+
                     b.HasIndex("MatrixId");
+
+                    b.HasIndex("SampleCategoryId");
 
                     b.HasIndex("TestId", "MatrixId", "OrganizationName");
 
                     b.ToTable("ReferenceLimits", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.Reporting.IssuedReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CancelledByEmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("IssuedByEmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ReceptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReportNumber")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ReportTemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SampleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TemplateCode")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TemplateVersion")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("IssuedReports", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.Reporting.ReportTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Authority")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("CanDelete")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSystemDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSystemTemplate")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("ReportType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("IsSystemDefault");
+
+                    b.ToTable("ReportTemplates", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.Reporting.ReportTemplateField", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Alignment")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FieldCode")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("FieldType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Format")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsVisible")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ReportTemplateSectionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Width")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportTemplateSectionId", "FieldCode")
+                        .IsUnique();
+
+                    b.ToTable("ReportTemplateFields", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.Reporting.ReportTemplateSection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsVisible")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Layout")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Position")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("ReportTemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SectionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportTemplateId", "Code")
+                        .IsUnique();
+
+                    b.ToTable("ReportTemplateSections", (string)null);
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Role", b =>
@@ -1000,6 +1629,10 @@ namespace Barman.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("BatchLotNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<string>("ContainerType")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1010,9 +1643,16 @@ namespace Barman.Persistence.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text");
 
+                    b.Property<string>("CustomerSampleName")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<DateOnly?>("ExpiryDate")
+                        .HasColumnType("date");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -1029,9 +1669,16 @@ namespace Barman.Persistence.Migrations
                     b.Property<string>("ModifiedBy")
                         .HasColumnType("text");
 
+                    b.Property<DateOnly?>("ProductionDate")
+                        .HasColumnType("date");
+
                     b.Property<decimal?>("Quantity")
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("QuotaNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid>("ReceptionId")
                         .HasColumnType("uuid");
@@ -1048,6 +1695,10 @@ namespace Barman.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
+
+                    b.Property<string>("ShipmentNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<Guid?>("StandardSampleId")
                         .HasColumnType("uuid");
@@ -1178,6 +1829,193 @@ namespace Barman.Persistence.Migrations
                     b.ToTable("StandardSamples", (string)null);
                 });
 
+            modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerRoutingRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("MatrixId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
+
+                    b.Property<Guid?>("SampleCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TechnicalManagerScopeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TestPanelId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("MatrixId");
+
+                    b.HasIndex("SampleCategoryId");
+
+                    b.HasIndex("TechnicalManagerScopeId");
+
+                    b.HasIndex("TestId");
+
+                    b.HasIndex("TestPanelId");
+
+                    b.HasIndex("Priority", "IsActive");
+
+                    b.ToTable("TechnicalManagerRoutingRules", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerScope", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("TechnicalManagerScopes", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerScopeDepartment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("DepartmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsPrimary")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
+
+                    b.Property<Guid>("TechnicalManagerScopeId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.HasIndex("TechnicalManagerScopeId", "DepartmentId")
+                        .IsUnique();
+
+                    b.ToTable("TechnicalManagerScopeDepartments", (string)null);
+                });
+
             modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerSectionHead", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1234,6 +2072,9 @@ namespace Barman.Persistence.Migrations
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("DefaultAnalystId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("DefaultResult")
                         .HasMaxLength(100)
@@ -1310,6 +2151,8 @@ namespace Barman.Persistence.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
+                    b.HasIndex("DefaultAnalystId");
+
                     b.HasIndex("DepartmentId");
 
                     b.HasIndex("InstrumentId");
@@ -1365,6 +2208,9 @@ namespace Barman.Persistence.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsRejectedBySection")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTimeOffset?>("ModifiedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1380,11 +2226,31 @@ namespace Barman.Persistence.Migrations
                     b.Property<Guid?>("SectionHeadId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SelectedLimitRuleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TechnicalManagerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TechnicalManagerScopeId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("TestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TestPanelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TestResultSetId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Unit")
                         .HasColumnType("text");
+
+                    b.Property<int>("WorkflowStage")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
 
                     b.HasKey("Id");
 
@@ -1392,9 +2258,67 @@ namespace Barman.Persistence.Migrations
 
                     b.HasIndex("SampleId");
 
+                    b.HasIndex("SelectedLimitRuleId");
+
+                    b.HasIndex("TechnicalManagerId");
+
+                    b.HasIndex("TechnicalManagerScopeId");
+
                     b.HasIndex("TestId");
 
-                    b.ToTable("TestAssignments");
+                    b.HasIndex("TestPanelId");
+
+                    b.HasIndex("TestResultSetId");
+
+                    b.ToTable("TestAssignments", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestAssignmentResultValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TestAssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TestResultSetItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TestResultSetItemId");
+
+                    b.HasIndex("TestAssignmentId", "TestResultSetItemId")
+                        .IsUnique();
+
+                    b.ToTable("TestAssignmentResultValues", (string)null);
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.TestLimitChangeRequest", b =>
@@ -1505,7 +2429,13 @@ namespace Barman.Persistence.Migrations
                     b.Property<int>("TechnicalManagerStatus")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("TestAssignmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("TestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TestResultSetItemId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
@@ -1518,9 +2448,106 @@ namespace Barman.Persistence.Migrations
 
                     b.HasIndex("TechnicalManagerApprovedByEmployeeId");
 
+                    b.HasIndex("TestAssignmentId");
+
+                    b.HasIndex("TestResultSetItemId");
+
                     b.HasIndex("TestId", "Status");
 
                     b.ToTable("TestLimitChangeRequests", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestLimitRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AllowedValues")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<decimal?>("ExactValue")
+                        .HasColumnType("numeric");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("LimitReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LimitType")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("LowerInclusive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("LowerValue")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid?>("MatrixId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SampleCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<bool>("UpperInclusive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("UpperValue")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("LimitReferenceId");
+
+                    b.HasIndex("MatrixId");
+
+                    b.HasIndex("SampleCategoryId");
+
+                    b.HasIndex("TestId", "CustomerId", "MatrixId", "SampleCategoryId", "IsActive", "ValidFrom", "ValidTo", "Priority");
+
+                    b.ToTable("TestLimitRules", (string)null);
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.TestMethod", b =>
@@ -1566,7 +2593,7 @@ namespace Barman.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TestMethods");
+                    b.ToTable("TestMethods", (string)null);
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.TestPanel", b =>
@@ -1627,6 +2654,9 @@ namespace Barman.Persistence.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("DefaultAnalystId")
+                        .HasColumnType("uuid");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -1650,6 +2680,8 @@ namespace Barman.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DefaultAnalystId");
+
                     b.HasIndex("TestId");
 
                     b.HasIndex("TestPanelId", "SortOrder");
@@ -1658,6 +2690,444 @@ namespace Barman.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("TestPanelItems", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestResultDefinition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("DecimalPlaces")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("TestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TestId", "Code")
+                        .IsUnique();
+
+                    b.HasIndex("TestId", "DisplayOrder");
+
+                    b.ToTable("TestResultDefinitions", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestResultReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Decision")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("ReviewLevel")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ReviewerEmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TestAssignmentId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReviewerEmployeeId");
+
+                    b.HasIndex("TestAssignmentId", "ReviewLevel", "CreatedAt");
+
+                    b.ToTable("TestResultReviews", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestResultSet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("MatrixId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("character varying(250)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SampleCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StandardSampleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TestId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("MatrixId");
+
+                    b.HasIndex("SampleCategoryId");
+
+                    b.HasIndex("StandardSampleId");
+
+                    b.HasIndex("TestId", "CustomerId", "SampleCategoryId", "MatrixId", "StandardSampleId", "Priority");
+
+                    b.ToTable("TestResultSets", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestResultSetItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("LOD")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("LOQ")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("MaxValue")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal?>("MinValue")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TestResultDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TestResultSetId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TestResultDefinitionId");
+
+                    b.HasIndex("TestResultSetId", "DisplayOrder");
+
+                    b.HasIndex("TestResultSetId", "TestResultDefinitionId")
+                        .IsUnique();
+
+                    b.ToTable("TestResultSetItems", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestTariff", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("MatrixId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OrganizationTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SampleCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StandardSampleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("TestPanelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("MatrixId");
+
+                    b.HasIndex("SampleCategoryId");
+
+                    b.HasIndex("StandardSampleId");
+
+                    b.HasIndex("TestId");
+
+                    b.HasIndex("TestPanelId");
+
+                    b.HasIndex("OrganizationTypeId", "TestId", "TestPanelId", "CustomerId", "SampleCategoryId", "StandardSampleId", "ValidFrom");
+
+                    b.ToTable("TestTariffs", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.UserAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("EmployeeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LastLoginAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployeeId")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
+
+                    b.ToTable("UserAccounts", (string)null);
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.CustomFieldDefinition", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Matrix", "Matrix")
+                        .WithMany()
+                        .HasForeignKey("MatrixId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
+                        .WithMany()
+                        .HasForeignKey("SampleCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Matrix");
+
+                    b.Navigation("SampleCategory");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.CustomFieldValue", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.CustomFieldDefinition", "CustomFieldDefinition")
+                        .WithMany("Values")
+                        .HasForeignKey("CustomFieldDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.Sample", "Sample")
+                        .WithMany("CustomFieldValues")
+                        .HasForeignKey("SampleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CustomFieldDefinition");
+
+                    b.Navigation("Sample");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.CustomerTestPanel", b =>
@@ -1710,11 +3180,17 @@ namespace Barman.Persistence.Migrations
                         .HasForeignKey("SampleCategoryId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Barman.Domain.Entities.StandardSample", "StandardSample")
+                        .WithMany()
+                        .HasForeignKey("StandardSampleId");
+
                     b.Navigation("Customer");
 
                     b.Navigation("Matrix");
 
                     b.Navigation("SampleCategory");
+
+                    b.Navigation("StandardSample");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.DefaultTestSetItem", b =>
@@ -1799,6 +3275,25 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("Role");
                 });
 
+            modelBuilder.Entity("Barman.Domain.Entities.EmployeeTechnicalManagerScope", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Employee", "Employee")
+                        .WithMany("TechnicalManagerScopes")
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.TechnicalManagerScope", "TechnicalManagerScope")
+                        .WithMany("EmployeeScopes")
+                        .HasForeignKey("TechnicalManagerScopeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("TechnicalManagerScope");
+                });
+
             modelBuilder.Entity("Barman.Domain.Entities.Matrix", b =>
                 {
                     b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
@@ -1835,12 +3330,53 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("TechManager");
                 });
 
+            modelBuilder.Entity("Barman.Domain.Entities.ReceptionCorrectionRequest", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Reception", "Reception")
+                        .WithMany()
+                        .HasForeignKey("ReceptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.Employee", "RequestedByEmployee")
+                        .WithMany()
+                        .HasForeignKey("RequestedByEmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.Employee", "ResolvedByEmployee")
+                        .WithMany()
+                        .HasForeignKey("ResolvedByEmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Sample", "Sample")
+                        .WithMany()
+                        .HasForeignKey("SampleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Reception");
+
+                    b.Navigation("RequestedByEmployee");
+
+                    b.Navigation("ResolvedByEmployee");
+
+                    b.Navigation("Sample");
+                });
+
             modelBuilder.Entity("Barman.Domain.Entities.ReferenceLimit", b =>
                 {
+                    b.HasOne("Barman.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId");
+
                     b.HasOne("Barman.Domain.Entities.Matrix", "Matrix")
                         .WithMany()
                         .HasForeignKey("MatrixId")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
+                        .WithMany()
+                        .HasForeignKey("SampleCategoryId");
 
                     b.HasOne("Barman.Domain.Entities.Test", "Test")
                         .WithMany("ReferenceLimits")
@@ -1848,9 +3384,35 @@ namespace Barman.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.Navigation("Customer");
+
                     b.Navigation("Matrix");
 
+                    b.Navigation("SampleCategory");
+
                     b.Navigation("Test");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.Reporting.ReportTemplateField", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Reporting.ReportTemplateSection", "ReportTemplateSection")
+                        .WithMany("Fields")
+                        .HasForeignKey("ReportTemplateSectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReportTemplateSection");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.Reporting.ReportTemplateSection", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Reporting.ReportTemplate", "ReportTemplate")
+                        .WithMany("Sections")
+                        .HasForeignKey("ReportTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ReportTemplate");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.RolePermission", b =>
@@ -1923,6 +3485,78 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("SampleCategory");
                 });
 
+            modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerRoutingRule", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Matrix", "Matrix")
+                        .WithMany()
+                        .HasForeignKey("MatrixId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
+                        .WithMany()
+                        .HasForeignKey("SampleCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.TechnicalManagerScope", "TechnicalManagerScope")
+                        .WithMany()
+                        .HasForeignKey("TechnicalManagerScopeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.Test", "Test")
+                        .WithMany()
+                        .HasForeignKey("TestId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.TestPanel", "TestPanel")
+                        .WithMany()
+                        .HasForeignKey("TestPanelId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Matrix");
+
+                    b.Navigation("SampleCategory");
+
+                    b.Navigation("TechnicalManagerScope");
+
+                    b.Navigation("Test");
+
+                    b.Navigation("TestPanel");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerScopeDepartment", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.TechnicalManagerScope", "TechnicalManagerScope")
+                        .WithMany()
+                        .HasForeignKey("TechnicalManagerScopeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Department");
+
+                    b.Navigation("TechnicalManagerScope");
+                });
+
             modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerSectionHead", b =>
                 {
                     b.HasOne("Barman.Domain.Entities.Employee", "SectionHead")
@@ -1944,6 +3578,11 @@ namespace Barman.Persistence.Migrations
 
             modelBuilder.Entity("Barman.Domain.Entities.Test", b =>
                 {
+                    b.HasOne("Barman.Domain.Entities.Employee", "DefaultAnalyst")
+                        .WithMany()
+                        .HasForeignKey("DefaultAnalystId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Barman.Domain.Entities.Department", "Department")
                         .WithMany()
                         .HasForeignKey("DepartmentId")
@@ -1969,6 +3608,8 @@ namespace Barman.Persistence.Migrations
                         .HasForeignKey("TestMethodId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("DefaultAnalyst");
+
                     b.Navigation("Department");
 
                     b.Navigation("Instrument");
@@ -1993,17 +3634,71 @@ namespace Barman.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Barman.Domain.Entities.TestLimitRule", "SelectedLimitRule")
+                        .WithMany()
+                        .HasForeignKey("SelectedLimitRuleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Employee", "TechnicalManager")
+                        .WithMany()
+                        .HasForeignKey("TechnicalManagerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.TechnicalManagerScope", "TechnicalManagerScope")
+                        .WithMany()
+                        .HasForeignKey("TechnicalManagerScopeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Barman.Domain.Entities.Test", "Test")
                         .WithMany("Assignments")
                         .HasForeignKey("TestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Barman.Domain.Entities.TestPanel", "TestPanel")
+                        .WithMany()
+                        .HasForeignKey("TestPanelId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.TestResultSet", "TestResultSet")
+                        .WithMany()
+                        .HasForeignKey("TestResultSetId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Department");
 
                     b.Navigation("Sample");
 
+                    b.Navigation("SelectedLimitRule");
+
+                    b.Navigation("TechnicalManager");
+
+                    b.Navigation("TechnicalManagerScope");
+
                     b.Navigation("Test");
+
+                    b.Navigation("TestPanel");
+
+                    b.Navigation("TestResultSet");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestAssignmentResultValue", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.TestAssignment", "TestAssignment")
+                        .WithMany("ResultValues")
+                        .HasForeignKey("TestAssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.TestResultSetItem", "TestResultSetItem")
+                        .WithMany()
+                        .HasForeignKey("TestResultSetItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("TestAssignment");
+
+                    b.Navigation("TestResultSetItem");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.TestLimitChangeRequest", b =>
@@ -2029,11 +3724,20 @@ namespace Barman.Persistence.Migrations
                         .HasForeignKey("TechnicalManagerApprovedByEmployeeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("Barman.Domain.Entities.TestAssignment", "TestAssignment")
+                        .WithMany()
+                        .HasForeignKey("TestAssignmentId");
+
                     b.HasOne("Barman.Domain.Entities.Test", "Test")
                         .WithMany()
                         .HasForeignKey("TestId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.TestResultSetItem", "TestResultSetItem")
+                        .WithMany()
+                        .HasForeignKey("TestResultSetItemId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("ApprovedByEmployee");
 
@@ -2044,10 +3748,59 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("TechnicalManagerApprovedByEmployee");
 
                     b.Navigation("Test");
+
+                    b.Navigation("TestAssignment");
+
+                    b.Navigation("TestResultSetItem");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestLimitRule", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.LimitReference", "LimitReference")
+                        .WithMany("TestLimitRules")
+                        .HasForeignKey("LimitReferenceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.Matrix", "Matrix")
+                        .WithMany()
+                        .HasForeignKey("MatrixId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
+                        .WithMany()
+                        .HasForeignKey("SampleCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Test", "Test")
+                        .WithMany()
+                        .HasForeignKey("TestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("LimitReference");
+
+                    b.Navigation("Matrix");
+
+                    b.Navigation("SampleCategory");
+
+                    b.Navigation("Test");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.TestPanelItem", b =>
                 {
+                    b.HasOne("Barman.Domain.Entities.Employee", "DefaultAnalyst")
+                        .WithMany()
+                        .HasForeignKey("DefaultAnalystId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Barman.Domain.Entities.Test", "Test")
                         .WithMany("PanelItems")
                         .HasForeignKey("TestId")
@@ -2060,9 +3813,168 @@ namespace Barman.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("DefaultAnalyst");
+
                     b.Navigation("Test");
 
                     b.Navigation("TestPanel");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestResultDefinition", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Test", "Test")
+                        .WithMany("ResultDefinitions")
+                        .HasForeignKey("TestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Test");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestResultReview", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Employee", "ReviewerEmployee")
+                        .WithMany()
+                        .HasForeignKey("ReviewerEmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.TestAssignment", "TestAssignment")
+                        .WithMany()
+                        .HasForeignKey("TestAssignmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReviewerEmployee");
+
+                    b.Navigation("TestAssignment");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestResultSet", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Matrix", "Matrix")
+                        .WithMany()
+                        .HasForeignKey("MatrixId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
+                        .WithMany()
+                        .HasForeignKey("SampleCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.StandardSample", "StandardSample")
+                        .WithMany()
+                        .HasForeignKey("StandardSampleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Test", "Test")
+                        .WithMany("ResultSets")
+                        .HasForeignKey("TestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Matrix");
+
+                    b.Navigation("SampleCategory");
+
+                    b.Navigation("StandardSample");
+
+                    b.Navigation("Test");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestResultSetItem", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.TestResultDefinition", "TestResultDefinition")
+                        .WithMany()
+                        .HasForeignKey("TestResultDefinitionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.TestResultSet", "TestResultSet")
+                        .WithMany("Items")
+                        .HasForeignKey("TestResultSetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("TestResultDefinition");
+
+                    b.Navigation("TestResultSet");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestTariff", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Matrix", "Matrix")
+                        .WithMany()
+                        .HasForeignKey("MatrixId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.OrganizationType", "OrganizationType")
+                        .WithMany("TestTariffs")
+                        .HasForeignKey("OrganizationTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Barman.Domain.Entities.SampleCategory", "SampleCategory")
+                        .WithMany()
+                        .HasForeignKey("SampleCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.StandardSample", "StandardSample")
+                        .WithMany()
+                        .HasForeignKey("StandardSampleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.Test", "Test")
+                        .WithMany()
+                        .HasForeignKey("TestId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Barman.Domain.Entities.TestPanel", "TestPanel")
+                        .WithMany()
+                        .HasForeignKey("TestPanelId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Matrix");
+
+                    b.Navigation("OrganizationType");
+
+                    b.Navigation("SampleCategory");
+
+                    b.Navigation("StandardSample");
+
+                    b.Navigation("Test");
+
+                    b.Navigation("TestPanel");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.UserAccount", b =>
+                {
+                    b.HasOne("Barman.Domain.Entities.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.CustomFieldDefinition", b =>
+                {
+                    b.Navigation("Values");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Customer", b =>
@@ -2094,12 +4006,24 @@ namespace Barman.Persistence.Migrations
 
                     b.Navigation("SectionHeadTechnicalManagers");
 
+                    b.Navigation("TechnicalManagerScopes");
+
                     b.Navigation("TechnicalManagerSectionHeads");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.LimitReference", b =>
+                {
+                    b.Navigation("TestLimitRules");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Matrix", b =>
                 {
                     b.Navigation("TestPanelRules");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.OrganizationType", b =>
+                {
+                    b.Navigation("TestTariffs");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.Permission", b =>
@@ -2112,6 +4036,16 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("Samples");
                 });
 
+            modelBuilder.Entity("Barman.Domain.Entities.Reporting.ReportTemplate", b =>
+                {
+                    b.Navigation("Sections");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.Reporting.ReportTemplateSection", b =>
+                {
+                    b.Navigation("Fields");
+                });
+
             modelBuilder.Entity("Barman.Domain.Entities.Role", b =>
                 {
                     b.Navigation("EmployeeRoles");
@@ -2121,6 +4055,8 @@ namespace Barman.Persistence.Migrations
 
             modelBuilder.Entity("Barman.Domain.Entities.Sample", b =>
                 {
+                    b.Navigation("CustomFieldValues");
+
                     b.Navigation("TestAssignments");
                 });
 
@@ -2136,6 +4072,11 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("Samples");
                 });
 
+            modelBuilder.Entity("Barman.Domain.Entities.TechnicalManagerScope", b =>
+                {
+                    b.Navigation("EmployeeScopes");
+                });
+
             modelBuilder.Entity("Barman.Domain.Entities.Test", b =>
                 {
                     b.Navigation("Assignments");
@@ -2143,9 +4084,23 @@ namespace Barman.Persistence.Migrations
                     b.Navigation("PanelItems");
 
                     b.Navigation("ReferenceLimits");
+
+                    b.Navigation("ResultDefinitions");
+
+                    b.Navigation("ResultSets");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestAssignment", b =>
+                {
+                    b.Navigation("ResultValues");
                 });
 
             modelBuilder.Entity("Barman.Domain.Entities.TestPanel", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("Barman.Domain.Entities.TestResultSet", b =>
                 {
                     b.Navigation("Items");
                 });

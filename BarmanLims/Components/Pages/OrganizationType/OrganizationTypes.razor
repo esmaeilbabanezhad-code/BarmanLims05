@@ -1,0 +1,438 @@
+@page "/organization-types"
+
+@using MudBlazor
+@using Barman.Application.Interfaces
+@using Barman.Domain.Entities
+
+@inject IOrganizationTypeService OrganizationTypeService
+
+<MudPaper Class="pa-4">
+
+    <div class="d-flex justify-space-between">
+
+        <MudText Typo="Typo.h5">
+            انواع سازمان
+        </MudText>
+
+        <div>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="NewOrganizationType">
+                جدید
+            </MudButton>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Secondary"
+                       Class="ms-2"
+                       OnClick="ShowDeleted">
+                موارد حذف‌شده
+            </MudButton>
+        </div>
+
+    </div>
+
+    <MudDivider Class="my-3" />
+
+    <MudTextField T="string"
+                  @bind-Value="SearchText"
+                  Label="جستجوی نوع سازمان"
+                  Placeholder="کد، نام یا توضیحات..."
+                  Variant="Variant.Outlined"
+                  Clearable="true"
+                  Immediate="true"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Class="mb-3" />
+
+    @if (!ShowDeletedItems)
+    {
+        <MudTable Items="FilteredOrganizationTypes"
+                  Hover="true"
+                  Dense="true">
+
+            <HeaderContent>
+
+                <MudTh>
+                    <MudTableSortLabel T="OrganizationType"
+                                       SortBy="@(x => x.Code)">
+                        کد
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="OrganizationType"
+                                       SortBy="@(x => x.Name)">
+                        نام
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="OrganizationType"
+                                       SortBy="@(x => x.DisplayOrder)">
+                        ترتیب
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="OrganizationType"
+                                       SortBy="@(x => x.Description)">
+                        توضیحات
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    <MudTableSortLabel T="OrganizationType"
+                                       SortBy="@(x => x.IsActive)">
+                        وضعیت
+                    </MudTableSortLabel>
+                </MudTh>
+
+                <MudTh>
+                    عملیات
+                </MudTh>
+
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd>@context.Code</MudTd>
+
+                <MudTd>@context.Name</MudTd>
+
+                <MudTd>@context.DisplayOrder</MudTd>
+
+                <MudTd>@context.Description</MudTd>
+
+                <MudTd>
+                    @if (context.IsActive)
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Success">
+                            فعال
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string"
+                                 Color="Color.Error">
+                            غیرفعال
+                        </MudChip>
+                    }
+                </MudTd>
+
+                <MudTd>
+
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               OnClick="@(() => Edit(context))">
+                        ویرایش
+                    </MudButton>
+
+                    @if (context.IsActive)
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Warning"
+                                   Class="ms-2"
+                                   OnClick="@(() => Deactivate(context.Id))">
+                            غیرفعال
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Size="Size.Small"
+                                   Variant="Variant.Text"
+                                   Color="Color.Success"
+                                   Class="ms-2"
+                                   OnClick="@(() => Activate(context.Id))">
+                            فعال
+                        </MudButton>
+                    }
+
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Text"
+                               Color="Color.Error"
+                               Class="ms-2"
+                               OnClick="@(() => Delete(context.Id))">
+                        حذف
+                    </MudButton>
+
+                </MudTd>
+
+            </RowTemplate>
+
+        </MudTable>
+    }
+    else
+    {
+        <div class="d-flex justify-space-between mb-3">
+
+            <MudText Typo="Typo.h6">
+                انواع سازمان حذف‌شده
+            </MudText>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       OnClick="ShowMainList">
+                بازگشت
+            </MudButton>
+
+        </div>
+
+        <MudTable Items="DeletedOrganizationTypes"
+                  Hover="true"
+                  Dense="true">
+
+            <HeaderContent>
+
+                <MudTh>کد</MudTh>
+                <MudTh>نام</MudTh>
+                <MudTh>ترتیب</MudTh>
+                <MudTh>توضیحات</MudTh>
+                <MudTh>عملیات</MudTh>
+
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd>@context.Code</MudTd>
+                <MudTd>@context.Name</MudTd>
+                <MudTd>@context.DisplayOrder</MudTd>
+                <MudTd>@context.Description</MudTd>
+
+                <MudTd>
+
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Outlined"
+                               Color="Color.Success"
+                               OnClick="@(() => Restore(context.Id))">
+                        بازیابی
+                    </MudButton>
+
+                </MudTd>
+
+            </RowTemplate>
+
+        </MudTable>
+    }
+
+    <MudDialog @bind-Visible="DialogVisible">
+
+        <DialogContent>
+
+            <MudTextField Label="کد"
+                          @bind-Value="CurrentOrganizationType.Code"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Class="mb-3" />
+
+            <MudTextField Label="نام"
+                          @bind-Value="CurrentOrganizationType.Name"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          Class="mb-3" />
+
+            <MudNumericField T="int"
+                             Label="ترتیب نمایش"
+                             @bind-Value="CurrentOrganizationType.DisplayOrder"
+                             Variant="Variant.Outlined"
+                             Class="mb-3" />
+
+            <MudTextField Label="توضیحات"
+                          Lines="3"
+                          @bind-Value="CurrentOrganizationType.Description"
+                          Variant="Variant.Outlined" />
+
+        </DialogContent>
+
+        <DialogActions>
+
+            <MudButton Color="Color.Primary"
+                       OnClick="SaveOrganizationType">
+                ذخیره
+            </MudButton>
+
+            <MudButton Color="Color.Secondary"
+                       OnClick="CloseDialog">
+                انصراف
+            </MudButton>
+
+        </DialogActions>
+
+    </MudDialog>
+
+</MudPaper>
+
+@code {
+
+    private List<OrganizationType> OrganizationTypeList = new();
+
+    private List<OrganizationType> DeletedOrganizationTypes = new();
+
+    private OrganizationType CurrentOrganizationType = new();
+
+    private bool DialogVisible;
+
+    private bool IsEdit;
+
+    private bool ShowDeletedItems;
+
+    private string SearchText = "";
+
+    private IEnumerable<OrganizationType> FilteredOrganizationTypes =>
+        string.IsNullOrWhiteSpace(SearchText)
+            ? OrganizationTypeList
+            : OrganizationTypeList.Where(x =>
+                (x.Code ?? "").Contains(
+                    SearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase) ||
+
+                (x.Name ?? "").Contains(
+                    SearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase) ||
+
+                (x.Description ?? "").Contains(
+                    SearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase));
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+
+    private async Task Load()
+    {
+        OrganizationTypeList =
+            await OrganizationTypeService.GetAllAsync();
+
+        OrganizationTypeList =
+            OrganizationTypeList
+                .Where(x => !x.IsDeleted)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToList();
+    }
+
+
+    private async Task ShowDeleted()
+    {
+        DeletedOrganizationTypes =
+            await OrganizationTypeService.GetDeletedAsync();
+
+        ShowDeletedItems = true;
+    }
+
+
+    private async Task ShowMainList()
+    {
+        ShowDeletedItems = false;
+
+        await Load();
+    }
+
+
+    private void NewOrganizationType()
+    {
+        CurrentOrganizationType = new OrganizationType
+        {
+            IsActive = true,
+            IsDeleted = false,
+            DisplayOrder =
+                OrganizationTypeList.Any()
+                    ? OrganizationTypeList.Max(x => x.DisplayOrder) + 1
+                    : 1
+        };
+
+        IsEdit = false;
+
+        DialogVisible = true;
+    }
+
+
+    private void Edit(OrganizationType organizationType)
+    {
+        CurrentOrganizationType = new OrganizationType
+        {
+            Id = organizationType.Id,
+            Code = organizationType.Code,
+            Name = organizationType.Name,
+            Description = organizationType.Description,
+            DisplayOrder = organizationType.DisplayOrder,
+            IsActive = organizationType.IsActive,
+            IsDeleted = organizationType.IsDeleted
+        };
+
+        IsEdit = true;
+
+        DialogVisible = true;
+    }
+
+
+    private async Task SaveOrganizationType()
+    {
+        if (string.IsNullOrWhiteSpace(CurrentOrganizationType.Code) ||
+            string.IsNullOrWhiteSpace(CurrentOrganizationType.Name))
+            return;
+
+        if (IsEdit)
+        {
+            await OrganizationTypeService.UpdateAsync(
+                CurrentOrganizationType.Id,
+                CurrentOrganizationType);
+        }
+        else
+        {
+            await OrganizationTypeService.CreateAsync(
+                CurrentOrganizationType);
+        }
+
+        DialogVisible = false;
+
+        await Load();
+    }
+
+
+    private async Task Activate(Guid id)
+    {
+        await OrganizationTypeService.ActivateAsync(id);
+
+        await Load();
+    }
+
+
+    private async Task Deactivate(Guid id)
+    {
+        await OrganizationTypeService.DeactivateAsync(id);
+
+        await Load();
+    }
+
+
+    private async Task Delete(Guid id)
+    {
+        await OrganizationTypeService.DeleteAsync(id);
+
+        await Load();
+    }
+
+
+    private void CloseDialog()
+    {
+        DialogVisible = false;
+    }
+
+
+    private async Task Restore(Guid id)
+    {
+        await OrganizationTypeService.RestoreAsync(id);
+
+        DeletedOrganizationTypes =
+            await OrganizationTypeService.GetDeletedAsync();
+
+        await Load();
+    }
+
+}

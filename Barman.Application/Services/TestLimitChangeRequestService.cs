@@ -2,6 +2,7 @@
 using Barman.Domain.Entities;
 using Barman.Domain.Enums;
 
+
 namespace Barman.Application.Services;
 
 public class TestLimitChangeRequestService
@@ -20,6 +21,7 @@ public class TestLimitChangeRequestService
     // =========================================================
 
     public async Task<TestLimitChangeRequest> CreateRequestAsync(
+        Guid testAssignmentId,
         Guid testId,
         Guid requestedByEmployeeId,
         Guid? referenceLimitId,
@@ -95,6 +97,7 @@ public class TestLimitChangeRequestService
 
         var request = new TestLimitChangeRequest
         {
+            TestAssignmentId = testAssignmentId,
             TestId = testId,
 
             ReferenceLimitId =
@@ -159,6 +162,130 @@ public class TestLimitChangeRequestService
         return request;
     }
 
+    // =========================================================
+    // Create Request For ResultSetItem
+    // =========================================================
+
+    public async Task<TestLimitChangeRequest>
+        CreateResultSetItemRequestAsync(
+            Guid testAssignmentId,
+            Guid testResultSetItemId,
+            Guid requestedByEmployeeId,
+            decimal? requestedLOD,
+            decimal? requestedLOQ,
+            decimal? requestedMinValue,
+            decimal? requestedMaxValue,
+            string? reason)
+    {
+        if (testResultSetItemId == Guid.Empty)
+            throw new InvalidOperationException(
+                "Result Set Item مشخص نشده است.");
+
+        if (requestedByEmployeeId == Guid.Empty)
+            throw new InvalidOperationException(
+                "کاربر درخواست‌کننده مشخص نشده است.");
+
+        var assignment = await _unitOfWork
+            .TestAssignments
+            .GetByIdAsync(testAssignmentId);
+
+        if (assignment is null)
+            throw new InvalidOperationException(
+                "اجرای آزمون موردنظر پیدا نشد.");
+
+        var item = await _unitOfWork
+            .TestResultSetItems
+            .GetByIdAsync(testResultSetItemId);
+
+        if (item is null)
+            throw new InvalidOperationException(
+                "Result Set Item موردنظر پیدا نشد.");
+
+        if (item.TestResultSetId != assignment.TestResultSetId)
+            throw new InvalidOperationException(
+                "Result Set Item متعلق به این اجرای آزمون نیست.");
+
+        var testId = assignment.TestId;
+
+        // ---------------------------------------------------------
+        // جلوگیری از ثبت درخواست بدون تغییر
+        // ---------------------------------------------------------
+
+        bool lodChanged =
+            item.LOD != requestedLOD;
+
+        bool loqChanged =
+            item.LOQ != requestedLOQ;
+
+        bool minChanged =
+            item.MinValue != requestedMinValue;
+
+        bool maxChanged =
+            item.MaxValue != requestedMaxValue;
+
+        if (!lodChanged &&
+            !loqChanged &&
+            !minChanged &&
+            !maxChanged)
+        {
+            throw new InvalidOperationException(
+                "هیچ تغییری نسبت به مقادیر فعلی ایجاد نشده است.");
+        }
+
+        var request = new TestLimitChangeRequest
+        {
+            TestAssignmentId = testAssignmentId,
+
+            TestId = testId,
+
+            TestResultSetItemId = testResultSetItemId,
+
+            RequestedByEmployeeId =
+                requestedByEmployeeId,
+
+            // مقادیر فعلی
+            CurrentLOD =
+                item.LOD,
+
+            CurrentLOQ =
+                item.LOQ,
+
+            CurrentMinValue =
+                item.MinValue,
+
+            CurrentMaxValue =
+                item.MaxValue,
+
+            // مقادیر پیشنهادی
+            RequestedLOD =
+                requestedLOD,
+
+            RequestedLOQ =
+                requestedLOQ,
+
+            RequestedMinValue =
+                requestedMinValue,
+
+            RequestedMaxValue =
+                requestedMaxValue,
+
+            Reason =
+                string.IsNullOrWhiteSpace(reason)
+                    ? null
+                    : reason.Trim(),
+
+            Status =
+                TestLimitChangeRequestStatus.Pending
+        };
+
+        await _unitOfWork
+            .TestLimitChangeRequests
+            .AddAsync(request);
+
+        await _unitOfWork.SaveChangesAsync();
+
+        return request;
+    }
 
     // =========================================================
     // Get Pending Requests For Section Head
@@ -183,9 +310,9 @@ public class TestLimitChangeRequestService
     // =========================================================
 
     public async Task ApproveAsync(
-        Guid requestId,
-        Guid approvedByEmployeeId,
-        string? approvalComment)
+    Guid requestId,
+    Guid approvedByEmployeeId,
+    string? approvalComment)
     {
         if (requestId == Guid.Empty)
             throw new InvalidOperationException(
@@ -210,67 +337,128 @@ public class TestLimitChangeRequestService
                 "این درخواست قبلاً بررسی شده است.");
         }
 
-        var test = await _unitOfWork.Tests
-            .GetByIdAsync(request.TestId);
+        // =========================================================
+        // ResultSetItem Request
+        // =========================================================
 
-        if (test is null)
-            throw new InvalidOperationException(
-                "آزمون مربوط به درخواست پیدا نشد.");
-
-        // ---------------------------------------------------------
-        // اعمال LOD و LOQ
-        // ---------------------------------------------------------
-
-        if (request.RequestedLOD.HasValue)
+        if (request.TestResultSetItemId.HasValue &&
+            request.TestResultSetItemId.Value != Guid.Empty)
         {
-            test.LOD = request.RequestedLOD;
-        }
+            var item = await _unitOfWork
+                .TestResultSetItems
+                .GetByIdAsync(
+                    request.TestResultSetItemId.Value);
 
-        if (request.RequestedLOQ.HasValue)
-        {
-            test.LOQ = request.RequestedLOQ;
-        }
-
-
-        // ---------------------------------------------------------
-        // اعمال حدود مجاز و هشدار
-        // ---------------------------------------------------------
-
-        if (request.ReferenceLimitId.HasValue)
-        {
-            var referenceLimit =
-                await _unitOfWork
-                    .ReferenceLimits
-                    .GetByIdAsync(
-                        request.ReferenceLimitId.Value);
-
-            if (referenceLimit is null)
+            if (item is null)
                 throw new InvalidOperationException(
-                    "رکورد حدود مجاز مربوط به درخواست پیدا نشد.");
+                    "Result Set Item مربوط به درخواست پیدا نشد.");
+
+            if (item.TestResultSet is null)
+                throw new InvalidOperationException(
+                    "Result Set مربوط به Item پیدا نشد.");
+
+            if (item.TestResultSet.TestId != request.TestId)
+                throw new InvalidOperationException(
+                    "Result Set Item متعلق به آزمون درخواست نیست.");
+
+            // ---------------------------------------------------------
+            // اعمال تغییرات فقط روی همین ResultSetItem
+            // ---------------------------------------------------------
+
+            if (request.RequestedLOD.HasValue)
+            {
+                item.LOD =
+                    request.RequestedLOD;
+            }
+
+            if (request.RequestedLOQ.HasValue)
+            {
+                item.LOQ =
+                    request.RequestedLOQ;
+            }
 
             if (request.RequestedMinValue.HasValue)
             {
-                referenceLimit.MinValue =
+                item.MinValue =
                     request.RequestedMinValue;
             }
 
             if (request.RequestedMaxValue.HasValue)
             {
-                referenceLimit.MaxValue =
+                item.MaxValue =
                     request.RequestedMaxValue;
             }
 
-           
-
             _unitOfWork
-                .ReferenceLimits
-                .Update(referenceLimit);
+                .TestResultSetItems
+                .Update(item);
+        }
+        else
+        {
+            // =========================================================
+            // Legacy Test / ReferenceLimit Request
+            // =========================================================
+
+            var test = await _unitOfWork.Tests
+                .GetByIdAsync(request.TestId);
+
+            if (test is null)
+                throw new InvalidOperationException(
+                    "آزمون مربوط به درخواست پیدا نشد.");
+
+            // ---------------------------------------------------------
+            // اعمال LOD و LOQ روی Test
+            // ---------------------------------------------------------
+
+            if (request.RequestedLOD.HasValue)
+            {
+                test.LOD =
+                    request.RequestedLOD;
+            }
+
+            if (request.RequestedLOQ.HasValue)
+            {
+                test.LOQ =
+                    request.RequestedLOQ;
+            }
+
+            // ---------------------------------------------------------
+            // اعمال حدود روی ReferenceLimit
+            // ---------------------------------------------------------
+
+            if (request.ReferenceLimitId.HasValue)
+            {
+                var referenceLimit =
+                    await _unitOfWork
+                        .ReferenceLimits
+                        .GetByIdAsync(
+                            request.ReferenceLimitId.Value);
+
+                if (referenceLimit is null)
+                    throw new InvalidOperationException(
+                        "رکورد حدود مجاز مربوط به درخواست پیدا نشد.");
+
+                if (request.RequestedMinValue.HasValue)
+                {
+                    referenceLimit.MinValue =
+                        request.RequestedMinValue;
+                }
+
+                if (request.RequestedMaxValue.HasValue)
+                {
+                    referenceLimit.MaxValue =
+                        request.RequestedMaxValue;
+                }
+
+                _unitOfWork
+                    .ReferenceLimits
+                    .Update(referenceLimit);
+            }
         }
 
-
-        // ---------------------------------------------------------
+        // =========================================================
         // ثبت تأیید
-        // ---------------------------------------------------------
+        // =========================================================
 
         request.Status =
             TestLimitChangeRequestStatus.Approved;

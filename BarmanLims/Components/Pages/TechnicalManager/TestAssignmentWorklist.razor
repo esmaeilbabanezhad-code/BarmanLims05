@@ -1,9 +1,16 @@
-﻿@page "/technical-manager/worklist"
+@page "/technical-manager/worklist"
 
 @using Barman.Domain.Entities
 @using Barman.Application.Services
+@using Barman.Domain.Enums
+@using Barman.Application.DTOs.Test
+@using Barman.Application.Interfaces
 
 @inject TestAssignmentService TestAssignmentService
+@inject ITestAssignmentResultValueService TestAssignmentResultValueService
+@inject ITestResultSetItemService TestResultSetItemService
+@inject IDialogService DialogService
+@inject ICurrentUserService CurrentUserService
 
 <PageTitle>کارتابل مسئول فنی</PageTitle>
 
@@ -36,59 +43,163 @@
                 else
                 {
                     <MudText Typo="Typo.body2" Class="mb-3">
-                        آزمون‌های در انتظار بررسی مسئول فنی:
-                        <b>@Assignments.Count</b>
+                        آزمون‌های در انتظار ارجاع:
+                        <b>@DisplayGroups.Count()</b>
                     </MudText>
+                    <MudTextField @bind-Value="AssignmentSearchText"
+                                  Immediate="true"
+                                  Placeholder="جستجو بر اساس کد نمونه، Panel یا آزمون..."
+                                  Variant="Variant.Outlined"
+                                  Dense="true"
+                                  Clearable="true"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Class="mb-3" />
+                    <MudStack Row="true"
+                              Spacing="2"
+                              AlignItems="AlignItems.Center"
+                              Class="mb-3">
 
-                    <MudTable Items="Assignments"
+                        
+
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Secondary"
+                                   Disabled="@(SelectedDisplayGroupKeys.Count == 0)"
+                                   OnClick="@AssignSelectedDisplayGroupsByTestDepartment">
+
+                            ارجاع آزمون‌ها بر اساس بخش
+
+                        </MudButton>
+                    </MudStack>
+                    <MudTable Items="FilteredDisplayGroups"
                               Dense="true"
                               Hover="true"
                               Striped="true"
-                              Bordered="true">
+                              Bordered="true"
+                              SortLabel="SortBy">
 
                         <HeaderContent>
 
-                            <MudTh>نمونه</MudTh>
-                            <MudTh>کد آزمون</MudTh>
-                            <MudTh>نام آزمون</MudTh>
-                            <MudTh>بخش</MudTh>
-                            <MudTh>عملیات</MudTh>
+                            <MudTh>
+                                <MudCheckBox T="bool"
+                                             Value="@AreAllDisplayGroupsSelected"
+                                             ValueChanged="@ToggleSelectAllDisplayGroups"
+                                             Dense="true" />
+                            </MudTh>
+
+                            <MudTh>
+                                <MudTableSortLabel T="AssignmentDisplayGroup"
+                                                   SortBy="@(x => x.SampleCode)">
+                                    کد نمونه
+                                </MudTableSortLabel>
+                            </MudTh>
+
+                            <MudTh>
+                                <MudTableSortLabel T="AssignmentDisplayGroup"
+                                                   SortBy="@(x => x.SampleName)">
+                                    نام نمونه
+                                </MudTableSortLabel>
+                            </MudTh>
+
+                            <MudTh>
+                                <MudTableSortLabel T="AssignmentDisplayGroup"
+                                                   SortBy="@(x => x.AssignmentCount)">
+                                    آزمون‌ها
+                                </MudTableSortLabel>
+                            </MudTh>
+
+                            <MudTh>
+                                <MudTableSortLabel T="AssignmentDisplayGroup"
+                                                   SortBy="@(x => x.DepartmentStatusSortValue)">
+                                    وضعیت بخش
+                                </MudTableSortLabel>
+                            </MudTh>
+
+                            <MudTh>
+                                عملیات
+                            </MudTh>
 
                         </HeaderContent>
 
                         <RowTemplate>
 
-                            <MudTd DataLabel="نمونه">
-                                @context.Sample?.SampleCode
+                        @{
+                                var groupKey = GetDisplayGroupKey(context);
+                                var isSelected =
+                                SelectedDisplayGroupKeys.Contains(groupKey);
+
+                                var missingDepartmentCount = context.Assignments.Count(
+                                x => !x.DepartmentId.HasValue ||
+                                x.DepartmentId == Guid.Empty);
+
+                                var canAssignSample = missingDepartmentCount == 0;
+                            }
+
+                            <MudTd DataLabel="انتخاب">
+
+                                <MudCheckBox T="bool"
+                                             Value="@isSelected"
+                                             ValueChanged="@((bool value) =>
+                                                                      ToggleDisplayGroup(context, value))"
+                                         Dense="true" />
+
                             </MudTd>
 
-                            <MudTd DataLabel="کد آزمون">
-                                @context.Test?.Code
+                            <MudTd DataLabel="کد نمونه">
+
+                                <MudText Typo="Typo.body1">
+                                    <b>@context.SampleCode</b>
+                                </MudText>
+
                             </MudTd>
 
-                            <MudTd DataLabel="نام آزمون">
-                                @context.Test?.Name
+                            <MudTd DataLabel="نام نمونه">
+
+                                <MudText Typo="Typo.body2">
+                                    @context.SampleName
+                                </MudText>
+
                             </MudTd>
 
-                            <MudTd DataLabel="بخش">
+                            <MudTd DataLabel="آزمون‌ها">
 
-                                <MudSelect T="Guid?"
-                                           @bind-Value="context.DepartmentId"
-                                           Dense="true"
-                                           Variant="Variant.Outlined"
-                                           Margin="Margin.Dense"
-                                           Clearable="true"
-                                           Style="min-width:220px">
+                                <MudStack Row="true"
+                                          AlignItems="AlignItems.Center"
+                                          Spacing="1">
 
-                                    @foreach (var department in Departments)
-                                    {
-                                        <MudSelectItem T="Guid?"
-                                                       Value="@((Guid?)department.Id)">
-                                            @department.Name
-                                        </MudSelectItem>
-                                    }
+                                    <MudIconButton Icon="@(ExpandedDisplayGroupKeys.Contains(groupKey)
+                                                                   ? Icons.Material.Filled.ExpandLess
+                                                                   : Icons.Material.Filled.ExpandMore)"
+                                                                                                      Size="Size.Small"
+                                                                                                      OnClick="@(() =>
+                                                                   ToggleDisplayGroupExpansion(context))" />
 
-                                </MudSelect>
+                                <MudText Typo="Typo.body2">
+                                    @context.Assignments.Count آزمون
+                                </MudText>
+
+                                                </MudStack>
+
+                                            </MudTd>
+
+                                            <MudTd DataLabel="وضعیت بخش">
+
+                            @if (canAssignSample)
+                                {
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="Color.Success">
+                                        ✓ آماده ارجاع
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="Color.Warning">
+                                        ⚠ @missingDepartmentCount آزمون بدون بخش
+                                    </MudChip>
+                                }
 
                             </MudTd>
 
@@ -97,10 +208,22 @@
                                 <MudButton Variant="Variant.Filled"
                                            Color="Color.Primary"
                                            Size="Size.Small"
-                                           Disabled="!context.DepartmentId.HasValue"
-                                           OnClick="@(() => AssignToDepartment(context))">
+                                           Disabled="@(!canAssignSample)"
+                                           OnClick="@(() =>
+                                                                  AssignDisplayGroupToDepartment(context))">
 
                                     ارجاع به بخش
+
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Outlined"
+                                           Color="Color.Warning"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.EditNote"
+                                           OnClick="@(() =>
+                                                              OpenCorrectionDialog(context))">
+
+                                درخواست اصلاح پذیرش
 
                                 </MudButton>
 
@@ -108,20 +231,130 @@
 
                         </RowTemplate>
 
+                        <ChildRowContent>
+
+                        @{
+                                var childKey = GetDisplayGroupKey(context);
+                            }
+
+                            @if (ExpandedDisplayGroupKeys.Contains(childKey))
+                            {
+                                <MudTr>
+
+                                    <td colspan="6">
+
+                                        <MudPaper Class="pa-3 ma-2"
+                                                  Outlined="true">
+
+                                            <MudText Typo="Typo.subtitle2"
+                                                     Class="mb-2">
+                                                آزمون‌های نمونه
+                                            </MudText>
+
+                                            @foreach (var assignment in context.Assignments
+                                                                                .OrderBy(x => x.TestPanelId.HasValue ? 0 : 1)
+                                                                                .ThenBy(x => x.TestPanel?.Code)
+                                                                                .ThenBy(x => x.Test?.Code))
+                                            {
+                                                var hasDepartment =
+                                                assignment.DepartmentId.HasValue &&
+                                                assignment.DepartmentId.Value != Guid.Empty;
+
+                                                <MudPaper Class="pa-2 mb-2"
+                                                          Outlined="true">
+
+                                                    <MudGrid>
+
+                                                        <MudItem xs="12" sm="3">
+                                                            <MudText Typo="Typo.body2">
+                                                                <b>کد آزمون:</b>
+                                                                @assignment.Test?.Code
+                                                            </MudText>
+                                                        </MudItem>
+
+                                                        <MudItem xs="12" sm="3">
+                                                            <MudText Typo="Typo.body2">
+                                                                <b>نام آزمون:</b>
+                                                                @assignment.Test?.Name
+                                                            </MudText>
+                                                        </MudItem>
+
+                                                        <MudItem xs="12" sm="3">
+
+                                                            <MudSelect T="Guid?"
+                                                                       Value="@assignment.DepartmentId"
+                                                                       ValueChanged="@((Guid? value) =>
+                                                                                                                          UpdateAssignmentDepartmentAsync(
+                                                                                                                              assignment,
+                                                                                                                              value))"
+                                                           Dense="true"
+                                                           Variant="Variant.Outlined"
+                                                           Margin="Margin.Dense"
+                                                           Clearable="true"
+                                                           Label="بخش">
+
+                                                    @foreach (var department in Departments)
+                                                                {
+                                                                    <MudSelectItem T="Guid?"
+                                                                                   Value="@((Guid?)department.Id)">
+                                                                        @department.Name
+                                                                    </MudSelectItem>
+                                                                }
+
+                                                            </MudSelect>
+
+                                                        </MudItem>
+
+                                                        <MudItem xs="12" sm="3">
+
+                                                            @if (hasDepartment)
+                                                            {
+                                                                <MudChip T="string"
+                                                                         Size="Size.Small"
+                                                                         Color="Color.Success">
+                                                                    ✓ تعیین شده
+                                                                </MudChip>
+                                                            }
+                                                            else
+                                                            {
+                                                                <MudChip T="string"
+                                                                         Size="Size.Small"
+                                                                         Color="Color.Warning">
+                                                                    ⚠ بدون بخش
+                                                                </MudChip>
+                                                            }
+
+                                                        </MudItem>
+
+                                                    </MudGrid>
+
+                                                </MudPaper>
+                                            }
+
+                                        </MudPaper>
+
+                                    </td>
+
+                                </MudTr>
+                            }
+
+                        </ChildRowContent>
                         <NoRecordsContent>
 
                             <MudAlert Severity="Severity.Info">
-                                آزمونی در انتظار بررسی مسئول فنی وجود ندارد.
+                                آزمونی در انتظار ارجاع وجود ندارد.
                             </MudAlert>
 
                         </NoRecordsContent>
 
                     </MudTable>
+
+                       
                 }
 
             </MudTabPanel>
-
-            <MudTabPanel Text="تأییدیه نتایج">
+           
+            <MudTabPanel Text="تأیید نتایج">
 
                 @if (IsLoadingResultApprovals)
                 {
@@ -131,7 +364,7 @@
                 else if (PendingResultApprovals.Count == 0)
                 {
                     <MudAlert Severity="Severity.Info">
-                        هیچ نتیجه‌ای در انتظار تأیید مسئول فنی نیست.
+                        نتیجه‌ای در انتظار تأیید مسئول فنی وجود ندارد.
                     </MudAlert>
                 }
                 else
@@ -140,27 +373,66 @@
                         تعداد نتایج در انتظار تأیید:
                         <b>@PendingResultApprovals.Count</b>
                     </MudText>
-
-                    <MudTable Items="PendingResultApprovals"
+                    <MudTextField @bind-Value="ResultApprovalSearchText"
+                                  Immediate="true"
+                                  Placeholder="????? ?? ?????? ?? ?????? ??? ?????? ????? ?? ????..."
+                                  Variant="Variant.Outlined"
+                                  Dense="true"
+                                  Clearable="true"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search"
+                                  Class="mb-3" />
+                    <MudTable Items="FilteredResultApprovals"
                               Hover="true"
                               Dense="true"
                               Striped="true"
-                              Bordered="true">
+                              Bordered="true"
+                              SortLabel="SortBy">
 
                         <HeaderContent>
 
-                            <MudTh>نمونه</MudTh>
-                            <MudTh>کد آزمون</MudTh>
-                            <MudTh>نام آزمون</MudTh>
-                            <MudTh>نتیجه</MudTh>
-                            <MudTh>واحد</MudTh>
+                            <MudTh>
+                                <MudTableSortLabel T="TestAssignment"
+                                                   SortBy="@(x => x.Sample?.SampleCode)">
+                                    کد نمونه
+                                </MudTableSortLabel>
+                            </MudTh>
+
+                            <MudTh>
+                                <MudTableSortLabel T="TestAssignment"
+                                                   SortBy="@(x => x.Test?.Code)">
+                                    کد آزمون
+                                </MudTableSortLabel>
+                            </MudTh>
+
+                            <MudTh>
+                                <MudTableSortLabel T="TestAssignment"
+                                                   SortBy="@(x => x.Test?.Name)">
+                                    نام آزمون
+                                </MudTableSortLabel>
+                            </MudTh>
+
+                            <MudTh>
+                                <MudTableSortLabel T="TestAssignment"
+                                                   SortBy="@(x => x.Result)">
+                                    نتیجه
+                                </MudTableSortLabel>
+                            </MudTh>
+
+                            <MudTh>
+                                <MudTableSortLabel T="TestAssignment"
+                                                   SortBy="@(x => x.Unit)">
+                                    واحد
+                                </MudTableSortLabel>
+                            </MudTh>
+
                             <MudTh>عملیات</MudTh>
 
                         </HeaderContent>
 
                         <RowTemplate>
 
-                            <MudTd DataLabel="نمونه">
+                            <MudTd DataLabel="کد نمونه">
                                 @context.Sample?.SampleCode
                             </MudTd>
 
@@ -204,13 +476,13 @@
                     <MudPaper Class="pa-4" Outlined="true">
 
                         <MudText Typo="Typo.h6" Class="mb-4">
-                            بررسی نتیجه آزمون
+                            جزئیات نتیجه
                         </MudText>
 
                         <MudGrid>
 
                             <MudItem xs="12" md="3">
-                                <MudText Typo="Typo.caption">نمونه</MudText>
+                                <MudText Typo="Typo.caption">کد نمونه</MudText>
                                 <MudText Typo="Typo.body1">
                                     @SelectedResultApproval.Sample?.SampleCode
                                 </MudText>
@@ -242,20 +514,151 @@
                         <MudDivider Class="my-3" />
 
                         <MudText Typo="Typo.subtitle1">
-                            نتیجه ثبت‌شده
+                            نتیجه
                         </MudText>
 
-                        <MudTextField T="string"
-                                      Value="@SelectedResultApproval.Result"
-                                      Label="نتیجه"
-                                      Variant="Variant.Outlined"
-                                      ReadOnly="true"
-                                      FullWidth="true"
-                                      Class="mb-3" />
+                        @if (SelectedResultApproval.TestResultSetId.HasValue &&
+                                            SelectedResultApproval.TestResultSetId.Value != Guid.Empty &&
+                                            SelectedResultSetItems.Count > 0)
+                        {
+                            <MudText Typo="Typo.subtitle1"
+                                     Class="mb-2">
+                                جزئیات نتیجه
+                            </MudText>
+
+                            <MudTable Items="SelectedResultSetItems"
+                                      Dense="true"
+                                      Hover="true"
+                                      Bordered="true"
+                                      Striped="true"
+                                      Class="mb-4">
+
+                                <HeaderContent>
+                                    <MudTh>ردیف</MudTh>
+                                    <MudTh>نام / عنوان</MudTh>
+                                    <MudTh>نتیجه</MudTh>
+                                    <MudTh>واحد</MudTh>
+                                    <MudTh>LOD</MudTh>
+                                    <MudTh>LOQ</MudTh>
+                                    <MudTh>حداقل</MudTh>
+                                    <MudTh>حداکثر</MudTh>
+                                    <MudTh>وضعیت</MudTh>
+                                </HeaderContent>
+
+                                <RowTemplate>
+                                    @{
+                                        var resultValue =
+                                        SelectedResultValues
+                                        .FirstOrDefault(x =>
+                                        x.TestResultSetItemId == context.Id);
+
+                                        var valueText =
+                                        resultValue?.Value;
+
+                                        var hasNumericValue =
+                                        decimal.TryParse(
+                                        valueText,
+                                        out var numericValue);
+
+                                        var hasLimit =
+                                        context.MinValue.HasValue ||
+                                        context.MaxValue.HasValue;
+
+                                        var isOutOfLimit =
+                                        hasNumericValue &&
+                                        (
+                                        (context.MinValue.HasValue &&
+                                        numericValue < context.MinValue.Value)
+                                        ||
+                                        (context.MaxValue.HasValue &&
+                                        numericValue > context.MaxValue.Value)
+                                        );
+                                    }
+
+                                    <MudTd DataLabel="ردیف">
+                                        @context.DisplayOrder
+                                    </MudTd>
+
+                                    <MudTd DataLabel="نام / عنوان">
+                                        @context.Name
+                                    </MudTd>
+
+                                    <MudTd DataLabel="نتیجه">
+                                        @(valueText ?? "-")
+                                    </MudTd>
+
+                                    <MudTd DataLabel="واحد">
+                                        @context.Unit
+                                    </MudTd>
+
+                                    <MudTd DataLabel="LOD">
+                                        @(context.LOD?.ToString() ?? "-")
+                                    </MudTd>
+
+                                    <MudTd DataLabel="LOQ">
+                                        @(context.LOQ?.ToString() ?? "-")
+                                    </MudTd>
+
+                                    <MudTd DataLabel="حداقل">
+                                        @(context.MinValue?.ToString() ?? "-")
+                                    </MudTd>
+
+                                    <MudTd DataLabel="حداکثر">
+                                        @(context.MaxValue?.ToString() ?? "-")
+                                    </MudTd>
+
+                                    <MudTd DataLabel="وضعیت">
+                                        @if (string.IsNullOrWhiteSpace(valueText))
+                                        {
+                                            <MudChip T="string"
+                                                     Size="Size.Small"
+                                                     Color="Color.Default">
+                                                بدون نتیجه
+                                            </MudChip>
+                                        }
+                                        else if (isOutOfLimit)
+                                        {
+                                            <MudChip T="string"
+                                                     Size="Size.Small"
+                                                     Color="Color.Error">
+                                                خارج از محدوده
+                                            </MudChip>
+                                        }
+                                        else if (!hasLimit)
+                                        {
+                                            <MudChip T="string"
+                                                     Size="Size.Small"
+                                                     Color="Color.Warning">
+                                                بدون حد قابل اعمال
+                                            </MudChip>
+                                        }
+                                        else
+                                        {
+                                            <MudChip T="string"
+                                                     Size="Size.Small"
+                                                     Color="Color.Success">
+                                                نرمال
+                                            </MudChip>
+                                        }
+                                    </MudTd>
+                                </RowTemplate>
+
+                            </MudTable>
+                        }
+                        else
+                        {
+                            <MudTextField T="string"
+                                          Value="@SelectedResultApproval.Result"
+                                          Label="نتیجه"
+                                          Variant="Variant.Outlined"
+                                          ReadOnly="true"
+                                          FullWidth="true"
+                                          Class="mb-3" />
+                        }
 
                         <MudTextField T="string"
                                       Value="@SelectedResultApproval.Comment"
-                                      Label="توضیحات کارشناس"
+                                      Label="توضیحات نتیجه"
                                       Variant="Variant.Outlined"
                                       ReadOnly="true"
                                       FullWidth="true"
@@ -265,7 +668,7 @@
                         <MudDivider Class="my-4" />
 
                         <MudText Typo="Typo.subtitle1" Class="mb-3">
-                            حدود و مشخصات آزمون
+                            LOD و LOQ آزمون
                         </MudText>
 
                         <MudGrid>
@@ -273,7 +676,7 @@
                             <MudItem xs="12" md="3">
                                 <MudTextField T="decimal?"
                                               Value="@SelectedResultApproval.Test?.LOD"
-                                              Label="LOD فعلی"
+                                              Label="LOD ????"
                                               Variant="Variant.Outlined"
                                               ReadOnly="true" />
                             </MudItem>
@@ -281,7 +684,7 @@
                             <MudItem xs="12" md="3">
                                 <MudTextField T="decimal?"
                                               Value="@SelectedResultApproval.Test?.LOQ"
-                                              Label="LOQ فعلی"
+                                              Label="LOQ آزمون"
                                               Variant="Variant.Outlined"
                                               ReadOnly="true" />
                             </MudItem>
@@ -293,6 +696,14 @@
                         <MudStack Row="true"
                                   Spacing="2">
 
+                            <MudTextField T="string"
+                                          @bind-Value="RejectReason"
+                                          Label="دلیل رد نتیجه"
+                                          Variant="Variant.Outlined"
+                                          Lines="3"
+                                          FullWidth="true"
+                                          Class="mb-3" />
+
                             <MudButton Variant="Variant.Filled"
                                        Color="Color.Success"
                                        OnClick="ApproveSelectedResultAsync">
@@ -300,7 +711,8 @@
                             </MudButton>
 
                             <MudButton Variant="Variant.Filled"
-                                       Color="Color.Error">
+                                       Color="Color.Error"
+                                       OnClick="RejectSelectedResultAsync">
                                 رد نتیجه
                             </MudButton>
 
@@ -326,6 +738,127 @@
 
     private List<TestAssignment> Assignments = new();
 
+    private HashSet<string> SelectedDisplayGroupKeys = new();
+
+    private bool AreAllDisplayGroupsSelected =>
+    FilteredDisplayGroups.Any() &&
+    FilteredDisplayGroups.All(group =>
+        SelectedDisplayGroupKeys.Contains(
+            GetDisplayGroupKey(group)));
+
+    private void ToggleSelectAllDisplayGroups(bool selected)
+    {
+        if (selected)
+        {
+            foreach (var group in FilteredDisplayGroups)
+            {
+                SelectedDisplayGroupKeys.Add(
+                    GetDisplayGroupKey(group));
+            }
+        }
+        else
+        {
+            foreach (var group in FilteredDisplayGroups)
+            {
+                SelectedDisplayGroupKeys.Remove(
+                    GetDisplayGroupKey(group));
+            }
+        }
+    }
+
+    
+
+    private string GetDisplayGroupKey(
+    AssignmentDisplayGroup group)
+    {
+        return group.SampleId.ToString("N");
+    }
+
+    private HashSet<string> ExpandedDisplayGroupKeys = new();
+
+    private void ToggleDisplayGroup(
+        AssignmentDisplayGroup group,
+        bool selected)
+    {
+        var key = GetDisplayGroupKey(group);
+
+        if (selected)
+            SelectedDisplayGroupKeys.Add(key);
+        else
+            SelectedDisplayGroupKeys.Remove(key);
+    }
+
+    private void ToggleDisplayGroupExpansion(
+        AssignmentDisplayGroup group)
+    {
+        var key = GetDisplayGroupKey(group);
+
+        if (ExpandedDisplayGroupKeys.Contains(key))
+            ExpandedDisplayGroupKeys.Remove(key);
+        else
+            ExpandedDisplayGroupKeys.Add(key);
+    }
+    
+    private string AssignmentSearchText = "";
+
+    private IEnumerable<AssignmentDisplayGroup> DisplayGroups =>
+        Assignments
+            .GroupBy(x => x.SampleId)
+            .Select(group =>
+            {
+                var first = group.First();
+
+                return new AssignmentDisplayGroup
+                {
+                    SampleId = group.Key,
+                    DepartmentId = first.DepartmentId,
+                    SampleCode = first.Sample?.SampleCode ?? "",
+                    SampleName = first.Sample?.SampleName ?? "",
+                    Assignments = group
+                    .OrderBy(x => x.TestPanel?.Code)
+                    .ThenBy(x => x.Test?.Code)
+                    .ToList()
+                };
+            })
+            .OrderBy(x => x.SampleCode)
+            .ToList();
+
+    private IEnumerable<AssignmentDisplayGroup> FilteredDisplayGroups =>
+    DisplayGroups.Where(group =>
+    {
+        if (string.IsNullOrWhiteSpace(AssignmentSearchText))
+            return true;
+
+        var search = AssignmentSearchText.Trim();
+
+        return
+            (group.SampleCode ?? "")
+                .Contains(search, StringComparison.OrdinalIgnoreCase)
+            ||
+            group.Assignments.Any(a =>
+                (a.Test?.Code ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase)
+                ||
+                (a.Test?.Name ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase)
+                ||
+                (a.TestPanel?.Code ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase)
+                ||
+                (a.TestPanel?.Name ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase)
+            )
+            ||
+                (group.SampleName ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase) 
+            ||
+            Departments.Any(d =>
+                d.Id == group.DepartmentId &&
+                (d.Name ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase)
+            );
+    });
+
     private List<Department> Departments = new();
 
     private bool IsLoading = true;
@@ -336,7 +869,43 @@
 
     private List<TestAssignment> PendingResultApprovals = new();
 
+    private string ResultApprovalSearchText = "";
+
+    private Dictionary<Guid, ResultApprovalStatusInfo>
+    ResultApprovalStatuses = new();
+
+    private IEnumerable<TestAssignment> FilteredResultApprovals =>
+        PendingResultApprovals.Where(x =>
+        {
+            if (string.IsNullOrWhiteSpace(ResultApprovalSearchText))
+                return true;
+
+            var search = ResultApprovalSearchText.Trim();
+
+            return
+                (x.Sample?.SampleCode ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.Test?.Code ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.Test?.Name ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.Result ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase)
+                ||
+                (x.Unit ?? "")
+                    .Contains(search, StringComparison.OrdinalIgnoreCase);
+        });
+
     private TestAssignment? SelectedResultApproval;
+
+    private string RejectReason = "";
+
+    private List<TestAssignmentResultValue> SelectedResultValues = new();
+
+    private List<TestResultSetItemDto> SelectedResultSetItems = new();
 
     private bool IsLoadingResultApprovals = false;
 
@@ -357,9 +926,18 @@
                 await TestAssignmentService
                     .GetDepartmentsAsync();
 
+            var employeeId = CurrentUserService.EmployeeId;
+
+            if (!employeeId.HasValue || employeeId.Value == Guid.Empty)
+            {
+                throw new InvalidOperationException(
+                    "کاربر جاری به یک کارمند معتبر متصل نیست.");
+            }
+
             Assignments =
                 await TestAssignmentService
-                    .GetPendingForTechnicalManagerAsync();
+                    .GetPendingForTechnicalManagerAsync(
+                        employeeId.Value);
         }
         catch (Exception ex)
         {
@@ -379,15 +957,99 @@
         try
         {
             IsLoadingResultApprovals = true;
+            ErrorMessage = "";
 
             PendingResultApprovals =
                 await TestAssignmentService
                     .GetPendingResultApprovalForTechnicalManagerAsync();
+
+            var statuses =
+                await TestAssignmentService
+                    .GetResultSetStatusesAsync(
+                        PendingResultApprovals);
+
+            ResultApprovalStatuses =
+                new();
+
+            foreach (var statusDto in statuses)
+            {
+                var status =
+                    statusDto.IsOutOfLimit
+                        ? ResultSetStatus.OutOfLimit
+                        : statusDto.HasNoResult
+                            ? ResultSetStatus.NoResult
+                            : statusDto.IsIncomplete
+                                ? ResultSetStatus.Incomplete
+                                : statusDto.HasNoApplicableLimit
+                                    ? ResultSetStatus.NoApplicableLimit
+                                    : ResultSetStatus.Normal;
+
+                ResultApprovalStatuses[statusDto.AssignmentId] =
+                    new ResultApprovalStatusInfo
+                    {
+                        AssignmentId = statusDto.AssignmentId,
+                        Status = status,
+                        ResultCount = statusDto.ResultCount,
+                        RequiredResultCount =
+                            statusDto.RequiredResultCount,
+                        OutOfLimitCount =
+                            statusDto.OutOfLimitCount,
+                        HasAnyLimit =
+                            statusDto.HasAnyLimit
+                    };
+            }
+
+            // Legacy single-result assignments
+            foreach (var assignment in PendingResultApprovals
+                .Where(x =>
+                    !x.TestResultSetId.HasValue ||
+                    x.TestResultSetId.Value == Guid.Empty))
+            {
+                var resultInfo =
+                    new ResultApprovalStatusInfo
+                    {
+                        AssignmentId = assignment.Id,
+                        ResultCount =
+                            string.IsNullOrWhiteSpace(
+                                assignment.Result)
+                                ? 0
+                                : 1,
+                        RequiredResultCount = 1,
+                        OutOfLimitCount =
+                            !string.IsNullOrWhiteSpace(
+                                assignment.Result) &&
+                            TestAssignmentService
+                                .IsResultOutOfLimit(assignment)
+                                ? 1
+                                : 0,
+                        HasAnyLimit =
+                            TestAssignmentService
+                                .GetApplicableLimitRule(assignment)
+                                is not null
+                            ||
+                            TestAssignmentService
+                                .GetApplicableReferenceLimit(assignment)
+                                is not null
+                    };
+
+                resultInfo.Status =
+                    resultInfo.ResultCount == 0
+                        ? ResultSetStatus.NoResult
+                        : resultInfo.OutOfLimitCount > 0
+                            ? ResultSetStatus.OutOfLimit
+                            : !resultInfo.HasAnyLimit
+                                ? ResultSetStatus.NoApplicableLimit
+                                : ResultSetStatus.Normal;
+
+                ResultApprovalStatuses[assignment.Id] =
+                    resultInfo;
+            }
         }
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
             PendingResultApprovals = new();
+            ResultApprovalStatuses = new();
         }
         finally
         {
@@ -395,6 +1057,24 @@
         }
     }
 
+    private async Task ReloadAssignments()
+    {
+        var employeeId = CurrentUserService.EmployeeId;
+
+        if (!employeeId.HasValue || employeeId.Value == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "کاربر جاری به یک کارمند معتبر متصل نیست.");
+        }
+
+        Assignments =
+            await TestAssignmentService
+                .GetPendingForTechnicalManagerAsync(
+                    employeeId.Value);
+
+        SelectedDisplayGroupKeys.Clear();
+        ExpandedDisplayGroupKeys.Clear();
+    }
     private async Task AssignToDepartment(
         TestAssignment assignment)
     {
@@ -405,17 +1085,17 @@
             if (!assignment.DepartmentId.HasValue)
             {
                 ErrorMessage =
-                    "ابتدا باید بخش را انتخاب کنید.";
+                    "بخش مقصد آزمون مشخص نشده است.";
 
                 return;
             }
 
             await TestAssignmentService
-                .AssignToDepartmentAsync(
-                    assignment.Id,
-                    assignment.DepartmentId);
+               .AssignToDepartmentAsync(
+            assignment.Id,
+            assignment.DepartmentId);
 
-            Assignments.Remove(assignment);
+            await ReloadAssignments();
 
             StateHasChanged();
         }
@@ -424,9 +1104,227 @@
             ErrorMessage = ex.Message;
         }
     }
-    private void OpenResultApproval(TestAssignment assignment)
+    private async Task UpdateAssignmentDepartmentAsync(
+    TestAssignment assignment,
+    Guid? departmentId)
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            if (!departmentId.HasValue ||
+                departmentId.Value == Guid.Empty)
+            {
+                ErrorMessage = "بخش مقصد مشخص نشده است.";
+                return;
+            }
+
+            await TestAssignmentService
+                .UpdateAssignmentDepartmentAsync(
+                    assignment.Id,
+                    departmentId.Value);
+
+            assignment.DepartmentId = departmentId.Value;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private void OnDisplayGroupDepartmentChanged(
+    AssignmentDisplayGroup group,
+    Guid? departmentId)
+    {
+        group.DepartmentId = departmentId;
+
+        foreach (var assignment in group.Assignments)
+        {
+            assignment.DepartmentId = departmentId;
+        }
+    }
+    private async Task AssignDisplayGroupToDepartment(
+    AssignmentDisplayGroup group)
+    {
+        try
+        {
+            ErrorMessage = "";
+
+            var assignmentsWithoutDepartment =
+                group.Assignments
+                    .Where(x =>
+                        !x.DepartmentId.HasValue ||
+                        x.DepartmentId == Guid.Empty)
+                    .ToList();
+
+            if (assignmentsWithoutDepartment.Count > 0)
+            {
+                ErrorMessage =
+                    $"ابتدا بخش {assignmentsWithoutDepartment.Count} آزمون را مشخص کنید.";
+
+                return;
+            }
+
+            foreach (var assignment in group.Assignments)
+            {
+                await TestAssignmentService
+                    .AssignToDepartmentAsync(
+                        assignment.Id,
+                        assignment.DepartmentId);
+            }
+
+            await ReloadAssignments();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task AssignSelectedDisplayGroupsByTestDepartment()
+    {
+        if (SelectedDisplayGroupKeys.Count == 0)
+        {
+            ErrorMessage = "حداقل یک نمونه را انتخاب کنید.";
+            return;
+        }
+
+        try
+        {
+            ErrorMessage = "";
+
+            var selectedGroups = DisplayGroups
+                .Where(group =>
+                    SelectedDisplayGroupKeys.Contains(
+                        GetDisplayGroupKey(group)))
+                .ToList();
+
+            var incompleteSamples = selectedGroups
+                .Where(group =>
+                    group.Assignments.Any(x =>
+                        !x.DepartmentId.HasValue ||
+                        x.DepartmentId == Guid.Empty))
+                .ToList();
+
+            var completeGroups = selectedGroups
+                .Except(incompleteSamples)
+                .ToList();
+
+            foreach (var group in completeGroups)
+            {
+                foreach (var assignment in group.Assignments)
+                {
+                    await TestAssignmentService
+                        .AssignToDepartmentAsync(
+                            assignment.Id,
+                            assignment.DepartmentId);
+                }
+            }
+
+            SelectedDisplayGroupKeys.Clear();
+
+            await ReloadAssignments();
+            StateHasChanged();
+
+            if (incompleteSamples.Count > 0)
+            {
+                ErrorMessage =
+                    $"{incompleteSamples.Count} نمونه به دلیل داشتن آزمون بدون بخش ارجاع نشد.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task AssignSelectedDisplayGroupsToDefaultDepartments()
+    {
+        if (SelectedDisplayGroupKeys.Count == 0)
+        {
+            ErrorMessage = "حداقل یک نمونه را انتخاب کنید.";
+            return;
+        }
+
+        try
+        {
+            ErrorMessage = "";
+
+            var selectedGroups =
+                DisplayGroups
+                    .Where(group =>
+                        SelectedDisplayGroupKeys.Contains(
+                            GetDisplayGroupKey(group)))
+                    .ToList();
+
+            var assignmentIds =
+                selectedGroups
+                    .SelectMany(group => group.Assignments)
+                    .Select(assignment => assignment.Id)
+                    .Where(id => id != Guid.Empty)
+                    .Distinct()
+                    .ToList();
+
+            if (assignmentIds.Count == 0)
+            {
+                ErrorMessage =
+                    "هیچ آزمونی برای ارجاع انتخاب نشده است.";
+
+                return;
+            }
+
+            await TestAssignmentService
+                .AssignToDefaultDepartmentsAsync(
+                    assignmentIds);
+
+            SelectedDisplayGroupKeys.Clear();
+
+            var employeeId = CurrentUserService.EmployeeId;
+
+            if (!employeeId.HasValue || employeeId.Value == Guid.Empty)
+            {
+                throw new InvalidOperationException(
+                    "کاربر جاری به یک کارمند معتبر متصل نیست.");
+            }
+
+            Assignments =
+                await TestAssignmentService
+                    .GetPendingForTechnicalManagerAsync(
+                        employeeId.Value);
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+    private async Task OpenResultApproval(
+    TestAssignment assignment)
     {
         SelectedResultApproval = assignment;
+
+        SelectedResultValues = new();
+        SelectedResultSetItems = new();
+
+        if (assignment.TestResultSetId.HasValue &&
+            assignment.TestResultSetId.Value != Guid.Empty)
+        {
+            SelectedResultSetItems =
+                await TestResultSetItemService
+                    .GetByResultSetIdAsync(
+                        assignment.TestResultSetId.Value);
+
+            SelectedResultValues =
+                await TestAssignmentResultValueService
+                    .GetByAssignmentIdAsync(
+                        assignment.Id);
+        }
+
+        StateHasChanged();
     }
     private async Task ApproveSelectedResultAsync()
     {
@@ -452,5 +1350,204 @@
         {
             ErrorMessage = ex.Message;
         }
+    }
+    private async Task RejectSelectedResultAsync()
+    {
+        if (SelectedResultApproval is null)
+            return;
+        if (string.IsNullOrWhiteSpace(RejectReason))
+        {
+            ErrorMessage = "دلیل رد نتیجه را وارد کنید.";
+            return;
+        }
+
+        try
+        {
+            ErrorMessage = "";
+
+            await TestAssignmentService
+                .RejectResultByTechnicalManagerAsync(
+                    SelectedResultApproval.Id,
+                    RejectReason);
+
+            PendingResultApprovals.Remove(
+                SelectedResultApproval);
+
+            SelectedResultApproval = null;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+    private bool ShowCorrectionDialog;
+    private AssignmentDisplayGroup? CorrectionGroup;
+    private string CorrectionReason = "";
+
+    private async Task OpenCorrectionDialog(
+    AssignmentDisplayGroup group)
+    {
+        if (group.Assignments.Count == 0)
+        {
+            ErrorMessage = "برای این نمونه آزمونی پیدا نشد.";
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            ["SampleCode"] = group.SampleCode
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog =
+            await DialogService.ShowAsync<ReceptionCorrectionDialog>(
+                "درخواست اصلاح پذیرش",
+                parameters,
+                options);
+
+        var result =
+            await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        var reason = result.Data?.ToString();
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            ErrorMessage = "دلیل درخواست اصلاح باید مشخص شود.";
+            return;
+        }
+
+        try
+        {
+            ErrorMessage = "";
+
+            var assignment =
+                group.Assignments.FirstOrDefault();
+
+            if (assignment is null ||
+                assignment.Sample is null)
+            {
+                ErrorMessage = "اطلاعات نمونه پیدا نشد.";
+                return;
+            }
+
+            await TestAssignmentService
+                .RequestReceptionCorrectionAsync(
+                    assignment.Sample.ReceptionId,
+                    group.SampleId,
+                    reason);
+
+            await ReloadAssignments();
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در ثبت درخواست اصلاح پذیرش: {ex.Message}";
+        }
+    }
+
+    private void CloseCorrectionDialog()
+    {
+        ShowCorrectionDialog = false;
+        CorrectionGroup = null;
+        CorrectionReason = "";
+    }
+    private async Task RequestCorrectionAsync()
+    {
+        if (CorrectionGroup is null)
+            return;
+
+        if (string.IsNullOrWhiteSpace(CorrectionReason))
+            return;
+
+        try
+        {
+            ErrorMessage = "";
+
+            var assignment = CorrectionGroup.Assignments.FirstOrDefault();
+
+            if (assignment is null || assignment.Sample is null)
+            {
+                ErrorMessage = "نمونه انتخاب‌شده معتبر نیست.";
+                return;
+            }
+
+            await TestAssignmentService.RequestReceptionCorrectionAsync(
+                assignment.Sample.ReceptionId,
+                CorrectionGroup.SampleId,
+                CorrectionReason);
+
+            CloseCorrectionDialog();
+
+            await ReloadAssignments();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"خطا در ثبت درخواست اصلاح: {ex.Message}";
+        }
+    }
+    
+    private class AssignmentDisplayGroup
+    {
+        public Guid SampleId { get; set; }
+
+        public Guid? DepartmentId { get; set; }
+
+        public string SampleCode { get; set; } = "";
+
+        public string SampleName { get; set; } = "";
+
+        public List<TestAssignment> Assignments { get; set; } = new();
+
+        public int AssignmentCount =>
+            Assignments.Count;
+
+        public int DepartmentStatusSortValue =>
+            Assignments.Any(x =>
+                !x.DepartmentId.HasValue ||
+                x.DepartmentId == Guid.Empty)
+                    ? 0
+                    : 1;
+
+        public string SortDisplayName
+        {
+            get
+            {
+                var names = Assignments
+                    .Select(x => x.Test?.Name)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct()
+                    .ToList();
+
+                return string.Join("، ", names);
+            }
+        }
+    }
+
+    private class ResultApprovalStatusInfo
+    {
+        public Guid AssignmentId { get; set; }
+
+        public ResultSetStatus Status { get; set; }
+
+        public int ResultCount { get; set; }
+
+        public int RequiredResultCount { get; set; }
+
+        public int OutOfLimitCount { get; set; }
+
+        public bool HasAnyLimit { get; set; }
     }
 }

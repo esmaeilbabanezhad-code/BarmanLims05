@@ -1,0 +1,737 @@
+﻿@page "/reception/correction/{RequestId:guid}"
+
+@using Barman.Application.DTOs.Reception
+@using Barman.Application.DTOs.CustomField
+@using Barman.Application.DTOs.Test
+@using Barman.Application.Interfaces
+@using Barman.Domain.Entities
+
+@inject IReceptionCorrectionRequestService CorrectionService
+@inject IReceptionService ReceptionService
+@inject ITestService TestService
+@inject ITestPanelService TestPanelService
+@inject ISampleCategoryService SampleCategoryService
+@inject IMatrixService MatrixService
+@inject IStandardSampleService StandardSampleService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4">
+
+    <MudText Typo="Typo.h5" Class="mb-4">
+        اصلاح پذیرش
+    </MudText>
+
+    @if (IsLoading)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <MudAlert Severity="Severity.Error">
+            @ErrorMessage
+        </MudAlert>
+    }
+    else if (Model is not null)
+    {
+        <!-- ========================= -->
+        <!-- اطلاعات پذیرش -->
+        <!-- ========================= -->
+
+        <MudText Typo="Typo.subtitle1" Class="mb-3">
+            اطلاعات پذیرش
+        </MudText>
+
+        <MudGrid>
+
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string"
+                              Label="شماره پذیرش"
+                              Value="@Model.ReceptionNumber"
+                              Variant="Variant.Outlined"
+                              Disabled="true"
+                              FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string"
+                              Label="مشتری"
+                              Value="@Model.CustomerName"
+                              Variant="Variant.Outlined"
+                              Disabled="true"
+                              FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="4">
+                <MudTextField T="string"
+                              Label="تاریخ پذیرش"
+                              Value="@Model.ReceptionDate.ToString("yyyy/MM/dd HH:mm")"
+                              Variant="Variant.Outlined"
+                              Disabled="true"
+                              FullWidth="true" />
+            </MudItem>
+
+        </MudGrid>
+
+        <MudDivider Class="my-4" />
+
+        <!-- ========================= -->
+        <!-- اطلاعات نمونه -->
+        <!-- ========================= -->
+
+        <MudText Typo="Typo.subtitle1" Class="mb-3">
+            اطلاعات نمونه
+        </MudText>
+
+        <MudGrid>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string"
+                              Label="کد نمونه"
+                              Value="@Model.SampleCode"
+                              Variant="Variant.Outlined"
+                              Disabled="true"
+                              FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string"
+                              Label="نام نمونه"
+                              @bind-Value="Model.SampleName"
+                              Variant="Variant.Outlined"
+                              FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string"
+                              Label="نام نمونه مشتری"
+                              @bind-Value="Model.CustomerSampleName"
+                              Variant="Variant.Outlined"
+                              FullWidth="true" />
+            </MudItem>
+
+            <!-- تاریخ تولید -->
+
+            <MudItem xs="12" sm="6">
+                <BarmanDateInput Label="تاریخ تولید"
+                                 @bind-Value="Model.ProductionDate" />
+            </MudItem>
+
+            <!-- تاریخ انقضا -->
+
+            <MudItem xs="12" sm="6">
+                <BarmanDateInput Label="تاریخ انقضا"
+                                 @bind-Value="Model.ExpiryDate" />
+            </MudItem>
+
+            <!-- دسته بندی -->
+
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid?"
+                           Label="دسته‌بندی نمونه"
+                           Value="Model.SampleCategoryId"
+                           ValueChanged="OnSampleCategoryChanged"
+                           Variant="Variant.Outlined"
+                           FullWidth="true">
+
+                    @foreach (var category in SampleCategories)
+                    {
+                        <MudSelectItem T="Guid?" Value="@category.Id">
+                            @category.Name
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+            </MudItem>
+
+            <!-- ماتریس -->
+
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid?"
+                           Label="ماتریس"
+                           Value="Model.MatrixId"
+                           ValueChanged="OnMatrixChanged"
+                           Variant="Variant.Outlined"
+                           FullWidth="true">
+
+                    @foreach (var matrix in Matrices
+                                    .Where(x =>
+                                    !Model.SampleCategoryId.HasValue ||
+                                    x.SampleCategoryId == Model.SampleCategoryId.Value))
+                    {
+                        <MudSelectItem T="Guid?" Value="@matrix.Id">
+                            @matrix.Name
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+            </MudItem>
+
+            <!-- نمونه استاندارد -->
+
+            <MudItem xs="12" sm="4">
+                <MudSelect T="Guid?"
+                           Label="نمونه استاندارد"
+                           @bind-Value="Model.StandardSampleId"
+                           Variant="Variant.Outlined"
+                           FullWidth="true">
+
+                    @foreach (var standard in StandardSamples
+                                    .Where(x =>
+                                    !Model.MatrixId.HasValue ||
+                                    x.MatrixId == Model.MatrixId.Value))
+                    {
+                        <MudSelectItem T="Guid?" Value="@standard.Id">
+                            @standard.Name
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string"
+                              Label="شماره بچ / لات"
+                              @bind-Value="Model.BatchLotNumber"
+                              Variant="Variant.Outlined"
+                              FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string"
+                              Label="شماره سهمیه"
+                              @bind-Value="Model.QuotaNumber"
+                              Variant="Variant.Outlined"
+                              FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string"
+                              Label="شماره محموله"
+                              @bind-Value="Model.ShipmentNumber"
+                              Variant="Variant.Outlined"
+                              FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="decimal?"
+                                 Label="مقدار"
+                                 @bind-Value="Model.Quantity"
+                                 Variant="Variant.Outlined"
+                                 FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string"
+                              Label="واحد"
+                              @bind-Value="Model.Unit"
+                              Variant="Variant.Outlined"
+                              FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string"
+                              Label="نوع ظرف"
+                              @bind-Value="Model.ContainerType"
+                              Variant="Variant.Outlined"
+                              FullWidth="true" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField T="string"
+                              Label="توضیحات"
+                              @bind-Value="Model.Description"
+                              Variant="Variant.Outlined"
+                              Lines="3"
+                              FullWidth="true" />
+            </MudItem>
+
+        </MudGrid>
+
+        <!-- ========================= -->
+        <!-- Custom Fields -->
+        <!-- ========================= -->
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.subtitle1" Class="mb-3">
+            اطلاعات تکمیلی
+        </MudText>
+
+        @if (Model.CustomFields.Count > 0)
+        {
+            <MudGrid>
+                @foreach (var field in Model.CustomFields)
+                {
+                    <MudItem xs="12" sm="6">
+                        @if (field.IsAdHoc)
+                        {
+                            <MudTextField T="string"
+                                          Label="عنوان فیلد جدید"
+                                          @bind-Value="field.Title"
+                                          Variant="Variant.Outlined"
+                                          FullWidth="true"
+                                          Class="mb-2" />
+                        }
+
+                        <MudTextField T="string"
+                                      Label="@(field.IsAdHoc ? "مقدار" : field.Title)"
+                                      @bind-Value="field.Value"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true"
+                                      Required="@field.IsRequired" />
+
+                        @if (field.IsAdHoc)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           Size="Size.Small"
+                                           Title="حذف فیلد"
+                                           OnClick="@(() => RemoveAdHocCustomField(field))" />
+                        }
+
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   Class="mt-3"
+                   OnClick="AddAdHocCustomField">
+            افزودن فیلد جدید
+        </MudButton>
+
+        <!-- ========================= -->
+        <!-- آزمون‌ها -->
+        <!-- ========================= -->
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.subtitle1" Class="mb-3">
+            آزمون‌های نمونه
+        </MudText>
+
+        <!-- افزودن آزمون -->
+
+        <MudGrid Class="mb-3">
+
+            <MudItem xs="12" sm="5">
+
+                <MudSelect T="Guid?"
+                           Label="افزودن آزمون"
+                           @bind-Value="SelectedTestId"
+                           Variant="Variant.Outlined"
+                           FullWidth="true">
+
+                    @foreach (var test in Tests
+                                    .Where(x => x.IsActiveForReception)
+                                    .OrderBy(x => x.Code)
+                                    .ThenBy(x => x.Name))
+                    {
+                        <MudSelectItem T="Guid?" Value="@test.Id">
+                            @test.DisplayName
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+
+            </MudItem>
+
+            <MudItem xs="12" sm="5">
+
+                <MudSelect T="Guid?"
+                           Label="Panel"
+                           @bind-Value="SelectedTestPanelId"
+                           Variant="Variant.Outlined"
+                           FullWidth="true">
+
+                    <MudSelectItem T="Guid?" Value="@((Guid?)null)">
+                        بدون Panel
+                    </MudSelectItem>
+
+                    @foreach (var panel in TestPanels
+                                    .OrderBy(x => x.Code)
+                                    .ThenBy(x => x.Name))
+                    {
+                        <MudSelectItem T="Guid?" Value="@panel.Id">
+                            @panel.Code - @panel.Name
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+
+            </MudItem>
+
+            <MudItem xs="12" sm="2" Class="d-flex align-center">
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="@(!SelectedTestId.HasValue && !SelectedTestPanelId.HasValue)"
+                           OnClick="AddTest">
+                    افزودن
+                </MudButton>
+
+            </MudItem>
+
+        </MudGrid>
+
+        <!-- لیست آزمون‌ها -->
+        @if (Model.TestIds.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">
+                برای این نمونه آزمونی ثبت نشده است.
+            </MudAlert>
+        }
+        else
+        {
+            <MudTable Items="Model.TestIds"
+                      Dense="true"
+                      Hover="true"
+                      Bordered="true"
+                      Striped="true">
+
+                <HeaderContent>
+
+                    <MudTh>آزمون</MudTh>
+                    <MudTh>Panel</MudTh>
+                    <MudTh>عملیات</MudTh>
+
+                </HeaderContent>
+
+                <RowTemplate>
+
+                    @{
+                        var testId = context;
+
+                        var test =
+                        Tests.FirstOrDefault(x => x.Id == testId);
+
+                        var panelId =
+                        Model.TestPanelIds.TryGetValue(testId, out var p)
+                        ? p
+                        : Guid.Empty;
+
+                        var panel =
+                        TestPanels.FirstOrDefault(x => x.Id == panelId);
+                    }
+
+                    <MudTd>
+                        @(test?.DisplayName ?? testId.ToString())
+                    </MudTd>
+
+                    <MudTd>
+
+                        @if (panel is not null)
+                        {
+                            <MudText Typo="Typo.body2">
+                                @panel.Code - @panel.Name
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.body2">
+                                بدون Panel
+                            </MudText>
+                        }
+
+                    </MudTd>
+
+                    <MudTd>
+
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       Title="حذف آزمون"
+                                       OnClick="@(() => RemoveTest(testId))" />
+
+                    </MudTd>
+
+                </RowTemplate>
+
+            </MudTable>
+        }
+
+        <!-- ========================= -->
+        <!-- دلیل درخواست اصلاح -->
+        <!-- ========================= -->
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">
+            دلیل درخواست اصلاح
+        </MudText>
+
+        <MudAlert Severity="Severity.Warning">
+            @Model.CorrectionReason
+        </MudAlert>
+    }
+    <MudDivider Class="my-4" />
+
+    <div class="d-flex justify-end">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Success"
+                   Disabled="@IsSaving"
+                   OnClick="SaveCorrection">
+            @if (IsSaving)
+            {
+                <MudProgressCircular Size="Size.Small"
+                                     Indeterminate="true"
+                                     Class="me-2" />
+                <span>در حال ذخیره...</span>
+            }
+            else
+            {
+                <span>ذخیره اصلاحات</span>
+            }
+        </MudButton>
+    </div>
+</MudPaper>
+
+@code {
+
+    [Parameter]
+    public Guid RequestId { get; set; }
+
+    private ReceptionCorrectionDto? Model;
+
+    private bool IsLoading = true;
+
+    private bool IsSaving;
+
+    private string ErrorMessage = "";
+
+    private List<SampleCategory> SampleCategories = new();
+    private List<Matrix> Matrices = new();
+    private List<StandardSample> StandardSamples = new();
+
+    private List<TestLookupDto> Tests = new();
+    private List<TestPanel> TestPanels = new();
+
+    private Guid? SelectedTestId;
+    private Guid? SelectedTestPanelId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            SampleCategories = await SampleCategoryService.GetAllAsync();
+            Matrices = await MatrixService.GetAllAsync();
+            StandardSamples = await StandardSampleService.GetAllAsync();
+            Tests = await TestService.GetAllAsync();
+            TestPanels = await TestPanelService.GetAllAsync();
+            
+            Model =
+                await CorrectionService
+                    .GetForCorrectionAsync(RequestId);
+
+            if (Model is null)
+            {
+                ErrorMessage =
+                    "درخواست اصلاح موردنظر پیدا نشد.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در بارگذاری اطلاعات اصلاح: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+    private async Task OnSampleCategoryChanged(Guid? categoryId)
+    {
+        Model!.SampleCategoryId = categoryId;
+
+        if (!categoryId.HasValue)
+        {
+            Model.MatrixId = null;
+            Model.StandardSampleId = null;
+            return;
+        }
+
+        if (Model.MatrixId.HasValue)
+        {
+            var matrix = Matrices.FirstOrDefault(x => x.Id == Model.MatrixId.Value);
+
+            if (matrix is null || matrix.SampleCategoryId != categoryId.Value)
+            {
+                Model.MatrixId = null;
+                Model.StandardSampleId = null;
+            }
+        }
+
+        if (Model.MatrixId.HasValue)
+        {
+            var standard = StandardSamples.FirstOrDefault(
+                x => x.Id == Model.StandardSampleId);
+
+            if (standard is null || standard.MatrixId != Model.MatrixId.Value)
+                Model.StandardSampleId = null;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnMatrixChanged(Guid? matrixId)
+    {
+        Model!.MatrixId = matrixId;
+
+        if (!matrixId.HasValue)
+        {
+            Model.StandardSampleId = null;
+            return;
+        }
+
+        var standard = StandardSamples.FirstOrDefault(
+            x => x.Id == Model.StandardSampleId);
+
+        if (standard is null || standard.MatrixId != matrixId.Value)
+            Model.StandardSampleId = null;
+
+        StateHasChanged();
+    }
+    private async Task SaveCorrection()
+    {
+        if (Model is null || IsSaving)
+            return;
+
+        try
+        {
+            IsSaving = true;
+            ErrorMessage = "";
+
+            var dto = new ReceptionCorrectionUpdateDto
+            {
+                RequestId = Model.RequestId,
+                SampleId = Model.SampleId,
+                SampleName = Model.SampleName,
+                CustomerSampleName = Model.CustomerSampleName,
+                ProductionDate = Model.ProductionDate,
+                ExpiryDate = Model.ExpiryDate,
+                BatchLotNumber = Model.BatchLotNumber,
+                QuotaNumber = Model.QuotaNumber,
+                ShipmentNumber = Model.ShipmentNumber,
+                SampleCategoryId = Model.SampleCategoryId,
+                MatrixId = Model.MatrixId,
+                StandardSampleId = Model.StandardSampleId,
+                Quantity = Model.Quantity,
+                Unit = Model.Unit,
+                ContainerType = Model.ContainerType,
+                Description = Model.Description,
+                CustomFields = Model.CustomFields,
+                TestIds = Model.TestIds,
+                TestPanelIds = Model.TestPanelIds
+            };
+
+            await CorrectionService.UpdateCorrectionAsync(dto);
+            await CorrectionService.ResolveAsync(Model.RequestId);
+
+            Snackbar.Add(
+                "اصلاحات با موفقیت ذخیره شد.",
+                Severity.Success);
+
+            NavigationManager.NavigateTo(
+                "/reception/corrections");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در ذخیره اصلاحات: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+    private void AddAdHocCustomField()
+    {
+        if (Model is null)
+            return;
+
+        Model.CustomFields.Add(
+            new CustomFieldValueDto
+            {
+                Id = null,
+                DefinitionId = null,
+                Title = "",
+                DataType = "Text",
+                IsRequired = false,
+                Value = null,
+                IsAdHoc = true,
+                DisplayOrder = Model.CustomFields.Count
+            });
+
+        StateHasChanged();
+    }
+    private void RemoveAdHocCustomField(CustomFieldValueDto field)
+    {
+        if (Model is null)
+            return;
+
+        if (!field.IsAdHoc)
+            return;
+
+        Model.CustomFields.Remove(field);
+
+        StateHasChanged();
+    }
+    private void RemoveTest(Guid testId)
+    {
+        Model!.TestIds.Remove(testId);
+        Model.TestPanelIds.Remove(testId);
+
+        StateHasChanged();
+    }
+    private void AddTest()
+    {
+        if (Model is null)
+            return;
+
+        // افزودن کل آزمون‌های Panel
+        if (SelectedTestPanelId.HasValue)
+        {
+            var panelId = SelectedTestPanelId.Value;
+
+            var panel = TestPanels
+                .FirstOrDefault(x => x.Id == panelId);
+
+            if (panel is not null)
+            {
+                foreach (var item in panel.Items
+                    .OrderBy(x => x.SortOrder))
+                {
+                    if (item.TestId == Guid.Empty)
+                        continue;
+
+                    if (!Model.TestIds.Contains(item.TestId))
+                    {
+                        Model.TestIds.Add(item.TestId);
+                    }
+
+                    Model.TestPanelIds[item.TestId] =
+                        panelId;
+                }
+            }
+        }
+        // افزودن یک آزمون
+        else if (SelectedTestId.HasValue)
+        {
+            var testId = SelectedTestId.Value;
+
+            if (!Model.TestIds.Contains(testId))
+            {
+                Model.TestIds.Add(testId);
+            }
+        }
+
+        SelectedTestId = null;
+        SelectedTestPanelId = null;
+
+        StateHasChanged();
+    }
+
+}

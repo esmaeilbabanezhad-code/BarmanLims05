@@ -6,6 +6,7 @@
 @using Barman.Domain.Entities
 
 @inject ISampleCategoryService SampleCategoryService
+@inject INumberSequenceService NumberSequenceService
 
 <MudPaper Class="pa-4">
 
@@ -30,18 +31,52 @@
     </div>
 
     <MudDivider Class="my-3" />
-
-    <MudTable Items="SampleCategoryList"
+    <MudTextField T="string"
+                  @bind-Value="SampleCategorySearchText"
+                  Label="جستجوی دسته‌بندی نمونه"
+                  Placeholder="کد، نام یا توضیحات..."
+                  Variant="Variant.Outlined"
+                  Clearable="true"
+                  Immediate="true"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Class="mb-3" />
+    <MudTable Items="FilteredSampleCategories"
               Hover="true"
               Dense="true">
 
         <HeaderContent>
 
-            <MudTh>Code</MudTh>
-            <MudTh>Name</MudTh>
-            <MudTh>Description</MudTh>
-            <MudTh>Status</MudTh>
-            <MudTh></MudTh>
+            <MudTh>
+                <MudTableSortLabel T="SampleCategory"
+                                   SortBy="@(x => x.Code)">
+                    Code
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="SampleCategory"
+                                   SortBy="@(x => x.Name)">
+                    Name
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="SampleCategory"
+                                   SortBy="@(x => x.Description)">
+                    Description
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+                <MudTableSortLabel T="SampleCategory"
+                                   SortBy="@(x => x.IsActive)">
+                    Status
+                </MudTableSortLabel>
+            </MudTh>
+
+            <MudTh>
+            </MudTh>
 
         </HeaderContent>
 
@@ -84,9 +119,7 @@
                            Variant="Variant.Outlined"
                            Color="Color.Primary"
                            OnClick="@(() => Edit(context))">
-
                     Edit
-
                 </MudButton>
 
                 @if (context.IsActive)
@@ -95,9 +128,7 @@
                                Variant="Variant.Text"
                                Color="Color.Warning"
                                OnClick="@(() => Deactivate(context.Id))">
-
                         Disable
-
                     </MudButton>
                 }
                 else
@@ -106,9 +137,7 @@
                                Variant="Variant.Text"
                                Color="Color.Success"
                                OnClick="@(() => Activate(context.Id))">
-
                         Activate
-
                     </MudButton>
                 }
 
@@ -116,9 +145,7 @@
                            Variant="Variant.Text"
                            Color="Color.Error"
                            OnClick="@(() => Delete(context.Id))">
-
                     Delete
-
                 </MudButton>
 
             </MudTd>
@@ -133,7 +160,8 @@
         <DialogContent>
 
             <MudTextField Label="Code"
-                          @bind-Value="CurrentCategory.Code" />
+                          @bind-Value="CurrentCategory.Code"
+                          ReadOnly="true" />
 
             <MudTextField Label="Name"
                           @bind-Value="CurrentCategory.Name" />
@@ -253,19 +281,32 @@
     }
 
 
-    private void NewSampleCategory()
+    private async Task NewSampleCategory()
     {
-        CurrentCategory = new SampleCategory
+        try
         {
-            IsActive = true,
-            IsDeleted = false
-        };
+            var code =
+                await NumberSequenceService
+                    .GetNextCodeAsync("SampleCategory");
 
-        IsEdit = false;
+            CurrentCategory = new SampleCategory
+            {
+                Code = code,
+                IsActive = true,
+                IsDeleted = false
+            };
 
-        DialogVisible = true;
+            IsEdit = false;
+
+            DialogVisible = true;
+        }
+        catch (Exception ex)
+        {
+            // در صورت نیاز می‌توان بعداً پیام خطای UI اضافه کرد
+            Console.Error.WriteLine(
+                $"خطا در تولید کد SampleCategory: {ex.Message}");
+        }
     }
-
 
     private void Edit(SampleCategory category)
     {
@@ -367,4 +408,19 @@
     {
         DeletedDialogVisible = false;
     }
+    private string SampleCategorySearchText = "";
+
+    private IEnumerable<SampleCategory> FilteredSampleCategories =>
+        string.IsNullOrWhiteSpace(SampleCategorySearchText)
+            ? SampleCategoryList
+            : SampleCategoryList.Where(x =>
+                (x.Code ?? "").Contains(
+                    SampleCategorySearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase) ||
+                (x.Name ?? "").Contains(
+                    SampleCategorySearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase) ||
+                (x.Description ?? "").Contains(
+                    SampleCategorySearchText.Trim(),
+                    StringComparison.OrdinalIgnoreCase));
 }

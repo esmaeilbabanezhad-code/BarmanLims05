@@ -1,0 +1,107 @@
+@page "/bootstrap-account"
+
+@using Barman.Application.Interfaces
+
+@inject IUserAccountService UserAccountService
+
+<PageTitle>Bootstrap Account</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="pa-4">
+
+    <MudPaper Class="pa-5">
+
+        <MudText Typo="Typo.h6" Class="mb-4">
+            ایجاد حساب اولیه سیستم
+        </MudText>
+
+        <MudAlert Severity="Severity.Warning" Class="mb-4">
+            این صفحه موقت است و پس از ایجاد اولین حساب باید حذف شود.
+        </MudAlert>
+
+        <MudText Class="mb-3">
+            کارمند: پریسا باقری — کد پرسنلی 002
+        </MudText>
+
+        <MudTextField @bind-Value="Username"
+                      Label="نام کاربری"
+                      Variant="Variant.Outlined"
+                      Required="true"
+                      Class="mb-4" />
+
+        <MudTextField @bind-Value="Password"
+                      Label="رمز عبور"
+                      Variant="Variant.Outlined"
+                      InputType="InputType.Password"
+                      Required="true"
+                      Class="mb-4" />
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="CreateAccount"
+                   Disabled="@IsSaving">
+            ایجاد حساب
+        </MudButton>
+
+        @if (!string.IsNullOrWhiteSpace(Message))
+        {
+            <MudAlert Severity="@MessageSeverity"
+                      Class="mt-4">
+                @Message
+            </MudAlert>
+        }
+
+    </MudPaper>
+
+</MudContainer>
+
+@code {
+
+    private readonly Guid ParisaEmployeeId =
+        Guid.Parse("250be0f8-1c1c-4854-be6c-ac7b92bde1a8");
+
+    private string Username = "parisa";
+    private string Password = "";
+
+    private bool IsSaving;
+
+    private string? Message;
+    private Severity MessageSeverity = Severity.Info;
+
+    private async Task CreateAccount()
+    {
+        Message = null;
+
+        if (string.IsNullOrWhiteSpace(Username) ||
+            string.IsNullOrWhiteSpace(Password))
+        {
+            Message = "نام کاربری و رمز عبور الزامی است.";
+            MessageSeverity = Severity.Warning;
+            return;
+        }
+
+        try
+        {
+            IsSaving = true;
+
+            await UserAccountService.CreateAsync(
+                ParisaEmployeeId,
+                Username.Trim(),
+                Password);
+
+            Message =
+                "حساب پریسا با موفقیت ایجاد شد. اکنون می‌توانید وارد شوید.";
+
+            MessageSeverity = Severity.Success;
+            Password = "";
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+            MessageSeverity = Severity.Error;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+}
