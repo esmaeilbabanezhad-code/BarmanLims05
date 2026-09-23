@@ -1,0 +1,54 @@
+﻿@page "/admin/about"
+
+@using Barman.Application.Versioning
+@using BarmanLims.Components.Authorization
+
+@attribute [RequirePermission("Admin")]
+
+<PageTitle>درباره نرم‌افزار</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
+
+    <MudPaper Class="pa-6">
+
+        <MudText Typo="Typo.h4" Class="mb-4">
+            @BarmanVersion.ProductName
+        </MudText>
+
+        <MudDivider Class="mb-4" />
+
+        <MudGrid>
+
+            <MudItem xs="12">
+                <MudText Typo="Typo.body1">
+                    سیستم مدیریت اطلاعات آزمایشگاه
+                </MudText>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.body2">
+                    <strong>نسخه نرم‌افزار:</strong>
+                    @BarmanVersion.Current
+                </MudText>
+            </MudItem>
+
+            <MudItem xs="12" sm="6">
+                <MudText Typo="Typo.body2">
+                    <strong>محصول:</strong>
+                    @BarmanVersion.ProductName
+                </MudText>
+            </MudItem>
+
+        </MudGrid>
+
+        <MudDivider Class="my-5" />
+
+        <MudAlert Severity="Severity.Info">
+            این نرم‌افزار برای مدیریت فرآیندهای آزمایشگاهی،
+            پذیرش نمونه، انجام آزمون‌ها، ثبت و تأیید نتایج
+            و صدور گزارش طراحی شده است.
+        </MudAlert>
+
+    </MudPaper>
+
+</MudContainer>
