@@ -2,8 +2,10 @@ using Barman.Application.Interfaces;
 using Barman.Application.Interfaces.Services;
 using Barman.Application.Interfaces.Services.Reporting;
 using Barman.Application.Services;
+using Barman.Application.Versioning;
 using Barman.Infrastructure.DependencyInjection;
 using Barman.Infrastructure.Services.Reporting;
+using Barman.Infrastructure.Services.Versioning;
 using Barman.Persistence.Contexts;
 using Barman.Persistence.DependencyInjection;
 using Barman.Persistence.Seed;
@@ -13,7 +15,6 @@ using BarmanLims.Login;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using MudBlazor.Services;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +52,12 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 builder.Services.AddScoped<IReportExportService, ReportExportService>();
+
+// =============================
+// Application Update Service
+// =============================
+
+builder.Services.AddHttpClient<IUpdateService, UpdateService>();
 
 // =============================
 
@@ -131,14 +138,15 @@ using (var scope = app.Services.CreateScope())
     Console.WriteLine();
 }
 
-
 // =============================
 // Database Initialization
 // =============================
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var db =
+        scope.ServiceProvider
+            .GetRequiredService<ApplicationDbContext>();
 
     await ApplicationDbInitializer.InitializeAsync(db);
 }
@@ -149,7 +157,10 @@ using (var scope = app.Services.CreateScope())
 
 if (!app.Environment.IsDevelopment())
 {
-    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseExceptionHandler(
+        "/Error",
+        createScopeForErrors: true);
+
     app.UseHsts();
 }
 

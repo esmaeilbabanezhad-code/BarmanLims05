@@ -5,50 +5,155 @@
 
 @attribute [RequirePermission("Admin")]
 
-<PageTitle>درباره نرم‌افزار</PageTitle>
+@inject IUpdateService UpdateService
+
+<PageTitle>درباره Barman LIMS</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-6">
 
     <MudPaper Class="pa-6">
 
         <MudText Typo="Typo.h4" Class="mb-4">
+            Barman LIMS
+        </MudText>
+
+        <MudText Typo="Typo.body1" Class="mb-2">
+            سامانه مدیریت اطلاعات آزمایشگاه
+        </MudText>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.body1">
+            <b>نسخه فعلی:</b>
+            @BarmanVersion.Current
+        </MudText>
+
+        <MudText Typo="Typo.body2" Class="mt-2">
             @BarmanVersion.ProductName
         </MudText>
 
-        <MudDivider Class="mb-4" />
+        <MudDivider Class="my-4" />
 
-        <MudGrid>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.SystemUpdate"
+                   OnClick="CheckForUpdateAsync"
+                   Disabled="@IsChecking">
 
-            <MudItem xs="12">
-                <MudText Typo="Typo.body1">
-                    سیستم مدیریت اطلاعات آزمایشگاه
-                </MudText>
-            </MudItem>
+            @if (IsChecking)
+            {
+                <MudProgressCircular Size="Size.Small"
+                                     Indeterminate="true"
+                                     Class="me-2" />
 
-            <MudItem xs="12" sm="6">
-                <MudText Typo="Typo.body2">
-                    <strong>نسخه نرم‌افزار:</strong>
-                    @BarmanVersion.Current
-                </MudText>
-            </MudItem>
+                <span>در حال بررسی...</span>
+            }
+            else
+            {
+                <span>بررسی وجود نسخه جدید</span>
+            }
 
-            <MudItem xs="12" sm="6">
-                <MudText Typo="Typo.body2">
-                    <strong>محصول:</strong>
-                    @BarmanVersion.ProductName
-                </MudText>
-            </MudItem>
+        </MudButton>
 
-        </MudGrid>
+        @if (UpdateInfo is not null)
+        {
+            <MudAlert Severity="@(UpdateInfo.IsUpdateAvailable
+                                                        ? Severity.Success
+                                                        : Severity.Info)"
+                  Class="mt-4">
 
-        <MudDivider Class="my-5" />
+            @if (UpdateInfo.IsUpdateAvailable)
+                {
+                    <MudText Typo="Typo.h6">
+                        نسخه جدید موجود است
+                    </MudText>
 
-        <MudAlert Severity="Severity.Info">
-            این نرم‌افزار برای مدیریت فرآیندهای آزمایشگاهی،
-            پذیرش نمونه، انجام آزمون‌ها، ثبت و تأیید نتایج
-            و صدور گزارش طراحی شده است.
-        </MudAlert>
+                    <MudText Class="mt-2">
+                        نسخه فعلی:
+                        <b>@UpdateInfo.CurrentVersion</b>
+                    </MudText>
+
+                    <MudText>
+                        آخرین نسخه:
+                        <b>@UpdateInfo.LatestVersion</b>
+                    </MudText>
+
+                    @if (!string.IsNullOrWhiteSpace(UpdateInfo.ReleaseDate))
+                    {
+                        <MudText Class="mt-2">
+                            تاریخ انتشار:
+                            @UpdateInfo.ReleaseDate
+                        </MudText>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(UpdateInfo.DownloadUrl))
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   Class="mt-3"
+                                   Href="@UpdateInfo.DownloadUrl"
+                                   Target="_blank">
+
+                            مشاهده نسخه جدید
+                        </MudButton>
+                    }
+                }
+                else
+                {
+                    <MudText>
+                        نرم‌افزار شما به‌روز است.
+                    </MudText>
+
+                    <MudText Typo="Typo.body2" Class="mt-1">
+                        نسخه فعلی: @UpdateInfo.CurrentVersion
+                    </MudText>
+                }
+
+            </MudAlert>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error"
+                      Class="mt-4">
+                @ErrorMessage
+            </MudAlert>
+        }
 
     </MudPaper>
 
 </MudContainer>
+
+@code {
+
+    private bool IsChecking;
+
+    private UpdateInfo? UpdateInfo;
+
+    private string? ErrorMessage;
+
+    private async Task CheckForUpdateAsync()
+    {
+        if (IsChecking)
+            return;
+
+        IsChecking = true;
+        ErrorMessage = null;
+        UpdateInfo = null;
+
+        try
+        {
+            UpdateInfo =
+                await UpdateService.CheckForUpdateAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage =
+                $"خطا در بررسی نسخه جدید: {ex.Message}";
+        }
+        finally
+        {
+            IsChecking = false;
+        }
+    }
+}
