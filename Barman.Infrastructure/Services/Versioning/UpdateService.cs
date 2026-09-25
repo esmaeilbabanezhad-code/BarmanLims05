@@ -1,6 +1,7 @@
+﻿using Barman.Application.Versioning;
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
-using Barman.Application.Versioning;
 
 namespace Barman.Infrastructure.Services.Versioning;
 
@@ -70,7 +71,62 @@ public sealed class UpdateService : IUpdateService
             };
         }
     }
+    public async Task InstallUpdateAsync(
+    UpdateInfo updateInfo,
+    CancellationToken cancellationToken = default)
+    {
+        if (!updateInfo.IsUpdateAvailable ||
+            string.IsNullOrWhiteSpace(updateInfo.DownloadUrl))
+        {
+            throw new InvalidOperationException(
+                "نسخه جدید قابل نصب نیست.");
+        }
 
+        var updaterPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "Updater",
+            "BarmanUpdater.exe");
+
+        if (!File.Exists(updaterPath))
+        {
+            throw new FileNotFoundException(
+                "BarmanUpdater.exe پیدا نشد.",
+                updaterPath);
+        }
+
+        var zipPath = Path.Combine(
+            Path.GetTempPath(),
+            $"BarmanLims-{updateInfo.LatestVersion}.zip");
+
+        await using (var responseStream =
+            await _httpClient.GetStreamAsync(
+                updateInfo.DownloadUrl,
+                cancellationToken))
+        await using (var fileStream =
+            File.Create(zipPath))
+        {
+            await responseStream.CopyToAsync(
+                fileStream,
+                cancellationToken);
+        }
+
+        var appDirectory =
+            AppContext.BaseDirectory;
+
+        var processStartInfo = new ProcessStartInfo
+        {
+            FileName = updaterPath,
+            Arguments =
+                $"\"{zipPath}\" \"{appDirectory}\"",
+            WorkingDirectory =
+                Path.GetDirectoryName(updaterPath)!,
+            UseShellExecute = true
+        };
+
+        Process.Start(processStartInfo);
+
+        Environment.Exit(0);
+    }
     private static string NormalizeVersion(string version)
     {
         version = version.Trim();

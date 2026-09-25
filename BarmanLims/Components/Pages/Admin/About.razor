@@ -91,10 +91,23 @@
                         <MudButton Variant="Variant.Outlined"
                                    Color="Color.Primary"
                                    Class="mt-3"
-                                   Href="@UpdateInfo.DownloadUrl"
-                                   Target="_blank">
+                                   StartIcon="@Icons.Material.Filled.SystemUpdate"
+                                   OnClick="InstallUpdateAsync"
+                                   Disabled="@IsInstalling">
 
-                            مشاهده نسخه جدید
+                            @if (IsInstalling)
+                            {
+                                <MudProgressCircular Size="Size.Small"
+                                                     Indeterminate="true"
+                                                     Class="me-2" />
+
+                                <span>در حال نصب نسخه جدید...</span>
+                            }
+                            else
+                            {
+                                <span>نصب نسخه @UpdateInfo.LatestVersion</span>
+                            }
+
                         </MudButton>
                     }
                 }
@@ -132,6 +145,8 @@
 
     private string? ErrorMessage;
 
+    private bool IsInstalling;
+
     private async Task CheckForUpdateAsync()
     {
         if (IsChecking)
@@ -154,6 +169,30 @@
         finally
         {
             IsChecking = false;
+        }
+    }
+    private async Task InstallUpdateAsync()
+    {
+        if (UpdateInfo is null ||
+            !UpdateInfo.IsUpdateAvailable)
+            return;
+
+        if (IsInstalling)
+            return;
+
+        IsInstalling = true;
+        ErrorMessage = null;
+
+        try
+        {
+            await UpdateService.InstallUpdateAsync(UpdateInfo);
+        }
+        catch (Exception ex)
+        {
+            IsInstalling = false;
+
+            ErrorMessage =
+                $"خطا در نصب نسخه جدید: {ex.Message}";
         }
     }
 }

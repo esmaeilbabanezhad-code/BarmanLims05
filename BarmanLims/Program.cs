@@ -15,8 +15,39 @@ using BarmanLims.Login;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using MudBlazor.Services;
+using Microsoft.Extensions.Configuration;
 
-var builder = WebApplication.CreateBuilder(args);
+
+var builder = WebApplication.CreateBuilder(
+    new WebApplicationOptions
+    {
+        Args = args,
+        ContentRootPath = AppContext.BaseDirectory
+    });
+Console.WriteLine();
+Console.WriteLine("========================================");
+Console.WriteLine(" CONFIGURATION PROVIDERS DIAGNOSTIC");
+Console.WriteLine("========================================");
+
+Console.WriteLine($"BaseDirectory: {AppContext.BaseDirectory}");
+Console.WriteLine($"CurrentDirectory: {Environment.CurrentDirectory}");
+Console.WriteLine($"Environment: {builder.Environment.EnvironmentName}");
+
+var configurationRoot =
+    (IConfigurationRoot)builder.Configuration;
+
+foreach (var provider in configurationRoot.Providers)
+{
+    Console.WriteLine(
+        $"Provider: {provider.GetType().FullName}");
+}
+
+Console.WriteLine(
+    $"DefaultConnection: [{builder.Configuration.GetConnectionString("DefaultConnection")}]");
+
+Console.WriteLine("========================================");
+Console.WriteLine();
+
 
 // =============================
 // Services
